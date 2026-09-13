@@ -83,6 +83,8 @@ class SourceSpec(BaseModel):
     publisher: str = ""
     source_type: str = "web"
     authority: int = 50
+    source_class: str = ""  # official | external | community | organization (derived from authority if empty)
+    relevance: int = 50
     access_type: str = "public"
     license: str = ""
     permissions: dict[str, bool] = Field(

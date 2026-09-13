@@ -4,16 +4,34 @@ from __future__ import annotations
 
 from typing import Any
 
-SCORING_RULE_VERSION = "score@1.0"
+SCORING_RULE_VERSION = "score@2.0"
 
 _WEIGHTS = {
-    "source_authority": 0.35,
-    "evidence_verified": 0.20,
+    "source_authority": 0.30,
+    "evidence_verified": 0.15,
     "source_agreement": 0.15,
-    "specificity": 0.10,
-    "taxonomy_match": 0.05,
-    "domain_validation": 0.15,
+    "specificity": 0.08,
+    "taxonomy_match": 0.04,
+    "domain_validation": 0.13,
+    "freshness": 0.08,  # time since last verification (req. 14, 31)
+    "contradiction_status": 0.05,  # an open conflict lowers trust (req. 12, 14)
+    "version_known": 0.02,  # a product version is recorded (req. 14 "version match")
 }
+
+
+def freshness(last_verified_at, *, is_stale: bool, now=None) -> float:
+    """1.0 within 30 days of verification, decaying to 0.2 after half a year; STALE is 0."""
+    from datetime import UTC, datetime
+
+    if is_stale:
+        return 0.0
+    if last_verified_at is None:
+        return 0.5
+    now = now or datetime.now(UTC)
+    if last_verified_at.tzinfo is None:
+        last_verified_at = last_verified_at.replace(tzinfo=UTC)
+    days = (now - last_verified_at).days
+    return 1.0 if days < 30 else 0.7 if days < 90 else 0.4 if days < 180 else 0.2
 
 
 def specificity(statement: str, code: str | None) -> float:
@@ -36,6 +54,10 @@ def score(
     code: str | None,
     topic_matched: bool,
     validator_results: list[dict[str, Any]] | None = None,
+    last_verified_at=None,
+    is_stale: bool = False,
+    has_open_conflict: bool = False,
+    version_known: bool = False,
 ) -> tuple[float, dict[str, Any]]:
     validator_results = validator_results or []
     if validator_results:
@@ -49,6 +71,9 @@ def score(
         "specificity": specificity(statement, code),
         "taxonomy_match": 1.0 if topic_matched else 0.0,
         "domain_validation": dv,
+        "freshness": freshness(last_verified_at, is_stale=is_stale),
+        "contradiction_status": 0.3 if has_open_conflict else 1.0,
+        "version_known": 1.0 if version_known else 0.6,
     }
     total = sum(_WEIGHTS[k] * v for k, v in factors.items())
     factors["weights"] = _WEIGHTS

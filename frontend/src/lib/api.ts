@@ -101,6 +101,9 @@ export type Evidence = {
   document_id: string | null;
   source_id: string | null;
   evidence_type: string;
+  relation: string;
+  retrieved_at: string | null;
+  source_version: number | null;
   excerpt: string;
   locator: { heading_path?: string[]; chunk_index?: number; start?: number; end?: number };
   document_hash: string | null;
@@ -137,6 +140,9 @@ export type Knowledge = {
   product_version: string | null;
   language: string;
   publication_date: string | null;
+  origin: "DIRECT" | "DERIVED" | "SYNTHESIZED" | "EXPERIMENTALLY_VALIDATED";
+  provenance: "OFFICIAL" | "EXTERNAL" | "COMMUNITY" | "USER" | "ORGANIZATION" | "DERIVED";
+  polarity: "positive" | "negative";
   status: string;
   confidence: number;
   verification_level: number;
@@ -163,7 +169,33 @@ export type Conflict = {
   item_b: Knowledge | null;
 };
 
+export type KnowledgeCreate = {
+  domain: string;
+  statement: string;
+  subject: string;
+  predicate: string;
+  object: string;
+  knowledge_type: string;
+  explanation?: string;
+  topic?: string;
+  tags?: string[];
+  code?: string | null;
+  product_version?: string | null;
+  provenance: "USER" | "ORGANIZATION";
+  polarity?: "positive" | "negative" | null;
+  details?: Record<string, string>;
+  evidence_text?: string;
+  evidence_url?: string | null;
+  provided_by?: string;
+  authority?: number;
+};
+
 export type KnowledgeDetail = Knowledge & {
+  details: Record<string, string>;
+  effective_date: string | null;
+  needs_revalidation: boolean;
+  revalidation_reason: string | null;
+  validator_versions: Record<string, string>;
   quality_factors: Record<string, unknown>;
   scoring_rule_version: string;
   content_hash: string;
@@ -408,6 +440,9 @@ export const api = {
     status?: string;
     topic?: string;
     knowledge_type?: string;
+    provenance?: string;
+    polarity?: string;
+    origin?: string;
     q?: string;
     min_confidence?: number;
     sort?: string;
@@ -415,6 +450,8 @@ export const api = {
     page_size?: number;
   }) => request<Page<Knowledge>>(`/knowledge${qs(params)}`),
   knowledgeItem: (id: string) => request<KnowledgeDetail>(`/knowledge/${id}`),
+  createKnowledge: (body: KnowledgeCreate) =>
+    request<KnowledgeDetail>("/knowledge", { method: "POST", body: JSON.stringify(body) }),
   review: (id: string, body: { action: string; reason?: string; reviewer?: string }) =>
     request<KnowledgeDetail>(`/knowledge/${id}/review`, { method: "POST", body: JSON.stringify(body) }),
   conflicts: (domain?: string, status = "OPEN") => request<Conflict[]>(`/conflicts${qs({ domain, status })}`),

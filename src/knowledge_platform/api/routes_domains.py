@@ -11,6 +11,7 @@ from ..core.domains import sync_domain
 from ..core.orchestration.jobs import start_run
 from ..core.orchestration.queue import enqueue
 from ..core.plugins.registry import get_registry
+from ..core.quality.provenance import source_class_for
 from ..db import get_db
 from ..models import Document, Domain, DomainKeyword, Source, SourceStatus
 from .schemas import DomainOut, KeywordCreate, KeywordOut, SourceCreate, SourceOut, SourcePatch
@@ -190,6 +191,8 @@ def create_source(body: SourceCreate, db: Session = Depends(get_db)) -> SourceOu
         publisher=body.publisher.strip() or host,
         source_type=body.source_type,
         authority=body.authority,
+        source_class=body.source_class or source_class_for(body.authority, "user"),
+        relevance=body.relevance,
         license=body.license,
         permissions=body.permissions,
         crawl_frequency_hours=body.crawl_frequency_hours,

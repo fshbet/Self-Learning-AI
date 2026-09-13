@@ -47,6 +47,8 @@ class SourceOut(ORM):
     domain_id: str
     key: str
     origin: str = "plugin"
+    source_class: str = "external"
+    relevance: int = 50
     name: str
     url: str
     publisher: str
@@ -76,6 +78,8 @@ class SourceCreate(BaseModel):
     name: str = Field(default="", max_length=200)
     publisher: str = Field(default="", max_length=200)
     authority: int = Field(default=60, ge=0, le=100)
+    source_class: str = Field(default="", pattern="^(|official|external|community|organization)$")
+    relevance: int = Field(default=50, ge=0, le=100)
     source_type: str = Field(default="web", pattern="^(web|pdf|api|git|video)$")
     license: str = Field(default="", max_length=200)
     permissions: dict[str, bool] = Field(
@@ -107,6 +111,8 @@ class SourcePatch(BaseModel):
     enabled: bool | None = None
     status: str | None = None
     authority: int | None = Field(default=None, ge=0, le=100)
+    source_class: str | None = Field(default=None, pattern="^(official|external|community|organization)$")
+    relevance: int | None = Field(default=None, ge=0, le=100)
     crawl_frequency_hours: int | None = Field(default=None, ge=1)
     max_depth: int | None = Field(default=None, ge=0, le=6)
     max_pages: int | None = Field(default=None, ge=1, le=5000)
@@ -152,6 +158,9 @@ class EvidenceOut(ORM):
     document_id: uuid.UUID | None
     source_id: uuid.UUID | None
     evidence_type: str
+    relation: str = "supports"
+    retrieved_at: datetime | None = None
+    source_version: int | None = None
     excerpt: str
     locator: dict[str, Any]
     document_hash: str | None
@@ -188,6 +197,9 @@ class KnowledgeOut(ORM):
     product_version: str | None
     language: str
     publication_date: str | None
+    origin: str = "DIRECT"
+    provenance: str = "EXTERNAL"
+    polarity: str = "positive"
     status: str
     confidence: float
     verification_level: int
@@ -200,6 +212,11 @@ class KnowledgeOut(ORM):
 
 
 class KnowledgeDetail(KnowledgeOut):
+    details: dict[str, Any] = Field(default_factory=dict)
+    effective_date: str | None = None
+    needs_revalidation: bool = False
+    revalidation_reason: str | None = None
+    validator_versions: dict[str, Any] = Field(default_factory=dict)
     quality_factors: dict[str, Any]
     scoring_rule_version: str
     content_hash: str
@@ -213,6 +230,29 @@ class KnowledgeDetail(KnowledgeOut):
     transitions: list[TransitionOut]
     conflicts: list[ConflictOut] = Field(default_factory=list)
     duplicates: list[KnowledgeOut] = Field(default_factory=list)
+
+
+class KnowledgeCreate(BaseModel):
+    """Human-authored knowledge (USER / ORGANIZATION provenance)."""
+
+    domain: str
+    statement: str = Field(min_length=10, max_length=2000)
+    subject: str = Field(min_length=1, max_length=300)
+    predicate: str = Field(min_length=1, max_length=200)
+    object: str = Field(min_length=1, max_length=2000)
+    knowledge_type: str = "fact"
+    explanation: str = ""
+    topic: str = ""
+    tags: list[str] = Field(default_factory=list)
+    code: str | None = None
+    product_version: str | None = None
+    provenance: str = Field(default="USER", pattern="^(USER|ORGANIZATION)$")
+    polarity: str | None = Field(default=None, pattern="^(positive|negative)$")
+    details: dict[str, str] = Field(default_factory=dict)
+    evidence_text: str = ""
+    evidence_url: str | None = None
+    provided_by: str = "user"
+    authority: int = Field(default=60, ge=0, le=100)
 
 
 class ReviewRequest(BaseModel):

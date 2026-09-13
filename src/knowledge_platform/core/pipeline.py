@@ -14,13 +14,14 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from ..models import Document, DocumentStatus, Evidence, ItemStatus, KnowledgeItem, Source, utcnow
+from ..models import Conflict, Document, DocumentStatus, Evidence, ItemStatus, KnowledgeItem, Source, utcnow
 from .extraction.extractor import ExtractedItem, extract_from_text
 from .plugins.base import DomainPlugin
 from .quality.dedup import find_exact, find_near
+from .quality.provenance import derive_provenance
 from .quality.scoring import SCORING_RULE_VERSION, score
 from .retrieval.embeddings import embed_items
 from .verification.conflicts import detect_conflicts
@@ -68,17 +69,34 @@ def _evidence_summary(session: Session, item: KnowledgeItem) -> tuple[int, int, 
     authorities = []
     if source_ids:
         authorities = list(session.execute(select(Source.authority).where(Source.id.in_(source_ids))).scalars())
+    # user/organization-provided knowledge (req. 9): the human evidence carries its own declared authority
+    provided = [e for e in item.evidence if e.evidence_type == "human" and e.details.get("provided")]
+    distinct_keys = {str(s) for s in source_ids} | {f"human:{e.details.get('provided_by', '?')}" for e in provided}
+    authorities += [int(e.details.get("authority", 60)) for e in provided]
     validator_results = [
         e.details | {"passed": e.details.get("passed", False)} for e in item.evidence if e.evidence_type == "validator"
     ]
     validator_passed = bool(validator_results) and all(v["passed"] for v in validator_results)
     human_approved = any(e.evidence_type == "human" and e.details.get("approved") for e in item.evidence)
-    return len(source_ids), max(authorities, default=0), validator_passed, human_approved, validator_results
+    return len(distinct_keys), max(authorities, default=0), validator_passed, human_approved, validator_results
+
+
+def has_open_conflict(session: Session, item: KnowledgeItem) -> bool:
+    return (
+        session.execute(
+            select(Conflict.id)
+            .where(or_(Conflict.item_a_id == item.id, Conflict.item_b_id == item.id), Conflict.status == "OPEN")
+            .limit(1)
+        ).scalar_one_or_none()
+        is not None
+    )
 
 
 def rescore(session: Session, item: KnowledgeItem, plugin: DomainPlugin, *, actor: str = "system:score") -> None:
     distinct, max_auth, validator_passed, human_approved, validator_results = _evidence_summary(session, item)
-    evidence_verified = any(e.verified for e in item.evidence if e.evidence_type == "extraction")
+    evidence_verified = any(
+        e.verified for e in item.evidence if e.evidence_type == "extraction" or e.details.get("provided")
+    )
     conf, factors = score(
         source_authority=max_auth,
         evidence_verified=evidence_verified,
@@ -87,6 +105,10 @@ def rescore(session: Session, item: KnowledgeItem, plugin: DomainPlugin, *, acto
         code=item.code,
         topic_matched=bool(item.topic) and item.topic in set(plugin.taxonomy_paths()),
         validator_results=validator_results,
+        last_verified_at=item.last_verified_at or item.first_discovered_at,  # never verified: age since discovery
+        is_stale=ItemStatus(item.status) == ItemStatus.STALE,
+        has_open_conflict=has_open_conflict(session, item),
+        version_known=bool(item.product_version),
     )
     item.confidence = conf
     item.quality_factors = factors
@@ -124,6 +146,9 @@ def _add_evidence(item: KnowledgeItem, doc: Document, ex: ExtractedItem) -> Evid
         document_hash=doc.content_hash,
         url=doc.url,
         verified=ex.quote_verified,
+        relation="supports",
+        retrieved_at=doc.fetched_at,
+        source_version=doc.version,
     )
     item.evidence.append(ev)
     return ev
@@ -136,6 +161,7 @@ def _has_evidence_from_doc(item: KnowledgeItem, doc: Document) -> bool:
 def run_validators(session: Session, item: KnowledgeItem, plugin: DomainPlugin) -> int:
     ran = 0
     payload = item_as_dict(item)
+    versions = dict(item.validator_versions or {})
     for v in plugin.validators():
         try:
             if not v.applies_to(payload):
@@ -145,6 +171,7 @@ def run_validators(session: Session, item: KnowledgeItem, plugin: DomainPlugin) 
             log.exception("validator %s failed on %s: %s", v.name, item.id, exc)
             continue
         ran += 1
+        versions[v.name] = v.version
         # replace an older result from the same validator version
         item.evidence[:] = [
             e for e in item.evidence if not (e.evidence_type == "validator" and e.details.get("validator") == v.name)
@@ -153,11 +180,16 @@ def run_validators(session: Session, item: KnowledgeItem, plugin: DomainPlugin) 
             Evidence(
                 knowledge_item_id=item.id,
                 evidence_type="validator",
+                relation="validates",
                 excerpt=result.message or f"{v.name} {'passed' if result.passed else 'failed'}",
                 verified=True,
                 details={"validator": v.name, "version": v.version, "passed": result.passed, **result.details},
             )
         )
+    item.validator_versions = versions
+    validator_evidence = [e for e in item.evidence if e.evidence_type == "validator"]
+    if validator_evidence and all(e.details.get("passed") for e in validator_evidence):
+        item.origin = "EXPERIMENTALLY_VALIDATED"  # req. 8: verified through a domain-specific validation process
     return ran
 
 
@@ -247,6 +279,10 @@ def ingest_document(
             content_hash=ex.content_hash,
             extraction=ex.extraction,
             run_id=run_id,
+            origin="DIRECT",
+            provenance=derive_provenance([doc.source] if doc.source else []),
+            polarity=ex.polarity,
+            details=ex.details,
         )
         session.add(item)
         session.flush()
@@ -283,6 +319,9 @@ def ingest_document(
                         document_hash=doc.content_hash,
                         url=doc.url,
                         verified=ev.verified,
+                        relation="supports",
+                        retrieved_at=doc.fetched_at,
+                        source_version=doc.version,
                         details={"via_duplicate": str(item.id)},
                     )
                 )

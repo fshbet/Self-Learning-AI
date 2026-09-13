@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { Filter, X } from "lucide-react";
+import { Filter, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import AddKnowledge from "../components/AddKnowledge";
 import KnowledgeDrawer from "../components/KnowledgeDrawer";
-import { Confidence, Empty, ErrorBox, Loading, PageHeader, Pagination, StatusChip, TypeChip } from "../components/ui";
+import { Confidence, Empty, ErrorBox, Loading, PageHeader, Pagination, PolarityChip, ProvenanceChip, StatusChip, TypeChip } from "../components/ui";
 import { api } from "../lib/api";
 import { useDomain } from "../lib/domain";
 import { timeAgo } from "../lib/format";
@@ -15,7 +16,10 @@ export default function Knowledge() {
   const [params, setParams] = useSearchParams();
   const [q, setQ] = useState(params.get("q") ?? "");
   const [selected, setSelected] = useState<string | null>(params.get("item"));
+  const [adding, setAdding] = useState(false);
   const status = params.get("status") ?? "";
+  const provenance = params.get("provenance") ?? "";
+  const polarity = params.get("polarity") ?? "";
   const topic = params.get("topic") ?? "";
   const ktype = params.get("type") ?? "";
   const sort = params.get("sort") ?? "updated";
@@ -39,17 +43,26 @@ export default function Knowledge() {
   }
 
   const list = useQuery({
-    queryKey: ["knowledge", "list", domain, status, topic, ktype, params.get("q"), sort, page],
-    queryFn: () => api.knowledge({ domain, status, topic, knowledge_type: ktype, q: params.get("q") ?? "", sort, page, page_size: 25 }),
+    queryKey: ["knowledge", "list", domain, status, topic, ktype, provenance, polarity, params.get("q"), sort, page],
+    queryFn: () =>
+      api.knowledge({ domain, status, topic, knowledge_type: ktype, provenance, polarity, q: params.get("q") ?? "", sort, page, page_size: 25 }),
     placeholderData: (prev) => prev,
   });
   const topics = current?.manifest.taxonomy_paths ?? [];
   const types = current?.manifest.knowledge_types ?? [];
-  const hasFilters = status || topic || ktype || params.get("q");
+  const hasFilters = status || topic || ktype || provenance || polarity || params.get("q");
 
   return (
     <div className="fade-in">
-      <PageHeader title="Knowledge" subtitle={`${list.data ? list.data.total : "…"} items in ${current?.name ?? domain}`} />
+      <PageHeader
+        title="Knowledge"
+        subtitle={`${list.data ? list.data.total : "…"} items in ${current?.name ?? domain}`}
+        actions={
+          <button className="btn btn-primary" onClick={() => setAdding(true)}>
+            <Plus size={14} /> Add knowledge
+          </button>
+        }
+      />
 
       <div className="panel p-3 mb-4 flex flex-wrap items-center gap-2">
         <Filter size={14} className="muted ml-1" />
@@ -71,6 +84,17 @@ export default function Knowledge() {
           {types.map((t) => (
             <option key={t} value={t}>{t}</option>
           ))}
+        </select>
+        <select className="input" value={provenance} onChange={(e) => update({ provenance: e.target.value, page: "1" })}>
+          <option value="">All provenance</option>
+          {["OFFICIAL", "EXTERNAL", "COMMUNITY", "USER", "ORGANIZATION", "DERIVED"].map((p) => (
+            <option key={p} value={p}>{p.toLowerCase()}</option>
+          ))}
+        </select>
+        <select className="input" value={polarity} onChange={(e) => update({ polarity: e.target.value, page: "1" })}>
+          <option value="">Positive + negative</option>
+          <option value="positive">What works</option>
+          <option value="negative">What does not work</option>
         </select>
         <select className="input" value={sort} onChange={(e) => update({ sort: e.target.value })}>
           <option value="updated">Recently updated</option>
@@ -109,8 +133,10 @@ export default function Knowledge() {
                   <tr key={k.id} className="row-link" onClick={() => setSelected(k.id)}>
                     <td>
                       <div className="font-medium leading-snug">{k.statement}</div>
-                      <div className="muted text-xs mt-1 flex items-center gap-2">
+                      <div className="muted text-xs mt-1 flex items-center gap-2 flex-wrap">
                         <TypeChip type={k.knowledge_type} />
+                        <ProvenanceChip provenance={k.provenance} />
+                        <PolarityChip polarity={k.polarity} />
                         <span className="mono">{k.subject}</span>
                         {k.product_version && <span>· {k.product_version}</span>}
                       </div>
@@ -130,6 +156,7 @@ export default function Knowledge() {
       {list.data && <Pagination page={page} pageSize={25} total={list.data.total} onChange={(p) => update({ page: String(p) })} />}
 
       <KnowledgeDrawer id={selected} onClose={() => setSelected(null)} />
+      <AddKnowledge open={adding} onClose={() => setAdding(false)} onCreated={(id) => setSelected(id)} />
     </div>
   );
 }

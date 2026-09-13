@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from ..core.knowledge_entry import DuplicateKnowledge, KnowledgeEntry, create_knowledge
 from ..core.pipeline import rescore
 from ..core.plugins.registry import get_registry
 from ..core.retrieval.answer import answer_question
@@ -19,6 +20,7 @@ from .schemas import (
     ConflictOut,
     ConflictResolve,
     EvidenceOut,
+    KnowledgeCreate,
     KnowledgeDetail,
     KnowledgeOut,
     Page,
@@ -82,6 +84,9 @@ def list_knowledge(
     status: str | None = None,
     topic: str | None = None,
     knowledge_type: str | None = None,
+    provenance: str | None = None,
+    polarity: str | None = None,
+    origin: str | None = None,
     q: str | None = None,
     min_confidence: float | None = Query(None, ge=0, le=1),
     sort: str = Query("updated", pattern="^(updated|confidence|subject|created)$"),
@@ -98,6 +103,12 @@ def list_knowledge(
         stmt = stmt.where(or_(KnowledgeItem.topic == topic, KnowledgeItem.topic.like(topic + "/%")))
     if knowledge_type:
         stmt = stmt.where(KnowledgeItem.knowledge_type == knowledge_type)
+    if provenance:
+        stmt = stmt.where(KnowledgeItem.provenance.in_(provenance.split(",")))
+    if polarity:
+        stmt = stmt.where(KnowledgeItem.polarity == polarity)
+    if origin:
+        stmt = stmt.where(KnowledgeItem.origin.in_(origin.split(",")))
     if min_confidence is not None:
         stmt = stmt.where(KnowledgeItem.confidence >= min_confidence)
     if q:
@@ -142,6 +153,28 @@ def get_knowledge(item_id: uuid.UUID, db: Session = Depends(get_db)) -> Knowledg
     dups = db.execute(select(KnowledgeItem).where(KnowledgeItem.duplicate_of_id == item.id)).scalars().all()
     o.duplicates = _to_out(db, dups)
     return o
+
+
+# ----------------------------------------------------------------------------- human-authored knowledge
+
+
+@router.post("/knowledge", response_model=KnowledgeDetail, status_code=201)
+def create_knowledge_item(body: KnowledgeCreate, db: Session = Depends(get_db)) -> KnowledgeDetail:
+    """Add USER or ORGANIZATION knowledge. It keeps its provenance through scoring, review and export."""
+    reg = get_registry()
+    if body.domain not in reg:
+        raise HTTPException(404, f"unknown domain {body.domain}")
+    entry = KnowledgeEntry(**{k: v for k, v in body.model_dump().items() if k != "domain"})
+    try:
+        item = create_knowledge(db, reg.get(body.domain), entry)
+    except DuplicateKnowledge as exc:
+        db.rollback()
+        raise HTTPException(409, f"{exc}") from exc
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(422, str(exc)) from exc
+    db.commit()
+    return get_knowledge(item.id, db)
 
 
 # ----------------------------------------------------------------------------- human review

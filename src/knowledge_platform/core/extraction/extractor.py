@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from ...config import get_settings
 from ..llm_service import call_json, model_for
 from ..plugins.base import DomainPlugin
+from ..quality.provenance import derive_polarity
 from .chunker import CHUNKER_VERSION, Chunk, chunk_text
 from .prompts import EXTRACT_SYSTEM, EXTRACT_USER, PROMPT_VERSION, extract_schema
 
@@ -40,6 +41,8 @@ class ExtractedItem:
     product_version: str | None
     evidence_quote: str
     chunk: Chunk
+    polarity: str = "positive"
+    details: dict[str, Any] = field(default_factory=dict)
     quote_start: int | None = None  # offsets into the chunk text
     quote_end: int | None = None
     quote_verified: bool = False
@@ -168,6 +171,13 @@ def extract_from_text(
                     product_version=(raw.get("product_version") or None),
                     evidence_quote=chunk.text[loc[0] : loc[1]],
                     chunk=chunk,
+                    polarity="negative"
+                    if (
+                        raw.get("polarity") == "negative"
+                        or derive_polarity(raw.get("knowledge_type") or "") == "negative"
+                    )
+                    else "positive",
+                    details={k: v for k, v in (raw.get("details") or {}).items() if isinstance(v, str) and v.strip()},
                     quote_start=loc[0],
                     quote_end=loc[1],
                     quote_verified=True,

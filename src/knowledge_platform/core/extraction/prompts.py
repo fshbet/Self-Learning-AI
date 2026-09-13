@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-PROMPT_VERSION = "extract-items@1.1"
+PROMPT_VERSION = "extract-items@1.2"
 
 EXTRACT_SYSTEM = """You are a meticulous technical knowledge extractor for the domain "{domain_name}".
 {domain_description}
@@ -24,6 +24,9 @@ Rules — follow all of them:
 7. `knowledge_type` must be one of: {knowledge_types}.
 8. If a code sample illustrates the item, put it in `code` verbatim; otherwise null.
 9. Skip navigation, marketing, boilerplate, and content unrelated to the domain.
+11. For examples, fill `details` with expected_behavior / expected_result / common_mistake when the text states them.
+12. For limitations, warnings and "do not do X" knowledge, set `polarity` to "negative" and put the
+    condition under which it fails or is unsupported in `details.condition`.
 10. Prefer fewer high-quality items over many trivial ones. Return an empty list if nothing qualifies.
 {extraction_hints}
 
@@ -65,6 +68,16 @@ def extract_schema(knowledge_types: list[str]) -> dict[str, Any]:
                         "code": {"type": ["string", "null"]},
                         "product_version": {"type": ["string", "null"]},
                         "evidence_quote": {"type": "string"},
+                        "polarity": {"type": "string", "enum": ["positive", "negative"]},
+                        "details": {
+                            "type": "object",
+                            "properties": {
+                                "expected_behavior": {"type": ["string", "null"]},
+                                "expected_result": {"type": ["string", "null"]},
+                                "common_mistake": {"type": ["string", "null"]},
+                                "condition": {"type": ["string", "null"]},
+                            },
+                        },
                     },
                     "required": [
                         "knowledge_type",
@@ -78,6 +91,7 @@ def extract_schema(knowledge_types: list[str]) -> dict[str, Any]:
                         "code",
                         "product_version",
                         "evidence_quote",
+                        "polarity",
                     ],
                 },
             }

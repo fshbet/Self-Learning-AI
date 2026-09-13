@@ -36,6 +36,37 @@ export function StatusChip({ status, className }: { status: string; className?: 
   );
 }
 
+const PROVENANCE_STYLES: Record<string, string> = {
+  OFFICIAL: "bg-emerald-500/12 text-emerald-700 dark:text-emerald-300",
+  EXTERNAL: "bg-sky-500/12 text-sky-700 dark:text-sky-300",
+  COMMUNITY: "bg-amber-500/12 text-amber-700 dark:text-amber-300",
+  USER: "bg-fuchsia-500/12 text-fuchsia-700 dark:text-fuchsia-300",
+  ORGANIZATION: "bg-violet-500/12 text-violet-700 dark:text-violet-300",
+  DERIVED: "bg-slate-500/12 text-slate-600 dark:text-slate-300",
+};
+
+/** Where the knowledge came from (req. 9): official docs, external site, community, a user, the organisation. */
+export function ProvenanceChip({ provenance }: { provenance: string }) {
+  return (
+    <span className={clsx("chip", PROVENANCE_STYLES[provenance] ?? "bg-slate-500/12 text-slate-600")} title="provenance level">
+      {provenance.toLowerCase()}
+    </span>
+  );
+}
+
+const ORIGIN_LABEL: Record<string, string> = { DIRECT: "direct", DERIVED: "derived", SYNTHESIZED: "synthesized", EXPERIMENTALLY_VALIDATED: "validated" };
+
+/** How it was obtained (req. 8). */
+export function OriginChip({ origin }: { origin: string }) {
+  const cls = origin === "EXPERIMENTALLY_VALIDATED" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-slate-500/12 text-slate-600 dark:text-slate-300";
+  return <span className={clsx("chip", cls)} title="knowledge origin">{ORIGIN_LABEL[origin] ?? origin}</span>;
+}
+
+export function PolarityChip({ polarity }: { polarity: string }) {
+  if (polarity !== "negative") return null;
+  return <span className="chip bg-rose-500/12 text-rose-700 dark:text-rose-300" title="negative knowledge: what does not work">does not work</span>;
+}
+
 export function TypeChip({ type }: { type: string }) {
   return <span className="chip bg-indigo-500/12 text-indigo-700 dark:text-indigo-300">{type.replace("_", " ")}</span>;
 }

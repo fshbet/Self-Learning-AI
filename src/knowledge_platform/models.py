@@ -146,6 +146,10 @@ class Source(Base):
     domain_id: Mapped[str] = mapped_column(ForeignKey("domains.id", ondelete="CASCADE"), index=True)
     key: Mapped[str] = mapped_column(String(120))  # stable key from sources.yaml / user:<slug> / discovered:<host>
     origin: Mapped[str] = mapped_column(String(20), default="plugin")  # plugin | user | discovered
+    source_class: Mapped[str] = mapped_column(
+        String(20), default="external"
+    )  # official|external|community|organization
+    relevance: Mapped[int] = mapped_column(Integer, default=50)
     name: Mapped[str] = mapped_column(String(200))
     url: Mapped[str] = mapped_column(Text)
     publisher: Mapped[str] = mapped_column(String(200), default="")
@@ -230,6 +234,20 @@ class KnowledgeItem(Base):
     publication_date: Mapped[str | None] = mapped_column(String(40))
     valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
+    # knowledge origin / provenance / polarity (req. 8, 9, 19)
+    origin: Mapped[str] = mapped_column(
+        String(32), default="DIRECT"
+    )  # DIRECT|DERIVED|SYNTHESIZED|EXPERIMENTALLY_VALIDATED
+    provenance: Mapped[str] = mapped_column(
+        String(32), default="EXTERNAL"
+    )  # OFFICIAL|EXTERNAL|COMMUNITY|USER|ORGANIZATION|DERIVED
+    polarity: Mapped[str] = mapped_column(String(16), default="positive")  # positive | negative (what does NOT work)
+    effective_date: Mapped[str | None] = mapped_column(String(40))
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # structured example / condition fields
+    needs_revalidation: Mapped[bool] = mapped_column(Boolean, default=False)
+    revalidation_reason: Mapped[str | None] = mapped_column(Text)
+    validator_versions: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+
     status: Mapped[str] = mapped_column(String(20), default=ItemStatus.EXTRACTED)
     confidence: Mapped[float] = mapped_column(Float, default=0.0)
     verification_level: Mapped[int] = mapped_column(Integer, default=0)
@@ -270,6 +288,9 @@ class Evidence(Base):
     document_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("documents.id", ondelete="SET NULL"), index=True)
     source_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("sources.id", ondelete="SET NULL"), index=True)
     evidence_type: Mapped[str] = mapped_column(String(30), default="extraction")  # extraction|validator|human
+    relation: Mapped[str] = mapped_column(String(20), default="supports")  # supports|contradicts|validates|approves
+    retrieved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    source_version: Mapped[int | None] = mapped_column(Integer)  # document version at collection time
     excerpt: Mapped[str] = mapped_column(Text)  # verbatim quote from the document
     locator: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # chunk index, offsets, heading path
     document_hash: Mapped[str | None] = mapped_column(String(80))

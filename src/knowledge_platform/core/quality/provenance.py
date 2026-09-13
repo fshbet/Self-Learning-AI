@@ -13,20 +13,36 @@ NEGATIVE_TYPES = frozenset({"limitation", "warning", "anti_pattern", "common_mis
 OFFICIAL_AUTHORITY = 80
 
 
+CLASS_TO_PROVENANCE = {
+    "official": "OFFICIAL",
+    "external": "EXTERNAL",
+    "community": "COMMUNITY",
+    "organization": "ORGANIZATION",
+}
+
+
+def source_class_for(authority: int, origin: str = "plugin") -> str:
+    """Default class of a source when the catalog does not declare one."""
+    if origin == "discovered":
+        return "community"
+    return "official" if int(authority or 0) >= OFFICIAL_AUTHORITY else "external"
+
+
 def derive_provenance(sources: Iterable[Any]) -> str:
-    """``sources``: Source rows (or objects with ``origin`` and ``authority``) that evidence the item."""
+    """Provenance level of knowledge evidenced by ``sources`` (Source rows).
+
+    The level follows the *class* of the most authoritative source (official / external / community /
+    organization). A URL added by a user is still external content; ``USER`` is reserved for knowledge a
+    person authored directly (see core/knowledge_entry).
+    """
     srcs = list(sources)
     if not srcs:
         return "DERIVED"
-    origins = {getattr(s, "origin", "plugin") for s in srcs}
-    if "user" in origins and origins == {"user"}:
-        return "USER"
     best = max(srcs, key=lambda s: int(getattr(s, "authority", 0) or 0))
-    if getattr(best, "origin", "plugin") == "discovered":
-        return "COMMUNITY"
-    if int(getattr(best, "authority", 0) or 0) >= OFFICIAL_AUTHORITY:
-        return "OFFICIAL"
-    return "EXTERNAL"
+    cls = getattr(best, "source_class", None) or source_class_for(
+        int(getattr(best, "authority", 0) or 0), getattr(best, "origin", "plugin")
+    )
+    return CLASS_TO_PROVENANCE.get(str(cls), "EXTERNAL")
 
 
 def derive_polarity(knowledge_type: str) -> str:

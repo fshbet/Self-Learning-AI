@@ -134,14 +134,7 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
                     id=str(e.id),
                     knowledge_item_id=str(it.id),
                     evidence_type=e.evidence_type,
-                    relation=getattr(e, "relation", None)
-                    or (
-                        "validates"
-                        if e.evidence_type == "validator"
-                        else "approves"
-                        if e.evidence_type == "human"
-                        else "supports"
-                    ),
+                    relation=e.relation or "supports",
                     source_id=str(src.id) if src else None,
                     source_url=src.url if src else None,
                     source_name=src.name if src else None,
@@ -154,7 +147,7 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
                     document_version=doc.version if doc else None,
                     document_hash=e.document_hash,
                     publication_date=doc.published_at if doc else None,
-                    retrieved_at=iso(getattr(e, "retrieved_at", None) or (doc.fetched_at if doc else None)),
+                    retrieved_at=iso(e.retrieved_at or (doc.fetched_at if doc else None)),
                     section=list((e.locator or {}).get("heading_path") or []),
                     locator={k: v for k, v in (e.locator or {}).items() if k != "heading_path"},
                     excerpt=e.excerpt,
@@ -167,9 +160,9 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
             id=str(it.id),
             domain=domain_id,
             knowledge_type=it.knowledge_type,
-            origin=derive_origin(it),  # type: ignore[arg-type]
-            provenance=getattr(it, "provenance", None) or derive_provenance(item_sources),  # type: ignore[arg-type]
-            polarity=getattr(it, "polarity", None) or derive_polarity(it.knowledge_type),  # type: ignore[arg-type]
+            origin=it.origin or derive_origin(it),  # type: ignore[arg-type]
+            provenance=it.provenance or derive_provenance(item_sources),  # type: ignore[arg-type]
+            polarity=it.polarity or derive_polarity(it.knowledge_type),  # type: ignore[arg-type]
             subject=it.subject,
             predicate=it.predicate,
             object=it.object,
@@ -178,11 +171,11 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
             topic=it.topic or "",
             tags=[str(t) for t in (it.tags or [])],
             code=it.code,
-            details=getattr(it, "details", None) or {},
+            details=it.details or {},
             product_version=it.product_version,
             language=it.language,
             publication_date=it.publication_date,
-            effective_date=getattr(it, "effective_date", None),
+            effective_date=it.effective_date,
             valid_until=iso(it.valid_until),
             status=it.status,
             historical=it.status in HISTORICAL_STATES,
@@ -203,7 +196,7 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
         )
         knowledge.append(rec)
         if it.knowledge_type == "example" and not rec.historical:
-            details = getattr(it, "details", None) or {}
+            details = it.details or {}
             examples.append(
                 ExampleRecord(
                     id=str(it.id),
@@ -324,7 +317,9 @@ def run_gate(data: dict[str, Any]) -> dict[str, Any]:
     # provenance: every current, non-derived item needs verified extraction evidence or a derived_from relation
     verified_by_item = defaultdict(bool)
     for e in evidence:
-        if e.evidence_type == "extraction" and e.verified:
+        if e.verified and (
+            e.evidence_type == "extraction" or (e.evidence_type == "human" and e.details.get("provided"))
+        ):
             verified_by_item[e.knowledge_item_id] = True
     missing = [
         k.id

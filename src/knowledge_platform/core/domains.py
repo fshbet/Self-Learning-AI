@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from ..models import Domain, Source, SourceStatus, utcnow
 from .plugins.base import DomainPlugin
+from .quality.provenance import source_class_for
 
 
 def sync_domain(session: Session, plugin: DomainPlugin) -> dict[str, int]:
@@ -37,6 +38,8 @@ def sync_domain(session: Session, plugin: DomainPlugin) -> dict[str, int]:
         src.publisher = spec.publisher
         src.source_type = spec.source_type
         src.authority = spec.authority
+        src.source_class = spec.source_class or source_class_for(spec.authority)
+        src.relevance = spec.relevance
         src.access_type = spec.access_type
         src.license = spec.license
         src.permissions = spec.permissions

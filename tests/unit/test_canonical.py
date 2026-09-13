@@ -7,8 +7,8 @@ from knowledge_platform.core.quality.provenance import derive_polarity, derive_p
 
 
 class _Src:
-    def __init__(self, origin, authority):
-        self.origin, self.authority = origin, authority
+    def __init__(self, origin, authority, source_class=None):
+        self.origin, self.authority, self.source_class = origin, authority, source_class
 
 
 def test_canonical_json_is_stable_and_sorted():
@@ -32,7 +32,10 @@ def test_provenance_rules():
     assert derive_provenance([_Src("plugin", 95)]) == "OFFICIAL"
     assert derive_provenance([_Src("plugin", 60)]) == "EXTERNAL"
     assert derive_provenance([_Src("discovered", 30)]) == "COMMUNITY"
-    assert derive_provenance([_Src("user", 70)]) == "USER"
+    # a URL added by a user is still external/official content; USER is reserved for authored knowledge
+    assert derive_provenance([_Src("user", 70)]) == "EXTERNAL"
+    assert derive_provenance([_Src("user", 95)]) == "OFFICIAL"
+    assert derive_provenance([_Src("user", 70, "organization")]) == "ORGANIZATION"
     assert derive_provenance([_Src("user", 70), _Src("plugin", 95)]) == "OFFICIAL"
     assert derive_provenance([]) == "DERIVED"
     assert derive_polarity("limitation") == "negative" and derive_polarity("fact") == "positive"

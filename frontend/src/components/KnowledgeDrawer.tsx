@@ -3,7 +3,7 @@ import { CheckCircle2, ExternalLink, FlaskConical, History, Quote, ShieldAlert, 
 import { useState } from "react";
 import { api, type Evidence } from "../lib/api";
 import { fmtDate, hostOf, timeAgo } from "../lib/format";
-import { Confidence, Drawer, ErrorBox, KV, Loading, StatusChip, TypeChip, useToast } from "./ui";
+import { Confidence, Drawer, ErrorBox, KV, Loading, OriginChip, PolarityChip, ProvenanceChip, StatusChip, TypeChip, useToast } from "./ui";
 
 export function EvidenceCard({ e }: { e: Evidence }) {
   const icon = e.evidence_type === "validator" ? <FlaskConical size={14} /> : e.evidence_type === "human" ? <CheckCircle2 size={14} /> : <Quote size={14} />;
@@ -14,11 +14,17 @@ export function EvidenceCard({ e }: { e: Evidence }) {
         <div className="flex items-center gap-2 muted text-xs">
           {icon}
           <span className="uppercase tracking-wider font-semibold">{e.evidence_type}</span>
+          {e.relation && e.relation !== "supports" && <span>· {e.relation}</span>}
           {e.source_name && <span>· {e.source_name}</span>}
+          {e.source_version && <span>· doc v{e.source_version}</span>}
           {e.locator?.heading_path?.length ? <span>· {e.locator.heading_path.join(" › ")}</span> : null}
         </div>
         <span className={passed ? "chip bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "chip bg-rose-500/15 text-rose-700 dark:text-rose-300"}>
-          {e.evidence_type === "validator" ? (passed ? "passed" : "failed") : passed ? "verbatim" : "not found"}
+          {e.evidence_type === "validator"
+            ? passed ? "passed" : "failed"
+            : e.evidence_type === "human"
+              ? e.details?.provided ? "provided" : "approved"
+              : passed ? "verbatim" : "not found"}
         </span>
       </div>
       <blockquote className="border-l-2 border-accent-400 pl-3 italic whitespace-pre-wrap">{e.excerpt}</blockquote>
@@ -59,12 +65,26 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <StatusChip status={item.status} />
               <TypeChip type={item.knowledge_type} />
+              <ProvenanceChip provenance={item.provenance} />
+              <OriginChip origin={item.origin} />
+              <PolarityChip polarity={item.polarity} />
+              {item.needs_revalidation && <span className="chip bg-amber-500/15 text-amber-700" title={item.revalidation_reason ?? ""}>needs revalidation</span>}
               {item.topic && <span className="chip panel-2">{item.topic}</span>}
               {item.product_version && <span className="chip panel-2">{item.product_version}</span>}
             </div>
             <p className="text-lg font-medium leading-snug">{item.statement}</p>
             {item.explanation && <p className="muted mt-2 leading-relaxed">{item.explanation}</p>}
             {item.code && <pre className="code mt-3">{item.code}</pre>}
+            {Object.keys(item.details ?? {}).length > 0 && (
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
+                {Object.entries(item.details).map(([k, v]) => (
+                  <div key={k} className="panel-2 rounded-lg p-2 text-sm">
+                    <div className="text-[11px] uppercase tracking-wider muted font-semibold">{k.replace(/_/g, " ")}</div>
+                    <div>{v}</div>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="mt-3 flex items-center gap-3">
               <Confidence value={item.confidence} level={item.verification_level} />
               <span className="muted text-xs">
@@ -175,6 +195,10 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
             <KV k="Extractor" v={`${item.extraction.method ?? "—"} · ${item.extraction.extractor_version ?? ""} · ${item.extraction.model ?? ""}`} mono />
             <KV k="Chunker" v={String(item.extraction.chunker_version ?? "—")} mono />
             <KV k="Scoring rule" v={item.scoring_rule_version} mono />
+            <KV k="Provenance / origin" v={`${item.provenance} · ${item.origin} · ${item.polarity}`} />
+            {Object.keys(item.validator_versions ?? {}).length > 0 && (
+              <KV k="Validators" v={Object.entries(item.validator_versions).map(([k, v]) => `${k}@${v}`).join(", ")} mono />
+            )}
             <KV k="Embedding" v={item.embedding_model ?? "—"} mono />
             <KV k="Content hash" v={item.content_hash} mono />
             <KV k="Discovered" v={fmtDate(item.first_discovered_at)} />

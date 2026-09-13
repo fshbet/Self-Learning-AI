@@ -98,6 +98,22 @@ identity in rendered files) makes unchanged knowledge hash identically across bu
 every hash. Included: VERIFIED, SUPPORTED, CONFLICTED, STALE (flagged) and SUPERSEDED (`historical: true`).
 Delta snapshots (changes between two versions) arrive with P4.
 
+## Knowledge origin, provenance and polarity
+
+Every item records **how** it was obtained and **where** it came from (req. 8–9, 19):
+
+| Field | Values | Meaning |
+|---|---|---|
+| `origin` | `DIRECT`, `EXPERIMENTALLY_VALIDATED`, `DERIVED`, `SYNTHESIZED` | stated verbatim by a source · plus passed a domain validator · derived/combined from other items (evidence chain via `derived_from` relations) |
+| `provenance` | `OFFICIAL`, `EXTERNAL`, `COMMUNITY`, `USER`, `ORGANIZATION`, `DERIVED` | from the *class* of the most authoritative source; `USER`/`ORGANIZATION` only for knowledge a person entered (Knowledge → **Add knowledge**) — a URL a user adds is still official/external content |
+| `polarity` | `positive`, `negative` | negative = what does **not** work (limitations, warnings, conditions in `details.condition`); searchable, exported as `negative.jsonl` |
+| `details` | structured fields | examples: `expected_behavior`, `expected_result`, `common_mistake`; negatives: `condition` |
+
+Human-authored items carry a `human` evidence record with the author, declared authority and what it is based on; they go
+through the same dedup, validators, scoring, conflicts and export as extracted knowledge and stay distinguishable.
+Confidence (`score@2.0`) is explainable: authority, verified evidence, agreement, specificity, taxonomy match, domain
+validation, **freshness**, **contradiction status**, **version known** — every factor is stored on the item.
+
 ## Self-evaluation and regression protection
 
 Every domain plugin ships a golden question set (`evaluation.yaml`). The runner answers each question from the current
