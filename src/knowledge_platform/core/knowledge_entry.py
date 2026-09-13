@@ -22,6 +22,7 @@ from .quality.dedup import find_exact, find_near
 from .quality.provenance import derive_polarity
 from .retrieval.embeddings import embed_items
 from .verification.conflicts import detect_conflicts
+from .versioning.dependencies import derive_relations
 
 ENTRY_VERSION = "human-entry@1.0"
 
@@ -116,5 +117,6 @@ def create_knowledge(session: Session, plugin: DomainPlugin, entry: KnowledgeEnt
     run_validators(session, item, plugin)
     rescore(session, item, plugin, actor=f"human:{entry.provided_by}")
     detect_conflicts(session, item, domain_name=plugin.name)
+    derive_relations(session, item)
     session.flush()
     return item

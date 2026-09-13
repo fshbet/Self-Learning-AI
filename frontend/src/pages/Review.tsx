@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ShieldAlert, ShieldCheck } from "lucide-react";
+import { GitBranch, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import KnowledgeDrawer from "../components/KnowledgeDrawer";
 import { Card, Confidence, Empty, ErrorBox, Loading, PageHeader, StatusChip, useToast } from "../components/ui";
@@ -34,6 +34,19 @@ export default function Review() {
   const lowConf = useQuery({
     queryKey: ["knowledge", "review-queue", domain],
     queryFn: () => api.knowledge({ domain, status: "CANDIDATE,SUPPORTED,STALE", sort: "confidence", page_size: 15 }),
+  });
+  const reval = useQuery({
+    queryKey: ["knowledge", "revalidation", domain],
+    queryFn: () => api.knowledge({ domain, needs_revalidation: true, page_size: 50 }),
+    refetchInterval: 8000,
+  });
+  const revalidateAll = useMutation({
+    mutationFn: () => api.revalidateAll(domain),
+    onSuccess: (r) => {
+      toast("ok", `${r.queued} revalidation job(s) queued`);
+      qc.invalidateQueries({ queryKey: ["knowledge"] });
+    },
+    onError: (e) => toast("err", (e as Error).message),
   });
   const resolve = useMutation({
     mutationFn: ({ id, keep }: { id: string; keep: string }) => api.resolveConflict(id, { keep, reviewer: "reviewer" }),
@@ -92,6 +105,32 @@ export default function Review() {
                 <div className="muted text-xs mt-3">Resolved by {c.resolved_by}: {c.resolution}</div>
               )}
             </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card
+        title={
+          <span className="flex items-center gap-2">
+            <GitBranch size={14} /> Needs revalidation ({reval.data?.total ?? 0})
+          </span>
+        }
+        actions={
+          <button className="btn btn-sm" disabled={revalidateAll.isPending || !(reval.data?.total ?? 0)} onClick={() => revalidateAll.mutate()}>
+            <RefreshCw size={12} /> Revalidate all
+          </button>
+        }
+        className="mb-4"
+      >
+        <p className="muted text-xs mb-2">Items whose dependencies changed (stale, superseded, rejected or conflicted). Revalidation re-runs validators, scoring and conflict checks; the flag clears once every dependency is live again.</p>
+        {reval.data && reval.data.items.length === 0 && <div className="muted text-sm">Nothing waiting.</div>}
+        <div className="divide-y divide-[var(--border)]">
+          {reval.data?.items.map((k) => (
+            <button key={k.id} onClick={() => setSelected(k.id)} className="w-full text-left py-2.5 flex items-center gap-3 hover:panel-2 px-2 rounded-lg">
+              <StatusChip status={k.status} />
+              <span className="flex-1 text-sm leading-snug">{k.statement}</span>
+              <Confidence value={k.confidence} level={k.verification_level} compact />
+            </button>
           ))}
         </div>
       </Card>

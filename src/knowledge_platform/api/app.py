@@ -129,6 +129,9 @@ def stats(domain: str | None = None, db: Session = Depends(get_db)) -> StatsOut:
     if domain:
         live_stmt = live_stmt.where(KnowledgeItem.domain_id == domain)
     live_count, avg_conf = db.execute(live_stmt).one()
+    reval_stmt = select(func.count()).select_from(KnowledgeItem).where(KnowledgeItem.needs_revalidation.is_(True))
+    if domain:
+        reval_stmt = reval_stmt.where(KnowledgeItem.domain_id == domain)
     conflicts_stmt = select(func.count()).select_from(Conflict).where(Conflict.status == "OPEN")
     if domain:
         conflicts_stmt = conflicts_stmt.where(Conflict.domain_id == domain)
@@ -170,6 +173,7 @@ def stats(domain: str | None = None, db: Session = Depends(get_db)) -> StatsOut:
         verified_ratio=(knowledge.get("VERIFIED", 0) / live_count) if live_count else 0.0,
         avg_confidence=float(avg_conf or 0.0),
         conflicts_open=db.execute(conflicts_stmt).scalar_one(),
+        needs_revalidation=db.execute(reval_stmt).scalar_one(),
         jobs={str(k): v for k, v in db.execute(select(Job.status, func.count()).group_by(Job.status)).all()},
         llm={
             "calls": calls,

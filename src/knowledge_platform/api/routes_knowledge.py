@@ -7,13 +7,16 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from ..core.knowledge_entry import DuplicateKnowledge, KnowledgeEntry, create_knowledge
+from ..core.orchestration.jobs import enqueue_revalidations
+from ..core.orchestration.queue import enqueue
 from ..core.pipeline import rescore
 from ..core.plugins.registry import get_registry
 from ..core.retrieval.answer import answer_question
 from ..core.retrieval.search import hybrid_search
+from ..core.versioning.dependencies import add_relation, relations_for_api
 from ..core.versioning.lifecycle import IllegalTransition, transition
 from ..db import get_db
-from ..models import Conflict, Document, Evidence, ItemStatus, KnowledgeItem, Source, utcnow
+from ..models import Conflict, Document, Evidence, ItemStatus, KnowledgeItem, KnowledgeRelation, Source, utcnow
 from .schemas import (
     AskRequest,
     AskResponse,
@@ -24,6 +27,7 @@ from .schemas import (
     KnowledgeDetail,
     KnowledgeOut,
     Page,
+    RelationCreate,
     ReviewRequest,
     SearchHitOut,
 )
@@ -88,6 +92,7 @@ def list_knowledge(
     polarity: str | None = None,
     origin: str | None = None,
     q: str | None = None,
+    needs_revalidation: bool | None = None,
     min_confidence: float | None = Query(None, ge=0, le=1),
     sort: str = Query("updated", pattern="^(updated|confidence|subject|created)$"),
     page: int = Query(1, ge=1),
@@ -109,6 +114,8 @@ def list_knowledge(
         stmt = stmt.where(KnowledgeItem.polarity == polarity)
     if origin:
         stmt = stmt.where(KnowledgeItem.origin.in_(origin.split(",")))
+    if needs_revalidation is not None:
+        stmt = stmt.where(KnowledgeItem.needs_revalidation.is_(needs_revalidation))
     if min_confidence is not None:
         stmt = stmt.where(KnowledgeItem.confidence >= min_confidence)
     if q:
@@ -152,7 +159,61 @@ def get_knowledge(item_id: uuid.UUID, db: Session = Depends(get_db)) -> Knowledg
     o.conflicts = [_conflict_out(db, c) for c in conflicts]
     dups = db.execute(select(KnowledgeItem).where(KnowledgeItem.duplicate_of_id == item.id)).scalars().all()
     o.duplicates = _to_out(db, dups)
+    o.relations = relations_for_api(db, item.id)
     return o
+
+
+# ----------------------------------------------------------------------------- dependency graph (req. 17)
+
+
+@router.post("/knowledge/{item_id}/relations", response_model=KnowledgeDetail, status_code=201)
+def create_relation(item_id: uuid.UUID, body: RelationCreate, db: Session = Depends(get_db)) -> KnowledgeDetail:
+    a, b = db.get(KnowledgeItem, item_id), db.get(KnowledgeItem, body.to_item_id)
+    if a is None or b is None:
+        raise HTTPException(404, "knowledge item not found")
+    try:
+        rel = add_relation(db, a, b, body.relation_type, origin="user")
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    if rel is None:
+        raise HTTPException(422, "cannot relate an item to itself or across domains")
+    db.commit()
+    return get_knowledge(item_id, db)
+
+
+@router.delete("/knowledge/{item_id}/relations/{relation_id}", status_code=204)
+def delete_relation(item_id: uuid.UUID, relation_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
+    rel = db.get(KnowledgeRelation, relation_id)
+    if rel is None or item_id not in (rel.from_item_id, rel.to_item_id):
+        raise HTTPException(404, "relation not found")
+    db.delete(rel)
+    db.commit()
+
+
+@router.post("/knowledge/{item_id}/revalidate")
+def revalidate(item_id: uuid.UUID, db: Session = Depends(get_db)) -> dict[str, str]:
+    item = db.get(KnowledgeItem, item_id)
+    if item is None:
+        raise HTTPException(404, "knowledge item not found")
+    job = enqueue(
+        db,
+        "revalidate_item",
+        {"item_id": str(item.id)},
+        idempotency_key=f"revalidate:{item.id}",
+        priority=40,
+        max_attempts=2,
+    )
+    db.commit()
+    if job is None:
+        raise HTTPException(409, "revalidation already queued")
+    return {"job_id": str(job.id)}
+
+
+@router.post("/knowledge/revalidate-all")
+def revalidate_all(domain: str | None = None, db: Session = Depends(get_db)) -> dict[str, int]:
+    n = enqueue_revalidations(db, domain)
+    db.commit()
+    return {"queued": n}
 
 
 # ----------------------------------------------------------------------------- human-authored knowledge

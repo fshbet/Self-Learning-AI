@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, ExternalLink, FlaskConical, History, Quote, ShieldAlert, XCircle } from "lucide-react";
+import { CheckCircle2, ExternalLink, FlaskConical, GitBranch, History, Quote, RefreshCw, ShieldAlert, XCircle } from "lucide-react";
 import { useState } from "react";
 import { api, type Evidence } from "../lib/api";
 import { fmtDate, hostOf, timeAgo } from "../lib/format";
@@ -51,6 +51,16 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
       qc.invalidateQueries({ queryKey: ["stats"] });
       qc.invalidateQueries({ queryKey: ["conflicts"] });
     },
+    onError: (e) => toast("err", (e as Error).message),
+  });
+  const revalidate = useMutation({
+    mutationFn: () => api.revalidate(id!),
+    onSuccess: () => toast("ok", "Revalidation queued"),
+    onError: (e) => toast("err", (e as Error).message),
+  });
+  const removeRelation = useMutation({
+    mutationFn: (relId: string) => api.deleteRelation(id!, relId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["knowledge", id] }),
     onError: (e) => toast("err", (e as Error).message),
   });
   const item = q.data;
@@ -125,6 +135,45 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
               {!item.evidence.length && <div className="muted text-sm">No evidence recorded.</div>}
             </div>
           </section>
+
+          {(item.relations.outgoing.length > 0 || item.relations.incoming.length > 0 || item.needs_revalidation) && (
+            <section>
+              <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                <GitBranch size={14} /> Dependencies
+              </h3>
+              {item.needs_revalidation && (
+                <div className="rounded-xl border border-amber-400/60 bg-amber-500/10 p-3 text-sm mb-2 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-medium text-amber-700 dark:text-amber-300">Needs revalidation</div>
+                    <div className="muted text-xs">{item.revalidation_reason}</div>
+                  </div>
+                  <button className="btn btn-sm" disabled={revalidate.isPending} onClick={() => revalidate.mutate()}>
+                    <RefreshCw size={12} /> Revalidate
+                  </button>
+                </div>
+              )}
+              <div className="space-y-1.5 text-sm">
+                {item.relations.outgoing.map((r) => (
+                  <div key={r.id} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2">
+                    <span className="chip panel-2">{r.relation_type.replace(/_/g, " ")} →</span>
+                    <StatusChip status={r.status} />
+                    <span className="flex-1 truncate">{r.statement}</span>
+                    <button className="muted hover:text-rose-600" title="remove relation" onClick={() => removeRelation.mutate(r.id)}>
+                      <XCircle size={14} />
+                    </button>
+                  </div>
+                ))}
+                {item.relations.incoming.map((r) => (
+                  <div key={r.id} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 opacity-90">
+                    <span className="chip panel-2">← {r.relation_type.replace(/_/g, " ")}</span>
+                    <StatusChip status={r.status} />
+                    <span className="flex-1 truncate">{r.statement}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="muted text-[11px] mt-1">When a dependency becomes stale, superseded, rejected or conflicted, this item is flagged and revalidated.</p>
+            </section>
+          )}
 
           {item.conflicts.length > 0 && (
             <section>

@@ -25,6 +25,7 @@ from .quality.provenance import derive_provenance
 from .quality.scoring import SCORING_RULE_VERSION, score
 from .retrieval.embeddings import embed_items
 from .verification.conflicts import detect_conflicts
+from .versioning.dependencies import derive_relations
 from .versioning.lifecycle import advance_to, status_for_level, transition, verification_level
 
 log = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class IngestStats:
     items_near_duplicate: int = 0
     items_stale: int = 0
     conflicts: int = 0
+    relations: int = 0
     validators_run: int = 0
     extraction: dict[str, Any] = field(default_factory=dict)
 
@@ -334,6 +336,7 @@ def ingest_document(
         stats.validators_run += run_validators(session, item, plugin)
         rescore(session, item, plugin)
         stats.conflicts += len(detect_conflicts(session, item, domain_name=plugin.name, run_id=run_id))
+        stats.relations += len(derive_relations(session, item))
         stats.items_created += 1
 
     for item in touched.values():

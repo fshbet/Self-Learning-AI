@@ -114,6 +114,16 @@ through the same dedup, validators, scoring, conflicts and export as extracted k
 Confidence (`score@2.0`) is explainable: authority, verified evidence, agreement, specificity, taxonomy match, domain
 validation, **freshness**, **contradiction status**, **version known** — every factor is stored on the item.
 
+## Dependency graph and revalidation
+
+`knowledge_relations` holds edges between items (`depends_on`, `example_of`, `derived_from`, `related_to`,
+`supersedes`, `contradicts`). Structural edges are derived automatically — examples, procedures, best practices and
+limitations depend on the definitions/facts about the same subject — and can be added by hand (`POST
+/api/knowledge/{id}/relations`). When an item becomes stale, superseded, rejected or conflicted, every dependent is
+flagged `needs_revalidation` with the reason; the `revalidate_item` job re-runs validators, scoring and conflict
+detection and clears the flag only when all dependencies are live again. Flagged items appear on the Review page
+("Needs revalidation") and are re-queued by the scheduler; snapshots export the edges as `relationships.jsonl`.
+
 ## Self-evaluation and regression protection
 
 Every domain plugin ships a golden question set (`evaluation.yaml`). The runner answers each question from the current

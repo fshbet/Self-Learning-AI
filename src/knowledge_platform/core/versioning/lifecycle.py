@@ -33,6 +33,11 @@ def transition(
     item.status = to
     if to == ItemStatus.VERIFIED:
         item.last_verified_at = utcnow()
+    if to in (ItemStatus.STALE, ItemStatus.SUPERSEDED, ItemStatus.REJECTED, ItemStatus.CONFLICTED):
+        # req. 17: B changed → find dependents → mark affected → (revalidate job)
+        from .dependencies import mark_dependents
+
+        mark_dependents(session, item, reason=f"became {to}: {reason}")
     return True
 
 

@@ -230,6 +230,12 @@ class KnowledgeDetail(KnowledgeOut):
     transitions: list[TransitionOut]
     conflicts: list[ConflictOut] = Field(default_factory=list)
     duplicates: list[KnowledgeOut] = Field(default_factory=list)
+    relations: dict[str, list[dict[str, Any]]] = Field(default_factory=lambda: {"outgoing": [], "incoming": []})
+
+
+class RelationCreate(BaseModel):
+    to_item_id: uuid.UUID
+    relation_type: str = Field(pattern="^(depends_on|example_of|derived_from|related_to|supersedes|contradicts)$")
 
 
 class KnowledgeCreate(BaseModel):
@@ -417,6 +423,7 @@ class StatsOut(BaseModel):
     verified_ratio: float
     avg_confidence: float
     conflicts_open: int
+    needs_revalidation: int = 0
     jobs: dict[str, int]
     llm: dict[str, Any]
     topics: list[dict[str, Any]]

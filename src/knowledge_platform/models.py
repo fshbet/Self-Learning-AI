@@ -304,6 +304,28 @@ class Evidence(Base):
     document: Mapped[Document | None] = relationship(back_populates="evidence")
 
 
+class KnowledgeRelation(Base):
+    """Dependency graph edge (req. 17): ``from_item`` ─relation_type─▶ ``to_item``."""
+
+    __tablename__ = "knowledge_relations"
+    __table_args__ = (
+        UniqueConstraint("from_item_id", "to_item_id", "relation_type", name="uq_relation"),
+        Index("ix_relations_to", "to_item_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_id)
+    domain_id: Mapped[str] = mapped_column(ForeignKey("domains.id", ondelete="CASCADE"), index=True)
+    from_item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("knowledge_items.id", ondelete="CASCADE"), index=True)
+    to_item_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("knowledge_items.id", ondelete="CASCADE"))
+    relation_type: Mapped[str] = mapped_column(
+        String(30)
+    )  # depends_on|example_of|derived_from|related_to|supersedes|contradicts
+    origin: Mapped[str] = mapped_column(String(20), default="system")  # system | extractor | user
+    weight: Mapped[float] = mapped_column(Float, default=1.0)
+    details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class StatusTransition(Base):
     __tablename__ = "status_transitions"
 

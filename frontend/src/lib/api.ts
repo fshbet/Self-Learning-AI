@@ -209,7 +209,10 @@ export type KnowledgeDetail = Knowledge & {
   transitions: Transition[];
   conflicts: Conflict[];
   duplicates: Knowledge[];
+  relations: { outgoing: Relation[]; incoming: Relation[] };
 };
+
+export type Relation = { id: string; relation_type: string; origin: string; item_id: string; statement: string; status: string; knowledge_type: string };
 
 export type SearchHit = {
   item: Knowledge;
@@ -346,6 +349,7 @@ export type Stats = {
   verified_ratio: number;
   avg_confidence: number;
   conflicts_open: number;
+  needs_revalidation: number;
   jobs: Record<string, number>;
   llm: { calls: number; prompt_tokens: number; completion_tokens: number; avg_latency_ms: number; failed: number; cost_tokens_per_item: number };
   topics: { topic: string; count: number }[];
@@ -443,6 +447,7 @@ export const api = {
     provenance?: string;
     polarity?: string;
     origin?: string;
+    needs_revalidation?: boolean;
     q?: string;
     min_confidence?: number;
     sort?: string;
@@ -450,6 +455,12 @@ export const api = {
     page_size?: number;
   }) => request<Page<Knowledge>>(`/knowledge${qs(params)}`),
   knowledgeItem: (id: string) => request<KnowledgeDetail>(`/knowledge/${id}`),
+  addRelation: (id: string, to_item_id: string, relation_type: string) =>
+    request<KnowledgeDetail>(`/knowledge/${id}/relations`, { method: "POST", body: JSON.stringify({ to_item_id, relation_type }) }),
+  deleteRelation: (id: string, relationId: string) =>
+    fetch(`/api/knowledge/${id}/relations/${relationId}`, { method: "DELETE" }).then((r) => { if (!r.ok) throw new ApiError(r.status, r.statusText); }),
+  revalidate: (id: string) => request<{ job_id: string }>(`/knowledge/${id}/revalidate`, { method: "POST" }),
+  revalidateAll: (domain?: string) => request<{ queued: number }>(`/knowledge/revalidate-all${qs({ domain })}`, { method: "POST" }),
   createKnowledge: (body: KnowledgeCreate) =>
     request<KnowledgeDetail>("/knowledge", { method: "POST", body: JSON.stringify(body) }),
   review: (id: string, body: { action: string; reason?: string; reviewer?: string }) =>

@@ -232,6 +232,58 @@ def evaluate_job(session: Session, job: Job) -> dict[str, Any]:
     return out
 
 
+@handler("revalidate_item")
+def revalidate_item_job(session: Session, job: Job) -> dict[str, Any]:
+    """Re-check an item flagged by a dependency change (req. 17): validators, score, conflicts; clear the flag
+    only when every propagating dependency is live again. Never edits the item's statement."""
+    from ..pipeline import rescore, run_validators
+    from ..verification.conflicts import detect_conflicts
+    from ..versioning.dependencies import unresolved_dependencies
+
+    item = session.get(KnowledgeItem, uuid.UUID(job.payload["item_id"]))
+    if item is None:
+        return {"skipped": "item missing"}
+    plugin = get_registry().get(item.domain_id)
+    validators = run_validators(session, item, plugin)
+    rescore(session, item, plugin, actor="system:revalidate")
+    conflicts = len(detect_conflicts(session, item, domain_name=plugin.name, run_id=job.run_id))
+    unresolved = unresolved_dependencies(session, item)
+    if unresolved:
+        item.needs_revalidation = True
+        item.revalidation_reason = (
+            "unresolved dependencies: " + ", ".join(f"{k.subject} ({k.status})" for k in unresolved)[:400]
+        )
+    else:
+        item.needs_revalidation = False
+        item.revalidation_reason = None
+    session.flush()
+    return {
+        "validators_run": validators,
+        "conflicts": conflicts,
+        "unresolved_dependencies": len(unresolved),
+        "status": item.status,
+    }
+
+
+def enqueue_revalidations(session: Session, domain_id: str | None = None) -> int:
+    """Queue revalidate_item jobs for every flagged item (called by the API and the scheduler)."""
+    stmt = select(KnowledgeItem).where(KnowledgeItem.needs_revalidation.is_(True))
+    if domain_id:
+        stmt = stmt.where(KnowledgeItem.domain_id == domain_id)
+    count = 0
+    for it in session.execute(stmt).scalars():
+        if enqueue(
+            session,
+            "revalidate_item",
+            {"item_id": str(it.id)},
+            idempotency_key=f"revalidate:{it.id}",
+            priority=95,
+            max_attempts=2,
+        ):
+            count += 1
+    return count
+
+
 @handler("snapshot")
 def snapshot_job(session: Session, job: Job) -> dict[str, Any]:
     """Build a Canonical Knowledge Snapshot (full) for a domain (req. 3–6)."""
@@ -370,6 +422,10 @@ def schedule_due_evaluations(session: Session) -> int:
             if job:
                 count += 1
     return count
+
+
+def schedule_revalidations(session: Session) -> int:
+    return enqueue_revalidations(session)
 
 
 def schedule_due_sources(session: Session) -> int:
