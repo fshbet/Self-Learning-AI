@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from ...adapters import get_search
 from ...models import (
     Document,
+    DomainKeyword,
     Job,
     JobStatus,
     Run,
@@ -185,7 +186,14 @@ def discover_job(session: Session, job: Job) -> dict[str, Any]:
         urlsplit(s.url).netloc.lower()
         for s in session.execute(select(Source).where(Source.domain_id == plugin.id)).scalars()
     }
-    queries = job.payload.get("queries") or plugin.discovery_queries() or [f"{plugin.name} documentation"]
+    user_keywords = list(
+        session.execute(
+            select(DomainKeyword.keyword).where(DomainKeyword.domain_id == plugin.id, DomainKeyword.enabled.is_(True))
+        ).scalars()
+    )
+    queries = (
+        job.payload.get("queries") or (plugin.discovery_queries() + user_keywords) or [f"{plugin.name} documentation"]
+    )
     added = 0
     for q in queries:
         try:

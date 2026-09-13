@@ -57,6 +57,20 @@ page budget and let the scheduler grow the repository over time.
 
 Frontend development with hot reload: `cd frontend && npm run dev` (proxies `/api` to port 8010).
 
+## Adding your own URLs and keywords (no files needed)
+
+On the **Sources** page of the UI:
+
+* **Add your own URL** — any documentation site, manual or blog. Set authority (trust, 0–100), page budget and link depth;
+  the crawler stays under the path you give it. User-added sources are tagged `user`, survive plugin re-syncs, and can be
+  paused, re-crawled or removed. API: `POST /api/sources`.
+* **Discovery keywords** — search phrases merged with the plugin's built-in queries when **Discover sources** runs
+  (needs SearXNG: `docker compose --profile discovery up -d`). Found sites appear as candidates you approve.
+  API: `POST /api/domains/{id}/keywords`.
+
+The in-app **User guide** (`/docs/user-guide.html`) walks through every screen; **Why it works this way**
+(`/docs/origin-and-design.html`) explains how the design was derived.
+
 ## Adding a topic
 
 ```powershell
@@ -128,7 +142,7 @@ src/knowledge_platform/
 domains/         plugins (powerbi, example template)
 alembic/         migrations
 frontend/        React UI
-docs/adr/        architecture decision records
+docs/            user guide + design-origin HTML (served at /docs), adr/ decision records
 tests/           unit · contract · integration (fixtures, fake providers)
 ```
 

@@ -6,6 +6,8 @@ import {
   Database,
   FileText,
   LayoutDashboard,
+  LifeBuoy,
+  Lightbulb,
   Moon,
   Search,
   ShieldCheck,
@@ -103,6 +105,15 @@ export default function Layout() {
             </NavLink>
           ))}
         </nav>
+
+        <div className="px-3 pb-2 space-y-0.5">
+          <a href="/docs/user-guide.html" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-ink-300 hover:bg-white/5 hover:text-white">
+            <LifeBuoy size={16} /> User guide
+          </a>
+          <a href="/docs/origin-and-design.html" target="_blank" rel="noreferrer" className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-ink-300 hover:bg-white/5 hover:text-white">
+            <Lightbulb size={16} /> Why it works this way
+          </a>
+        </div>
 
         <div className="px-4 py-4 border-t border-white/10 text-xs text-ink-400 space-y-1.5">
           <div className="flex items-center gap-2">

@@ -6,15 +6,38 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..core.collection.normalize import canonicalize_url
 from ..core.domains import sync_domain
 from ..core.orchestration.jobs import start_run
 from ..core.orchestration.queue import enqueue
 from ..core.plugins.registry import get_registry
 from ..db import get_db
-from ..models import Document, Domain, Source
-from .schemas import DomainOut, SourceOut, SourcePatch
+from ..models import Document, Domain, DomainKeyword, Source, SourceStatus
+from .schemas import DomainOut, KeywordCreate, KeywordOut, SourceCreate, SourceOut, SourcePatch
 
 router = APIRouter(tags=["domains"])
+
+
+def _decorate(db: Session, o: DomainOut) -> DomainOut:
+    o.keywords = [
+        KeywordOut.model_validate(k)
+        for k in db.execute(
+            select(DomainKeyword).where(DomainKeyword.domain_id == o.id).order_by(DomainKeyword.created_at)
+        ).scalars()
+    ]
+    o.user_sources = db.execute(
+        select(func.count()).select_from(Source).where(Source.domain_id == o.id, Source.origin == "user")
+    ).scalar_one()
+    return o
+
+
+def _require_domain(db: Session, domain_id: str) -> Domain:
+    if domain_id not in get_registry():
+        raise HTTPException(404, f"unknown domain {domain_id}")
+    d = db.get(Domain, domain_id)
+    if d is None:
+        raise HTTPException(409, f"domain {domain_id} is not synced yet (run: kp domains sync {domain_id})")
+    return d
 
 
 @router.get("/domains", response_model=list[DomainOut])
@@ -50,7 +73,7 @@ def list_domains(db: Session = Depends(get_db)) -> list[DomainOut]:
             o.loaded = False
             o.load_error = "plugin directory not found"
             out.append(o)
-    return out
+    return [_decorate(db, o) if o.loaded else o for o in out]
 
 
 @router.get("/domains/{domain_id}", response_model=DomainOut)
@@ -71,7 +94,45 @@ def get_domain(domain_id: str, db: Session = Depends(get_db)) -> DomainOut:
         )
     o = DomainOut.model_validate(d)
     o.manifest = p.summary()
-    return o
+    return _decorate(db, o)
+
+
+# ----------------------------------------------------------------------------- user-defined keywords
+
+
+@router.get("/domains/{domain_id}/keywords", response_model=list[KeywordOut])
+def list_keywords(domain_id: str, db: Session = Depends(get_db)) -> list[KeywordOut]:
+    _require_domain(db, domain_id)
+    rows = db.execute(
+        select(DomainKeyword).where(DomainKeyword.domain_id == domain_id).order_by(DomainKeyword.created_at)
+    ).scalars()
+    return [KeywordOut.model_validate(k) for k in rows]
+
+
+@router.post("/domains/{domain_id}/keywords", response_model=KeywordOut, status_code=201)
+def add_keyword(domain_id: str, body: KeywordCreate, db: Session = Depends(get_db)) -> KeywordOut:
+    _require_domain(db, domain_id)
+    keyword = " ".join(body.keyword.split())
+    existing = db.execute(
+        select(DomainKeyword).where(DomainKeyword.domain_id == domain_id, DomainKeyword.keyword.ilike(keyword))
+    ).scalar_one_or_none()
+    if existing:
+        existing.enabled = True
+        db.commit()
+        return KeywordOut.model_validate(existing)
+    k = DomainKeyword(domain_id=domain_id, keyword=keyword)
+    db.add(k)
+    db.commit()
+    return KeywordOut.model_validate(k)
+
+
+@router.delete("/domains/{domain_id}/keywords/{keyword_id}", status_code=204)
+def delete_keyword(domain_id: str, keyword_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
+    k = db.get(DomainKeyword, keyword_id)
+    if k is None or k.domain_id != domain_id:
+        raise HTTPException(404, "keyword not found")
+    db.delete(k)
+    db.commit()
 
 
 @router.post("/domains/reload", response_model=list[DomainOut])
@@ -107,6 +168,65 @@ def list_sources(domain: str | None = None, db: Session = Depends(get_db)) -> li
     sources = db.execute(stmt).scalars().all()
     counts = dict(db.execute(select(Document.source_id, func.count()).group_by(Document.source_id)).all())
     return [_source_out(db, s, counts) for s in sources]
+
+
+@router.post("/sources", response_model=SourceOut, status_code=201)
+def create_source(body: SourceCreate, db: Session = Depends(get_db)) -> SourceOut:
+    """Add a user-defined URL to a domain. It is kept across plugin syncs (origin='user')."""
+    _require_domain(db, body.domain)
+    url = canonicalize_url(body.url)
+    if not url:
+        raise HTTPException(422, "url must be an absolute http(s) URL")
+    dup = db.execute(select(Source).where(Source.domain_id == body.domain, Source.url == url)).scalar_one_or_none()
+    if dup:
+        raise HTTPException(409, f"this URL is already registered as source '{dup.name}'")
+    host = url.split("/")[2]
+    src = Source(
+        domain_id=body.domain,
+        key="user:" + uuid.uuid4().hex[:10],
+        origin="user",
+        name=body.name.strip() or host,
+        url=url,
+        publisher=body.publisher.strip() or host,
+        source_type=body.source_type,
+        authority=body.authority,
+        license=body.license,
+        permissions=body.permissions,
+        crawl_frequency_hours=body.crawl_frequency_hours,
+        max_depth=body.max_depth,
+        max_pages=body.max_pages,
+        allow_patterns=body.allow_patterns,
+        deny_patterns=body.deny_patterns,
+        notes=body.notes,
+        status=SourceStatus.ACTIVE,
+        enabled=True,
+    )
+    db.add(src)
+    db.flush()
+    if body.crawl_now:
+        run = start_run(db, domain_id=src.domain_id, kind="crawl", triggered_by="api")
+        enqueue(
+            db,
+            "crawl_source",
+            {"source_id": str(src.id)},
+            run_id=run.id,
+            idempotency_key=f"crawl:{src.id}",
+            priority=40,
+        )
+    db.commit()
+    return _source_out(db, src, {})
+
+
+@router.delete("/sources/{source_id}", status_code=204)
+def delete_source(source_id: uuid.UUID, db: Session = Depends(get_db)) -> None:
+    """Remove a user-defined or discovered source (plugin-defined ones are paused or edited in sources.yaml)."""
+    src = db.get(Source, source_id)
+    if src is None:
+        raise HTTPException(404, "source not found")
+    if src.origin == "plugin":
+        raise HTTPException(409, "plugin-defined sources cannot be deleted; pause it or remove it from sources.yaml")
+    db.delete(src)
+    db.commit()
 
 
 @router.patch("/sources/{source_id}", response_model=SourceOut)

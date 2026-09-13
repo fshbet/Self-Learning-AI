@@ -11,6 +11,8 @@ export type Domain = {
   synced_at: string | null;
   loaded: boolean;
   load_error: string | null;
+  keywords: Keyword[];
+  user_sources: number;
   manifest: {
     taxonomy_paths?: string[];
     knowledge_types?: string[];
@@ -23,10 +25,28 @@ export type Domain = {
   };
 };
 
+export type Keyword = { id: string; domain_id: string; keyword: string; enabled: boolean; created_by: string; created_at: string };
+
+export type SourceCreate = {
+  domain: string;
+  url: string;
+  name?: string;
+  publisher?: string;
+  authority?: number;
+  max_depth?: number;
+  max_pages?: number;
+  crawl_frequency_hours?: number;
+  allow_patterns?: string[];
+  deny_patterns?: string[];
+  notes?: string;
+  crawl_now?: boolean;
+};
+
 export type Source = {
   id: string;
   domain_id: string;
   key: string;
+  origin: "plugin" | "user" | "discovered";
   name: string;
   url: string;
   publisher: string;
@@ -282,6 +302,13 @@ export const api = {
   syncDomain: (id: string) => request<Record<string, number>>(`/domains/${id}/sync`, { method: "POST" }),
   reloadDomains: () => request<Domain[]>("/domains/reload", { method: "POST" }),
   sources: (domain?: string) => request<Source[]>(`/sources${qs({ domain })}`),
+  createSource: (body: SourceCreate) => request<Source>("/sources", { method: "POST", body: JSON.stringify(body) }),
+  deleteSource: (id: string) => fetch(`/api/sources/${id}`, { method: "DELETE" }).then((r) => { if (!r.ok) throw new ApiError(r.status, r.statusText); }),
+  keywords: (domain: string) => request<Keyword[]>(`/domains/${domain}/keywords`),
+  addKeyword: (domain: string, keyword: string) =>
+    request<Keyword>(`/domains/${domain}/keywords`, { method: "POST", body: JSON.stringify({ keyword }) }),
+  deleteKeyword: (domain: string, id: string) =>
+    fetch(`/api/domains/${domain}/keywords/${id}`, { method: "DELETE" }).then((r) => { if (!r.ok) throw new ApiError(r.status, r.statusText); }),
   patchSource: (id: string, body: Partial<Source>) =>
     request<Source>(`/sources/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
   crawlSource: (id: string, max_pages?: number) =>

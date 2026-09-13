@@ -35,6 +35,8 @@ class DomainOut(ORM):
     manifest: dict[str, Any] = Field(default_factory=dict)
     loaded: bool = True
     load_error: str | None = None
+    keywords: list[KeywordOut] = Field(default_factory=list)
+    user_sources: int = 0
 
 
 # ----------------------------------------------------------------------------- sources
@@ -44,6 +46,7 @@ class SourceOut(ORM):
     id: uuid.UUID
     domain_id: str
     key: str
+    origin: str = "plugin"
     name: str
     url: str
     publisher: str
@@ -63,6 +66,41 @@ class SourceOut(ORM):
     robots_info: dict[str, Any]
     notes: str
     document_count: int = 0
+
+
+class SourceCreate(BaseModel):
+    """A user-defined source: any URL you want the platform to collect from."""
+
+    domain: str
+    url: str = Field(pattern=r"^https?://", max_length=2000)
+    name: str = Field(default="", max_length=200)
+    publisher: str = Field(default="", max_length=200)
+    authority: int = Field(default=60, ge=0, le=100)
+    source_type: str = Field(default="web", pattern="^(web|pdf|api|git|video)$")
+    license: str = Field(default="", max_length=200)
+    permissions: dict[str, bool] = Field(
+        default_factory=lambda: {"read": True, "store": True, "process": True, "train": False, "redistribute": False}
+    )
+    crawl_frequency_hours: int = Field(default=168, ge=1)
+    max_depth: int = Field(default=1, ge=0, le=6)
+    max_pages: int = Field(default=20, ge=1, le=5000)
+    allow_patterns: list[str] = Field(default_factory=list)
+    deny_patterns: list[str] = Field(default_factory=list)
+    notes: str = ""
+    crawl_now: bool = False
+
+
+class KeywordOut(ORM):
+    id: uuid.UUID
+    domain_id: str
+    keyword: str
+    enabled: bool
+    created_by: str
+    created_at: datetime
+
+
+class KeywordCreate(BaseModel):
+    keyword: str = Field(min_length=2, max_length=300)
 
 
 class SourcePatch(BaseModel):
@@ -305,3 +343,6 @@ class HealthOut(BaseModel):
     domains: list[str]
     plugin_errors: dict[str, str]
     version: str
+
+
+DomainOut.model_rebuild()

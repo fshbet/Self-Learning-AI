@@ -1,0 +1,71 @@
+"""User-defined URLs and discovery keywords via the HTTP API (needs PostgreSQL)."""
+
+from __future__ import annotations
+
+import uuid
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import delete
+from tests.conftest import requires_db
+
+from knowledge_platform.api.app import app
+from knowledge_platform.core.domains import sync_domain
+from knowledge_platform.core.plugins.registry import get_registry
+from knowledge_platform.db import session_scope
+from knowledge_platform.models import DomainKeyword, Source
+
+pytestmark = requires_db
+
+# TestClient without a `with` block does not run the lifespan, so no embedded worker thread starts.
+client = TestClient(app)
+DOMAIN = "example"
+
+
+@pytest.fixture(autouse=True)
+def synced_domain():
+    with session_scope() as s:
+        sync_domain(s, get_registry().get(DOMAIN))
+    yield
+    with session_scope() as s:
+        s.execute(delete(DomainKeyword).where(DomainKeyword.domain_id == DOMAIN))
+        s.execute(delete(Source).where(Source.domain_id == DOMAIN, Source.origin != "plugin"))
+
+
+def test_keywords_crud_and_dedup():
+    r = client.post(f"/api/domains/{DOMAIN}/keywords", json={"keyword": "  example   tutorial  "})
+    assert r.status_code == 201, r.text
+    kw = r.json()
+    assert kw["keyword"] == "example tutorial"
+    # case-insensitive duplicate re-uses the existing row
+    r2 = client.post(f"/api/domains/{DOMAIN}/keywords", json={"keyword": "Example Tutorial"})
+    assert r2.status_code == 201 and r2.json()["id"] == kw["id"]
+    assert [k["keyword"] for k in client.get(f"/api/domains/{DOMAIN}/keywords").json()] == ["example tutorial"]
+    assert any(k["id"] == kw["id"] for k in client.get(f"/api/domains/{DOMAIN}").json()["keywords"])
+    assert client.delete(f"/api/domains/{DOMAIN}/keywords/{kw['id']}").status_code == 204
+    assert client.get(f"/api/domains/{DOMAIN}/keywords").json() == []
+    assert client.delete(f"/api/domains/{DOMAIN}/keywords/{uuid.uuid4()}").status_code == 404
+
+
+def test_user_source_lifecycle_and_plugin_protection():
+    url = "https://docs.example.org/guide/?utm_source=x"
+    r = client.post("/api/sources", json={"domain": DOMAIN, "url": url, "authority": 70, "max_pages": 5})
+    assert r.status_code == 201, r.text
+    src = r.json()
+    assert src["origin"] == "user" and src["url"] == "https://docs.example.org/guide/"
+    assert src["name"] == "docs.example.org" and src["status"] == "ACTIVE"
+    # same URL again (even with tracking params) is a conflict
+    assert client.post("/api/sources", json={"domain": DOMAIN, "url": url}).status_code == 409
+    # bad input
+    assert client.post("/api/sources", json={"domain": DOMAIN, "url": "ftp://x"}).status_code == 422
+    assert client.post("/api/sources", json={"domain": "nope", "url": "https://x.test/"}).status_code == 404
+    # plugin sync must not remove or alter the user source
+    with session_scope() as s:
+        sync_domain(s, get_registry().get(DOMAIN))
+    listed = {x["id"]: x for x in client.get(f"/api/sources?domain={DOMAIN}").json()}
+    assert listed[src["id"]]["origin"] == "user"
+    # plugin-defined sources cannot be deleted, user ones can
+    plugin_src = next(x for x in listed.values() if x["origin"] == "plugin")
+    assert client.delete(f"/api/sources/{plugin_src['id']}").status_code == 409
+    assert client.delete(f"/api/sources/{src['id']}").status_code == 204
+    assert src["id"] not in {x["id"] for x in client.get(f"/api/sources?domain={DOMAIN}").json()}

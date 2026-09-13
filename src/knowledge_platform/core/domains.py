@@ -26,11 +26,12 @@ def sync_domain(session: Session, plugin: DomainPlugin) -> dict[str, int]:
     for spec in plugin.sources():
         src = existing.get(spec.key)
         if src is None:
-            src = Source(domain_id=plugin.id, key=spec.key, url=spec.url, name=spec.name)
+            src = Source(domain_id=plugin.id, key=spec.key, url=spec.url, name=spec.name, origin="plugin")
             session.add(src)
             created += 1
         else:
             updated += 1
+        src.origin = "plugin"
         src.name = spec.name
         src.url = spec.url
         src.publisher = spec.publisher

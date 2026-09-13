@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Knowledge Platform — Origin and Derivation of the Design</title>
+<link rel="stylesheet" href="_style.css" />
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+  <div class="brand"><span><i></i></span> Origin &amp; design</div>
+  <a href="#question">The starting question</a>
+  <a href="#observations">Five observations</a>
+  <a href="#principle">The one principle</a>
+  <a href="#derivation">Deriving the design</a>
+  <a href="#analogy">The guiding analogy</a>
+  <a href="#doc-to-code">From document to code</a>
+  <a href="#lessons">What building it taught us</a>
+  <a href="#next">Where it goes next</a>
+  <a href="user-guide.html" style="margin-top:14px">→ User guide</a>
+</nav>
+
+<main>
+<h1>How this idea was found, and how the design was derived</h1>
+<p class="lead">The platform did not start from a technology. It started from a question about trust, and every part of the design
+can be traced back to that question in a few steps. This document walks the chain from the original problem to the running system.</p>
+
+<h2 id="question">The starting question</h2>
+<div class="card">
+<p><em>"Can an AI system keep itself up to date with reliable, specialised knowledge — first about Power BI, later about anything —
+without anyone having to retrain it, and without it quietly learning things that are wrong?"</em></p>
+</div>
+<p>The obvious answer in 2026 is "fine-tune a model on the documentation." The founding insight of this project is that this obvious
+answer is the wrong place to start. A model that has "learned" Power BI is a snapshot: it cannot tell you where a claim came from, it
+cannot notice when Microsoft changes a page, and when two sources disagree it simply picks one — confidently. The problem was never
+that models lack knowledge. The problem is that knowledge has to be <strong>collected, checked, versioned and kept current</strong>,
+and a model is the wrong container for that.</p>
+
+<h2 id="observations">Five observations that shaped the idea</h2>
+<div class="grid">
+  <div class="card"><h4>1 · Models are confident, not correct</h4>A language model will produce a fluent answer whether or not it knows.
+  Confidence has to come from somewhere outside the model.</div>
+  <div class="card"><h4>2 · Technical knowledge expires</h4>Product versions, renamed features ("dataset" → "semantic model"), deprecated
+  functions. A fact is only true <em>for a version, at a time</em>.</div>
+  <div class="card"><h4>3 · Volume is not truth</h4>Scrapers collect everything and learn nothing. Ten blogs repeating one Microsoft
+  page are one piece of evidence, not ten.</div>
+  <div class="card"><h4>4 · Training freezes and hides</h4>Fine-tuning is expensive, freezes the snapshot, and makes provenance
+  impossible to recover. It should be the <em>last</em> step, if ever.</div>
+  <div class="card"><h4>5 · Every domain is different, the machinery is not</h4>Power BI, Tableau, a robot arm: the taxonomies and
+  validators differ completely, but discovering, collecting, verifying, versioning and retrieving are the same jobs.</div>
+</div>
+
+<h2 id="principle">The one principle everything hangs from</h2>
+<div class="note"><strong>Build the knowledge infrastructure first; keep the AI model replaceable.</strong></div>
+<p>Once you accept that the knowledge — not the model — is the asset, the rest of the design is not a list of features to choose from.
+It is a set of consequences. The sections below show each design decision as a derivation from the principle and the observations.</p>
+
+<h2 id="derivation">Deriving the design, step by step</h2>
+
+<h3>Consequence 1 — Evidence over confidence (from observation 1)</h3>
+<p>If confidence cannot come from the model, it must come from evidence. Therefore every knowledge item must point to a specific place
+in a specific document. The platform makes this a hard rule: the extractor must copy a <em>verbatim</em> quote, the quote is located in
+the page, and if it cannot be found the item is discarded. A confidence score is then computed from named, stored factors (source
+authority, verified evidence, agreement, specificity, validation) so a person can always see <em>why</em> a number is what it is.</p>
+
+<h3>Consequence 2 — Versioning over overwriting (from observation 2)</h3>
+<p>If facts expire, the system must know when a fact was collected, when it was last verified, and which product version it applies to —
+and it must never destroy the old state. Hence: content hashes and conditional requests to detect change cheaply; items whose evidence
+vanished from a changed page become <em>stale</em> rather than deleted; every status change is written to an audit trail.</p>
+
+<h3>Consequence 3 — Research over crawling (from observation 3)</h3>
+<p>If volume is not truth, the collector must be selective and must weigh sources. That produced the <strong>source registry</strong>
+(every website has an authority level, permissions and a scope), relevance-driven crawling instead of "download everything", and the
+rule that a second source repeating a statement becomes <em>additional evidence on the same item</em> rather than a duplicate. The
+same reasoning produced <strong>conflict records</strong>: when sources disagree, keep both and ask a person.</p>
+
+<h3>Consequence 4 — Controlled learning over self-training (from observation 4)</h3>
+<p>If training freezes and hides, then "self-updating" must mean updating the <em>repository</em>, not the model. The improvement loop
+is: extract → evaluate against a golden question set → find the failure → fix retrieval, prompts, rules or sources → re-evaluate.
+Fine-tuning is explicitly deferred to a later phase, and the repository is designed so that it could produce training data with a
+license manifest if that day comes.</p>
+
+<h3>Consequence 5 — Domain plugins over domain-specific platforms (from observation 5)</h3>
+<p>If the machinery is the same but the domains differ, the core must not know what Power BI is. Everything domain-specific — taxonomy,
+terminology, seed sources, validators, skills, test questions — lives in a plugin folder behind one contract, and contract tests make
+sure the core cannot drift into knowing about one domain. Adding a topic is adding a folder.</p>
+
+<h3>Consequence 6 — The model as orchestrator, not oracle</h3>
+<p>Combining all of the above: the model reads sections and proposes facts, judges whether two statements contradict, and writes
+answers — but only from items it is handed, and only with citations. The repository is the source of truth; the model is a
+replaceable worker whose every call is metered. Content pulled from the web is treated as <em>data</em>, never as instructions, which
+is also the platform's defence against prompt injection.</p>
+
+<h3>Consequence 7 — Local first, portable always</h3>
+<p>A knowledge asset should not be hostage to a vendor. Every external dependency (model, embeddings, storage, search) sits behind an
+adapter with a local default (Ollama, filesystem, PostgreSQL, SearXNG), and the identity of the model that produced each artefact is
+stored with it. Moving to a cloud provider later is configuration, not a rewrite.</p>
+
+<h2 id="analogy">The guiding analogy</h2>
+<p>The design document ends with the image that ties it together: the system should behave <strong>less like a scraper and more like a
+continuously maintained research organisation</strong>. A good research team discovers sources, reads selectively, cross-checks, keeps
+notes with citations, flags disagreements for a senior reviewer, revisits topics when the world changes, and measures itself. Every
+screen in the app corresponds to one of those activities — Sources, Documents, Knowledge, Review, Pipeline — and the one thing such a
+team never does is publish a claim it cannot cite.</p>
+
+<h2 id="doc-to-code">From document to code</h2>
+<p>The idea was first written down as a 45-section design document. Turning it into software followed the document's own advice:</p>
+<ol class="steps">
+  <li><strong>Review the design against industry practice</strong> before building. This added the parts a specification needs to be
+  buildable: non-functional requirements, a plugin contract, a knowledge-item schema and status-transition table, responsible
+  collection rules, observability, a testing strategy, risks, and phase exit criteria.</li>
+  <li><strong>Decide where to run it.</strong> Free cloud tiers could host the serving side, but long crawls and unlimited local model
+  calls favoured a local-first build on a workstation with a GPU — with adapters so the choice is reversible.</li>
+  <li><strong>Build Phase 1–3 as one vertical slice</strong>: plugin contract → responsible collector → extraction with mandatory
+  evidence → scoring and lifecycle → hybrid retrieval and cited answers → a UI that exposes the evidence trail everywhere.</li>
+  <li><strong>Verify against reality</strong>: a database-backed integration test with recorded pages and a fake model, then a live
+  run against Microsoft Learn with a real local model.</li>
+</ol>
+
+<h2 id="lessons">What building it taught us</h2>
+<p>The first live run produced 43 facts from two pages, all with verbatim evidence — and immediately demonstrated why the principles
+matter, because the system's own safeguards caught three mistakes in the first implementation:</p>
+<table>
+  <tr><th>What happened</th><th>Why the principle mattered</th></tr>
+  <tr><td>The contradiction detector opened 28 "conflicts" between statements like <em>"the DAX reference covers filter functions"</em>
+  and <em>"…covers statistical functions"</em>.</td>
+  <td>A list is not a disagreement. Because conflicts are surfaced rather than silently resolved, the false positives were visible at
+  once. The fix derived from the design: items from the same document do not conflict, predicates with many values are lists, and
+  remaining pairs are adjudicated before a conflict is opened.</td></tr>
+  <tr><td>Near-duplicate detection merged <em>CLOSINGBALANCEWEEK</em> into <em>OPENINGBALANCEWEEK</em> because their sentences were almost
+  identical.</td>
+  <td>Similar wording is not the same fact. The audit trail showed exactly which items had been folded and why, so they could be
+  restored. The rule now requires the same subject, equivalent objects and lexical overlap — vector similarity alone is not evidence.</td></tr>
+  <tr><td>Documentation hub pages yielded a single page each.</td>
+  <td>Relative links were resolved against the wrong base URL. Visible immediately in the per-source crawl statistics that the
+  observability requirement had put on the Pipeline page.</td></tr>
+</table>
+<p>None of these were found by unit tests; all were found because the system records what it does and why. That is the practical
+meaning of "evidence over confidence".</p>
+
+<h2 id="next">Where it goes next</h2>
+<p>The design document lays out the remaining phases, each an explicit test of the principle:</p>
+<ul>
+  <li><strong>Executable validators</strong> (sandboxed) — test a DAX example against a real model instead of asking a model to judge it.</li>
+  <li><strong>Source reliability history</strong> — authority that is earned over time, not only declared.</li>
+  <li><strong>Golden-set evaluation runner</strong> — every change to prompts, rules or models is measured before it is promoted.</li>
+  <li><strong>A second, then a radically different domain</strong> (Tableau, then robotics or an industrial machine) — the proof that
+  the core is genuinely generic. If a new topic ever needs a change in the core, that is a bug in the architecture, not a feature.</li>
+</ul>
+<p>Power BI is simply the first domain used to prove the platform. The idea is the machinery; the topics are plugins.</p>
+
+<footer>Knowledge Platform · origin and design notes · the complete specification is
+<code>modular_self_updating_knowledge_platform.md</code> in the project folder; architecture decisions are recorded under <code>docs/adr/</code>.</footer>
+</main>
+</div>
+</body>
+</html>

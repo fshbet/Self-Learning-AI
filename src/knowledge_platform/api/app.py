@@ -30,6 +30,7 @@ from .schemas import HealthOut, StatsOut
 log = logging.getLogger(__name__)
 
 FRONTEND_DIST = Path(__file__).resolve().parents[3] / "frontend" / "dist"
+DOCS_DIR = Path(__file__).resolve().parents[3] / "docs"
 
 
 @asynccontextmanager
@@ -154,14 +155,18 @@ def stats(domain: str | None = None, db: Session = Depends(get_db)) -> StatsOut:
     )
 
 
-# ----------------------------------------------------------------------------- frontend (SPA)
+# ----------------------------------------------------------------------------- docs + frontend (SPA)
+
+if DOCS_DIR.exists():
+    # User guide and design notes, served in-app at /docs/<file>.html
+    app.mount("/docs", StaticFiles(directory=DOCS_DIR, html=True), name="docs")
 
 if FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIST / "assets"), name="assets")
 
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa(full_path: str):
-        if full_path.startswith("api/"):
+        if full_path.startswith(("api/", "docs/")):
             raise HTTPException(404)
         candidate = FRONTEND_DIST / full_path
         if full_path and candidate.is_file():

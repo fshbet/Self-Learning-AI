@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Knowledge Platform — User Guide</title>
+<link rel="stylesheet" href="_style.css" />
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+  <div class="brand"><span><i></i></span> User guide</div>
+  <a href="#what">What it is</a>
+  <a href="#start">Start it up</a>
+  <a href="#first-run">Your first knowledge</a>
+  <a href="#tour">A tour of the screens</a>
+  <a href="#urls">Add your own URLs</a>
+  <a href="#keywords">Add discovery keywords</a>
+  <a href="#topic">Add a whole new topic</a>
+  <a href="#items">Reading a knowledge item</a>
+  <a href="#review">Reviewing &amp; conflicts</a>
+  <a href="#ask">Asking questions</a>
+  <a href="#fresh">Keeping knowledge fresh</a>
+  <a href="#cli">Command line</a>
+  <a href="#trouble">Troubleshooting</a>
+  <a href="#glossary">Glossary</a>
+  <a href="origin-and-design.html" style="margin-top:14px">→ Why it works this way</a>
+</nav>
+
+<main>
+<h1>Knowledge Platform — User Guide</h1>
+<p class="lead">A self-updating, evidence-first knowledge base for any technical topic. This guide is for people who use the
+platform day to day; no programming is required for anything on this page.</p>
+
+<h2 id="what">What it is, in one minute</h2>
+<p>You give the platform a <strong>topic</strong> (Power BI is built in), a list of <strong>trusted websites</strong>, and
+optionally some <strong>search keywords</strong>. It then:</p>
+<div class="flow">
+  <span>Collects pages</span><i>→</i><span>Extracts small, precise facts</span><i>→</i><span>Keeps a verbatim quote as evidence for each</span><i>→</i>
+  <span>Scores &amp; verifies them</span><i>→</i><span>Notices when pages change</span><i>→</i><span>Answers your questions with citations</span>
+</div>
+<p>Three rules make it trustworthy:</p>
+<ul>
+  <li><strong>No evidence, no knowledge.</strong> A fact that cannot be traced to an exact quote in a source page is thrown away.</li>
+  <li><strong>Nothing is silently overwritten.</strong> When two sources disagree, both are kept and the pair is shown to you to decide.</li>
+  <li><strong>Answers only use stored knowledge.</strong> The assistant cites the items it used; if the knowledge base does not cover
+  your question, it says so instead of guessing.</li>
+</ul>
+
+<h2 id="start">Start it up</h2>
+<p>Everything runs on your own machine. You need Docker Desktop, Ollama and the project folder. Open a terminal in the project folder:</p>
+<ol class="steps">
+  <li><strong>Start the database</strong><pre><code>docker compose up -d postgres</code></pre></li>
+  <li><strong>Start the platform</strong> (API, background worker and web app in one process)<pre><code>uv run kp serve</code></pre></li>
+  <li><strong>Open the app</strong> at <a href="http://127.0.0.1:8010">http://127.0.0.1:8010</a>. The sidebar shows two green dots when the
+  database and the local AI model (Ollama) are reachable.</li>
+</ol>
+<div class="note">First-time setup (only once): <code>uv sync --extra dev</code>, <code>uv run kp db upgrade</code>,
+<code>uv run kp domains sync</code>, and <code>cd frontend &amp;&amp; npm install &amp;&amp; npm run build</code>. The README has the full list.</div>
+
+<h2 id="first-run">Your first knowledge</h2>
+<ol class="steps">
+  <li>Pick the domain in the sidebar (<em>Power BI</em>).</li>
+  <li>Go to <strong>Sources</strong>. You will see the built-in catalogue (Microsoft Learn, DAX Guide, SQLBI…). Press the
+  <strong>download icon</strong> next to one source to crawl just that source, or press <strong>Run pipeline</strong> on the Dashboard to
+  crawl all of them.</li>
+  <li>Watch <strong>Pipeline</strong>. Crawling takes seconds per page; extraction is the slow part — roughly 20–30 seconds per
+  page section on a mid-range GPU, because a local AI model reads every section.</li>
+  <li>Open <strong>Knowledge</strong>. Items appear as they are extracted. Click any row to see its evidence.</li>
+</ol>
+<div class="note warn">Start small. A full crawl of all Power BI sources is several hundred pages and can take hours of GPU time. Use the
+<em>max pages/source</em> box on the Pipeline page (e.g. <code>10</code>) for a first run, then let the platform grow the repository on
+its own schedule.</div>
+
+<h2 id="tour">A tour of the screens</h2>
+<div class="grid">
+  <div class="card"><h4>Dashboard</h4>How much knowledge you have, how much of it is verified, open conflicts, documents, and what
+  the AI model cost so far. <em>Run pipeline</em> starts a full crawl of the current domain.</div>
+  <div class="card"><h4>Knowledge</h4>Browse and filter every fact. Filter by status, topic, type, confidence; sort by recency or
+  confidence. Click a row to open the detail drawer.</div>
+  <div class="card"><h4>Search &amp; Ask</h4><em>Ask</em> gives a written answer with numbered citations; <em>Search</em> lists
+  matching items directly. Both use meaning-based and keyword search together.</div>
+  <div class="card"><h4>Review</h4>The queue of things the system will not decide alone: contradictions between sources and the
+  lowest-confidence items. This is where a human keeps the knowledge honest.</div>
+  <div class="card"><h4>Sources</h4>The websites the platform is allowed to read, with trust level, permissions and crawl scope.
+  Add your own URLs and keywords here.</div>
+  <div class="card"><h4>Documents</h4>Every page that was collected, its version, and how many facts came from it. Click to see
+  the cleaned text the AI actually read.</div>
+  <div class="card"><h4>Pipeline</h4>Runs and their jobs (crawl, extract, discover). Failed jobs show the error and can be
+  retried.</div>
+  <div class="card"><h4>Domains</h4>The installed topic plugins and their taxonomy, and the recipe for adding a new one.</div>
+</div>
+
+<h2 id="urls">Add your own URLs</h2>
+<p>Any documentation site, product manual, blog or reference page can be added to an existing topic without touching any files.</p>
+<ol class="steps">
+  <li>Open <strong>Sources</strong> and find the card <strong>Add your own URL</strong>.</li>
+  <li>Paste the URL. Give the page a name if you like (otherwise the website's name is used).</li>
+  <li>Set <strong>Authority</strong> — how much you trust the site, 0–100. Official vendor documentation ≈ 95, a well-known expert
+  site ≈ 80, a general blog ≈ 40. Authority feeds directly into every fact's confidence score.</li>
+  <li>Set <strong>Pages</strong> and <strong>Depth</strong>. Depth 0 reads only that page; depth 1 also follows its links, and so on.
+  The crawler never leaves the folder you gave it: for <code>https://vendor.com/docs/manual/</code> it stays under
+  <code>/docs/manual/</code>.</li>
+  <li>Leave <strong>crawl now</strong> ticked and press <strong>Add</strong>. Progress appears on the Pipeline page; new facts show
+  up in Knowledge with the source's name attached.</li>
+</ol>
+<p>Sources you add are tagged <span class="chip c-blue">user</span>. They are kept when the plugin catalogue is re-synced, can be paused,
+re-crawled or removed with the bin icon (removing a source also removes the documents and facts that came from it). Built-in sources
+are tagged <span class="chip c-grey">plugin</span> and can be paused but not deleted here.</p>
+<div class="note">The platform is a polite reader: it obeys each site's <code>robots.txt</code>, identifies itself, waits between
+requests and backs off when a site asks it to. If a site forbids crawling, the source is marked <span class="chip c-red">BLOCKED</span>
+and nothing is collected.</div>
+
+<h2 id="keywords">Add discovery keywords</h2>
+<p>Keywords are search phrases the platform uses to find <em>new</em> websites for a topic.</p>
+<ol class="steps">
+  <li>On <strong>Sources</strong>, type a phrase into <strong>Discovery keywords</strong> (for example
+  <em>Power BI incremental refresh best practices</em>) and press <strong>Add keyword</strong>.</li>
+  <li>Press <strong>Discover sources</strong>. The platform searches the web for your keywords plus the plugin's built-in ones.</li>
+  <li>Websites it has not seen before appear under <strong>Discovered candidates</strong>. Nothing is crawled until you press
+  <strong>Approve</strong> — you stay in control of what is read.</li>
+</ol>
+<div class="note warn">Web discovery needs the optional local search engine: run <code>docker compose --profile discovery up -d</code>
+once. Without it the Discover button reports that no search provider is configured; adding URLs directly always works.</div>
+
+<h2 id="topic">Add a whole new topic</h2>
+<p>A topic (a <em>domain</em>) is a folder. Creating one takes a minute and needs no code:</p>
+<pre><code>uv run kp domains new sql-server --name "SQL Server"</code></pre>
+<p>This creates <code>domains/sql-server/</code> with three files to edit in any text editor:</p>
+<table>
+  <tr><th>File</th><th>What you write there</th></tr>
+  <tr><td><code>plugin.yaml</code></td><td>A short description of the topic, its <strong>taxonomy</strong> (the outline of sub-topics facts get filed under),
+  <strong>terminology</strong> (canonical names and abbreviations), and optional hints for the extractor.</td></tr>
+  <tr><td><code>sources.yaml</code></td><td>The starting list of websites, each with a trust level and crawl limits — the same fields as the
+  <em>Add your own URL</em> form.</td></tr>
+  <tr><td><code>evaluation.yaml</code></td><td>Optional test questions with expected answers, used to measure quality over time.</td></tr>
+</table>
+<p>Then load it and start collecting:</p>
+<pre><code>uv run kp domains sync sql-server
+uv run kp run pipeline sql-server --max-pages 10</code></pre>
+<p>Press <strong>Reload plugins</strong> on the Domains page and the new topic appears in the sidebar selector. From then on you can add
+URLs and keywords to it from the UI exactly like Power BI. Advanced users can add a <code>plugin.py</code> with custom validators
+(e.g. a syntax checker for the topic's language); the built-in Power BI plugin shows how.</p>
+
+<h2 id="items">Reading a knowledge item</h2>
+<p>Click any row in Knowledge to open the detail drawer. From top to bottom:</p>
+<ul>
+  <li><strong>Status chip</strong> — where the item is in its life:
+    <span class="chip c-grey">EXTRACTED</span> just produced ·
+    <span class="chip c-amber">CANDIDATE</span> passed basic checks ·
+    <span class="chip c-blue">SUPPORTED</span> has evidence from one source ·
+    <span class="chip c-green">VERIFIED</span> from an authoritative source, or confirmed by several sources, a validator, or you ·
+    <span class="chip c-red">CONFLICTED</span> another item disagrees ·
+    <span class="chip c-amber">STALE</span> the page it came from changed and the quote is gone ·
+    <span class="chip c-grey">REJECTED</span> / <span class="chip c-violet">SUPERSEDED</span> retired.</li>
+  <li><strong>Statement</strong> — one self-contained sentence, plus a longer explanation and any code sample.</li>
+  <li><strong>Confidence bar and level</strong> — confidence (0–100 %) is computed from named factors shown under
+  <em>Why this score</em>: source authority, verified evidence, agreement between sources, specificity, taxonomy match and domain
+  validation. The <kbd>L0</kbd>–<kbd>L5</kbd> level says <em>how</em> it was verified (L2 = authoritative source, L3 = several
+  independent sources, L4 = passed a validator, L5 = approved by a person).</li>
+  <li><strong>Evidence</strong> — the exact quote from the page, marked <span class="chip c-green">verbatim</span> when it was
+  found word-for-word, with a link to the page. Validator results and human approvals appear here too.</li>
+  <li><strong>Lifecycle</strong> — every status change with who or what made it and why. Nothing here can be edited; it is the audit trail.</li>
+  <li><strong>Provenance</strong> — which extractor and model produced the item, content hash, embedding model, dates.</li>
+</ul>
+
+<h2 id="review">Reviewing &amp; conflicts</h2>
+<p>The <strong>Review</strong> page lists open conflicts. Each shows the two statements side by side with their sources and confidence.
+Choose <strong>Keep A</strong>, <strong>Keep B</strong>, <strong>Both valid</strong> (e.g. they apply to different product versions), or
+<strong>Reject both</strong>. Your decision is recorded on both items.</p>
+<p>Inside any item's drawer you can also <strong>Approve</strong> (raises it to level 5 and records you as evidence), <strong>Reject</strong>
+(retires this version), <strong>Mark stale</strong>, or <strong>Reopen</strong>. Add a short reason — it goes into the audit trail.</p>
+
+<h2 id="ask">Asking questions</h2>
+<p>On <strong>Search &amp; Ask</strong>, type a question and press <kbd>Enter</kbd>. The answer cites items as <code>[1]</code>, <code>[2]</code>…;
+click a citation or a card on the right to open that item and inspect its evidence. Items that were retrieved but not used are shown
+dimmed so you can see what the assistant considered.</p>
+<p>If the answer says the knowledge base does not cover the question, that is the intended behaviour: add a source that does, crawl it,
+and ask again.</p>
+
+<h2 id="fresh">Keeping knowledge fresh</h2>
+<ul>
+  <li>Every source has a <strong>re-check interval</strong> (weekly by default). Once you have crawled a source at least once, the
+  built-in scheduler re-checks it automatically while <code>kp serve</code> is running.</li>
+  <li>Unchanged pages are skipped cheaply (the site is asked "changed since last time?").</li>
+  <li>When a page changes, only the changed sections are re-read. Facts whose quote disappeared become
+  <span class="chip c-amber">STALE</span> and show up on the Review page; new facts are added as usual.</li>
+  <li>Nothing is deleted or overwritten: old versions remain in the audit trail.</li>
+</ul>
+
+<h2 id="cli">Command line (optional)</h2>
+<table>
+  <tr><th>Command</th><th>Does</th></tr>
+  <tr><td><code>kp serve</code></td><td>Start the app (API + worker + scheduler + web UI)</td></tr>
+  <tr><td><code>kp run pipeline powerbi --max-pages 10</code></td><td>Crawl and extract, showing progress in the terminal</td></tr>
+  <tr><td><code>kp run extract powerbi</code></td><td>Extract pages that were fetched but not yet read</td></tr>
+  <tr><td><code>kp domains list / sync / new / check</code></td><td>Manage topics</td></tr>
+  <tr><td><code>kp ask powerbi "What does CALCULATE do?"</code></td><td>Ask from the terminal</td></tr>
+  <tr><td><code>kp search powerbi "row-level security"</code></td><td>Search from the terminal</td></tr>
+</table>
+<p>Prefix commands with <code>uv run</code> when running from the project folder. The API is documented at
+<a href="/api/docs">/api/docs</a> if you want to script against it.</p>
+
+<h2 id="trouble">Troubleshooting</h2>
+<table>
+  <tr><th>Symptom</th><th>What to do</th></tr>
+  <tr><td>Sidebar says <em>Database offline</em></td><td>Docker Desktop is not running or the container is stopped: <code>docker compose up -d postgres</code>.</td></tr>
+  <tr><td>Sidebar shows an amber dot next to the model</td><td>Ollama is not running or the model is missing: start Ollama, then <code>ollama pull qwen3:8b</code> and <code>ollama pull nomic-embed-text</code>.</td></tr>
+  <tr><td>Extraction is slow</td><td>Normal: a local model reads every section. Reduce <em>max pages</em>, or choose a smaller model in <code>.env</code> (<code>KP_LLM_MODEL_EXTRACT</code>).</td></tr>
+  <tr><td>A source shows BLOCKED</td><td>The site's robots.txt forbids crawling that URL. Choose a different entry page or a source that permits it.</td></tr>
+  <tr><td>A job is DEAD on the Pipeline page</td><td>It failed three times; the last error is shown. Fix the cause (usually network or model) and press retry.</td></tr>
+  <tr><td>Port already in use</td><td>Change <code>KP_API_PORT</code> in <code>.env</code> (default 8010).</td></tr>
+  <tr><td>Web discovery says no search provider</td><td>Run <code>docker compose --profile discovery up -d</code> to start the local search engine.</td></tr>
+</table>
+
+<h2 id="glossary">Glossary</h2>
+<table>
+  <tr><td><strong>Domain</strong></td><td>A topic plugin (Power BI, SQL Server…): taxonomy, terminology, sources, tests.</td></tr>
+  <tr><td><strong>Source</strong></td><td>A website the platform is allowed to read, with a trust level and crawl limits.</td></tr>
+  <tr><td><strong>Document</strong></td><td>One collected page (or PDF) at a point in time.</td></tr>
+  <tr><td><strong>Knowledge item</strong></td><td>One atomic fact with evidence, confidence, status and history.</td></tr>
+  <tr><td><strong>Evidence</strong></td><td>A verbatim quote from a document, a validator result, or a human approval.</td></tr>
+  <tr><td><strong>Conflict</strong></td><td>Two items that disagree about the same thing; resolved by a person.</td></tr>
+  <tr><td><strong>Run / job</strong></td><td>A batch of background work (crawl, extract, discover) and its individual steps.</td></tr>
+  <tr><td><strong>Authority</strong></td><td>How much a source is trusted (0–100); part of every item's confidence.</td></tr>
+</table>
+
+<footer>Knowledge Platform · user guide · see also <a href="origin-and-design.html">Why it works this way</a> and the full design document
+<code>modular_self_updating_knowledge_platform.md</code> in the project folder.</footer>
+</main>
+</div>
+</body>
+</html>

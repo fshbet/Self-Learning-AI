@@ -124,13 +124,28 @@ class Domain(Base):
     sources: Mapped[list[Source]] = relationship(back_populates="domain", passive_deletes=True)
 
 
+class DomainKeyword(Base):
+    """User-defined discovery keywords (§9): merged with the plugin's discovery_queries when discovering sources."""
+
+    __tablename__ = "domain_keywords"
+    __table_args__ = (UniqueConstraint("domain_id", "keyword", name="uq_domain_keyword"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_id)
+    domain_id: Mapped[str] = mapped_column(ForeignKey("domains.id", ondelete="CASCADE"), index=True)
+    keyword: Mapped[str] = mapped_column(String(300))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_by: Mapped[str] = mapped_column(String(120), default="user")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
 class Source(Base):
     __tablename__ = "sources"
     __table_args__ = (UniqueConstraint("domain_id", "url", name="uq_sources_domain_url"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_id)
     domain_id: Mapped[str] = mapped_column(ForeignKey("domains.id", ondelete="CASCADE"), index=True)
-    key: Mapped[str] = mapped_column(String(120))  # stable key from sources.yaml
+    key: Mapped[str] = mapped_column(String(120))  # stable key from sources.yaml / user:<slug> / discovered:<host>
+    origin: Mapped[str] = mapped_column(String(20), default="plugin")  # plugin | user | discovered
     name: Mapped[str] = mapped_column(String(200))
     url: Mapped[str] = mapped_column(Text)
     publisher: Mapped[str] = mapped_column(String(200), default="")
