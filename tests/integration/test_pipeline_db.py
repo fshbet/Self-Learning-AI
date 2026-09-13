@@ -173,6 +173,14 @@ def cleanup():
     yield
     with session_scope() as s:  # DB-level ON DELETE CASCADE removes sources, documents, items, evidence
         s.execute(delete(Domain).where(Domain.id == DOMAIN_ID))
+    # raw documents and snapshot files written to the local object store
+    import shutil
+
+    from knowledge_platform.config import get_settings
+
+    root = get_settings().local_store_path
+    for d in (root / DOMAIN_ID, root / "snapshots" / DOMAIN_ID):
+        shutil.rmtree(d, ignore_errors=True)
 
 
 @respx.mock
@@ -287,6 +295,7 @@ def test_snapshot_is_reproducible_verifiable_and_gated(plugin, fake_providers):
             "conflicts.json",
             "changelog.jsonl",
             "ai/knowledge.jsonl",
+            "ai/index.json",
             "ai/knowledge.md",
             "knowledge.html",
             "README.md",
@@ -297,6 +306,9 @@ def test_snapshot_is_reproducible_verifiable_and_gated(plugin, fake_providers):
         assert first["origin"] == "DIRECT" and first["provenance"] == "OFFICIAL" and first["evidence_ids"]
         ai_first = json.loads(read_file(a, "ai/knowledge.jsonl").decode().splitlines()[0])
         assert ai_first["citations"] and ai_first["citations"][0]["url"].startswith("https://fixture.test")
+        assert ai_first["usage"] in ("cite", "caution") and "Sources:\n[1] " in ai_first["text"]
+        index = json.loads(read_file(a, "ai/index.json").decode())
+        assert ai_first["id"] in index["topics"][ai_first["topic"] or "(unclassified)"]["ids"]
         assert "CALCULATE" in read_file(a, "ai/knowledge.md").decode()
         # conflicts from the earlier test are exported, with both sides retained
         conflicts = json.loads(read_file(a, "conflicts.json").decode())

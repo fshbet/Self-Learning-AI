@@ -238,7 +238,9 @@ everything the platform currently believes about a topic — for another AI syst
   <li>Press <strong>Export knowledge</strong>. The build runs in the background and appears as <em>vN</em> when ready.</li>
   <li>Open the version to see counts, the models and rule versions that produced it, and the quality gate result.</li>
   <li><strong>Download zip</strong> for the whole package, or open individual files. For an AI system, start with
-  <code>ai/knowledge.jsonl</code> (one record per fact with text and citations) or <code>ai/knowledge.md</code>.</li>
+  <code>ai/knowledge.jsonl</code> (one self-contained record per fact: text with numbered sources, a <code>usage</code> hint —
+  <em>cite</em>, <em>caution</em> or <em>historical</em> — and citations), use <code>ai/index.json</code> to navigate by topic or
+  subject, or feed <code>ai/knowledge.md</code> to a long-context model. The README inside lists the consumption steps.</li>
   <li><strong>Verify integrity</strong> recomputes every file hash; the manifest's integrity hash identifies the snapshot.</li>
   <li><strong>Export delta</strong> (once a full snapshot exists) builds a fresh full snapshot and compares it with the base you
   pick in the dropdown. The delta version lists what was added, modified (with the changed fields), superseded, removed or

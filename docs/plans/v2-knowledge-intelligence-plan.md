@@ -64,8 +64,8 @@ Legend: ✅ complete · 🟡 partial / needs modification · ❌ missing · ⚪ 
 | *24* | Hot/cold storage | ✅ | Postgres (hot) + object store (raw HTML/PDF) |
 | *25* | Delta processing | 🟡 | ETag/Last-Modified/doc hash ✓; **section-level hashes** missing → unchanged chunks are re-extracted when any part of a page changes |
 | *26* | Plugin export contract | ❌ | Contract lacks export hooks |
-| *27* | AI Knowledge Source export | ❌ | — |
-| *28* | Human-readable export | ❌ | — (Markdown + HTML proposed; PDF not recommended) |
+| *27* | AI Knowledge Source export | ✅ (P1/P5) | `ai/knowledge.jsonl` self-contained records + usage hints, `ai/index.json`, `ai/knowledge.md`, README consumption guide |
+| *28* | Human-readable export | ✅ (P1) | `ai/knowledge.md` + `knowledge.html` + README (PDF not provided, per D8) |
 | *30* | Versioning of everything | 🟡 | Versioned: plugin, schema (alembic), extractor/prompt, chunker, scoring rule, embedding identity, item, document. Missing: **snapshot**, **validator version on item** (stored in evidence details only), relationships |
 | *31* | Freshness/staleness | 🟡 | Source-change staleness ✓; **time-based** and **dependency-based** staleness missing |
 | *32–33* | Power BI plugin; future domains | ✅ | Taxonomy covers all listed areas; core untouched by domain |

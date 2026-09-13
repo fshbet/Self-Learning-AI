@@ -38,7 +38,7 @@ from ..quality.provenance import derive_origin, derive_polarity, derive_provenan
 from ..quality.scoring import SCORING_RULE_VERSION
 from ..runtime_config import effective_config
 from .canonical import dumps_canonical, integrity_hash, iso, jsonl, sha256_bytes
-from .render import RENDER_VERSION, ai_markdown, ai_record, markdown_to_html, readme
+from .render import RENDER_VERSION, ai_index, ai_markdown, ai_record, markdown_to_html, readme
 from .schema import (
     SCHEMA_VERSION,
     ChangelogRecord,
@@ -463,6 +463,7 @@ def _render_files(snap: Snapshot, plugin: DomainPlugin, data: dict[str, Any], ga
         "ai/knowledge.jsonl": jsonl(
             ai_record(k, ev_by_item.get(k.id, []), sorted(set(rel_by_item.get(k.id, [])))) for k in data["knowledge"]
         ),
+        "ai/index.json": dumps_canonical(ai_index(data["knowledge"], data["glossary"])).encode("utf-8"),
     }
     md = ai_markdown(provisional, data["knowledge"], ev_by_item, data["conflicts"], data["glossary"])
     files["ai/knowledge.md"] = md.encode("utf-8")

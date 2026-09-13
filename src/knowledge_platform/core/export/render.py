@@ -9,7 +9,7 @@ from typing import Any
 
 from .schema import ConflictRecord, EvidenceRecord, KnowledgeRecord, Manifest
 
-RENDER_VERSION = "render@1.0"  # bump when README/markdown/html output changes: it alters file hashes
+RENDER_VERSION = "render@1.1"  # bump when README/markdown/html output changes: it alters file hashes
 
 TYPE_ORDER = ["definition", "fact", "procedure", "example", "best_practice", "limitation", "warning"]
 TYPE_LABEL = {
@@ -27,6 +27,10 @@ def _cite_lines(ev: list[EvidenceRecord]) -> list[str]:
     seen: set[str] = set()
     out = []
     for e in ev:
+        if e.evidence_type == "human" and e.verified:
+            d = e.details or {}
+            out.append(f"provided by {d.get('provided_by') or 'unknown'} ({(d.get('provenance') or 'USER').lower()})")
+            continue
         if e.evidence_type != "extraction" or not e.document_url or e.document_url in seen:
             continue
         seen.add(e.document_url)
@@ -38,27 +42,109 @@ def _cite_lines(ev: list[EvidenceRecord]) -> list[str]:
 # ----------------------------------------------------------------------------- AI knowledge source
 
 
-def ai_record(k: KnowledgeRecord, ev: list[EvidenceRecord], related: list[str]) -> dict[str, Any]:
-    """One self-contained record an AI/RAG system can index: text block + provenance + citations."""
-    parts = [k.statement]
-    if k.explanation:
+NEGATIVE_PREFIX = {"limitation": "Limitation", "warning": "Warning", "anti_pattern": "Anti-pattern"}
+DETAIL_LABEL = {
+    "expected_behavior": "Expected behaviour",
+    "expected_result": "Expected result",
+    "common_mistake": "Common mistake",
+    "validation_method": "How to validate",
+    "conditions": "Conditions",
+}
+
+
+def usage_hint(k: KnowledgeRecord) -> str:
+    """How an AI consumer should treat the record: cite | caution | historical."""
+    if k.historical:
+        return "historical"
+    if k.status in ("CONFLICTED", "STALE"):
+        return "caution"
+    return "cite"
+
+
+def ai_citations(ev: list[EvidenceRecord]) -> list[dict[str, Any]]:
+    """Citations for the AI Knowledge Source: extracted evidence (documents) and human-provided evidence."""
+    out: list[dict[str, Any]] = []
+    for e in ev:
+        if not e.verified or e.relation == "contradicts":
+            continue
+        if e.evidence_type == "extraction":
+            out.append(
+                {
+                    "kind": "document",
+                    "url": e.document_url,
+                    "title": e.document_title,
+                    "publisher": e.publisher,
+                    "excerpt": e.excerpt,
+                    "section": " > ".join(e.section) if e.section else None,
+                    "document_version": e.document_version,
+                    "publication_date": e.publication_date,
+                    "retrieved_at": e.retrieved_at,
+                }
+            )
+        elif e.evidence_type == "human":
+            d = e.details or {}
+            out.append(
+                {
+                    "kind": "human",
+                    "provided_by": d.get("provided_by"),
+                    "provenance": d.get("provenance"),
+                    "authority": d.get("authority"),
+                    "excerpt": e.excerpt,
+                    "retrieved_at": e.retrieved_at,
+                }
+            )
+    return out
+
+
+def _cite_label(c: dict[str, Any]) -> str:
+    if c["kind"] == "human":
+        who = c.get("provided_by") or "unknown"
+        return f"{who} ({(c.get('provenance') or 'USER').lower()}-provided)"
+    title = c.get("title") or c.get("url") or "source"
+    label = f"{title} — {c.get('url')}"
+    if c.get("section"):
+        label += f", section: {c['section']}"
+    return label
+
+
+def ai_text(k: KnowledgeRecord, citations: list[dict[str, Any]]) -> str:
+    """Self-contained text block: statement, explanation, code, structured details, scope, numbered sources."""
+    head = k.statement
+    if k.polarity == "negative":
+        head = f"{NEGATIVE_PREFIX.get(k.knowledge_type, 'Negative knowledge')}: {k.statement}"
+    parts = [head]
+    if k.explanation and k.explanation.strip().lower() != k.statement.strip().lower():
         parts.append(k.explanation)
     if k.code:
         parts.append("```\n" + k.code + "\n```")
+    for key, label in DETAIL_LABEL.items():
+        v = k.details.get(key)
+        if v:
+            parts.append(f"{label}: {v}")
+    scope = []
     if k.product_version:
-        parts.append(f"Applies to: {k.product_version}")
-    citations = [
+        scope.append(f"Applies to: {k.product_version}")
+    if k.effective_date:
+        scope.append(f"Effective from: {k.effective_date}")
+    if k.valid_until:
+        scope.append(f"Valid until: {k.valid_until}")
+    if scope:
+        parts.append(" · ".join(scope))
+    if citations:
+        parts.append("Sources:\n" + "\n".join(f"[{i}] {_cite_label(c)}" for i, c in enumerate(citations, 1)))
+    return "\n\n".join(parts)
+
+
+def ai_record(k: KnowledgeRecord, ev: list[EvidenceRecord], related: list[str]) -> dict[str, Any]:
+    """One self-contained record an AI/RAG system can index: text block + provenance + citations."""
+    citations = ai_citations(ev)
+    validators = sorted(
         {
-            "url": e.document_url,
-            "title": e.document_title,
-            "publisher": e.publisher,
-            "excerpt": e.excerpt,
-            "section": " > ".join(e.section) if e.section else None,
-            "retrieved_at": e.retrieved_at,
+            str((e.details or {}).get("validator") or e.source_name or "validator")
+            for e in ev
+            if e.evidence_type == "validator" and (e.details or {}).get("passed")
         }
-        for e in ev
-        if e.evidence_type == "extraction" and e.verified
-    ]
+    )
     return {
         "id": k.id,
         "domain": k.domain,
@@ -68,18 +154,69 @@ def ai_record(k: KnowledgeRecord, ev: list[EvidenceRecord], related: list[str]) 
         "provenance": k.provenance,
         "topic": k.topic,
         "subject": k.subject,
-        "text": "\n\n".join(parts),
+        "text": ai_text(k, citations),
         "statement": k.statement,
+        "code": k.code,
+        "details": k.details,
         "status": k.status,
         "historical": k.historical,
+        "superseded_by_id": k.superseded_by_id,
+        "usage": usage_hint(k),
         "confidence": k.confidence,
         "verification_level": k.verification_level,
+        "validated_by": validators,
         "product_version": k.product_version,
         "publication_date": k.publication_date,
+        "effective_date": k.effective_date,
         "last_verified_at": k.last_verified_at,
         "citations": citations,
+        "dependencies": k.dependencies,
         "related_ids": related,
         "tags": k.tags,
+    }
+
+
+def ai_index(items: list[KnowledgeRecord], glossary: dict[str, Any]) -> dict[str, Any]:
+    """Navigation index for agents: taxonomy → item ids, counts per type/status/polarity, filter guidance."""
+    topics: dict[str, dict[str, Any]] = {}
+    by_type: dict[str, int] = defaultdict(int)
+    by_status: dict[str, int] = defaultdict(int)
+    by_polarity: dict[str, int] = defaultdict(int)
+    subjects: dict[str, list[str]] = defaultdict(list)
+    for k in items:
+        t = topics.setdefault(k.topic or "(unclassified)", {"count": 0, "types": defaultdict(int), "ids": []})
+        t["count"] += 1
+        t["types"][k.knowledge_type] += 1
+        t["ids"].append(k.id)
+        by_type[k.knowledge_type] += 1
+        by_status["SUPERSEDED" if k.historical else k.status] += 1
+        by_polarity[k.polarity] += 1
+        subjects[k.subject.strip().lower()].append(k.id)
+    for t in topics.values():
+        t["types"] = dict(sorted(t["types"].items()))
+        t["ids"].sort()
+    return {
+        "record_file": "ai/knowledge.jsonl",
+        "record_fields": {
+            "text": "self-contained text to embed/index "
+            "(statement, explanation, code, details, scope, numbered sources)",
+            "usage": "cite = safe to answer with; caution = CONFLICTED/STALE, surface with a warning; "
+            "historical = superseded, do not answer with",
+            "citations": "documents (url, title, section, excerpt) or human-provided evidence; cite them in answers",
+            "dependencies": "items this record relies on (relation + item_id); a change there may invalidate it",
+        },
+        "recommended_filters": {
+            "answering": {"usage": ["cite"], "verification_level_min": 2},
+            "with_warning": {"usage": ["caution"]},
+            "exclude": {"usage": ["historical"]},
+        },
+        "topics": dict(sorted(topics.items())),
+        "types": dict(sorted(by_type.items())),
+        "statuses": dict(sorted(by_status.items())),
+        "polarity": dict(sorted(by_polarity.items())),
+        "subjects": {s: sorted(ids) for s, ids in sorted(subjects.items())},
+        "taxonomy": glossary.get("taxonomy", []),
+        "terminology": glossary.get("terminology", {}),
     }
 
 
@@ -126,6 +263,9 @@ def ai_markdown(
                     lines.append(f"  {k.explanation}")
                 if k.code:
                     lines += ["", "  ```", *("  " + ln for ln in k.code.splitlines()), "  ```", ""]
+                for key, label in DETAIL_LABEL.items():
+                    if k.details.get(key):
+                        lines.append(f"  - {label}: {k.details[key]}")
                 for c in _cite_lines(evidence_by_item.get(k.id, [])):
                     lines.append(f"  - source: {c}")
             lines.append("")
@@ -200,15 +340,29 @@ def readme(manifest: Manifest) -> str:
             "| `conflicts.json` | open and resolved contradictions |",
             "| `changelog.jsonl` | status transitions (audit trail) |",
             "| `ai/knowledge.jsonl` | AI Knowledge Source: one self-contained text record per item with citations |",
+            "| `ai/index.json` | navigation index: taxonomy → item ids, counts, subjects, recommended filters |",
             "| `ai/knowledge.md` | the same knowledge grouped by taxonomy for reading or long-context ingestion |",
             "| `knowledge.html` | human-readable rendering |",
             "",
-            "## Consuming it",
+            "## Consuming it (AI systems)",
             "",
-            "Index `ai/knowledge.jsonl` (field `text`, keep `citations`, `status`, `verification_level`, "
-            "`product_version` as metadata). Prefer VERIFIED over SUPPORTED, surface CONFLICTED and STALE "
-            "with a warning, and always show "
-            "citations. Verify integrity by recomputing SHA-256 of each file and comparing with `manifest.json`.",
+            "1. Verify: recompute SHA-256 of each file and compare with `manifest.json`; the integrity hash "
+            "identifies this exact knowledge state.",
+            "2. Index `ai/knowledge.jsonl`: embed or full-text index the `text` field one record per chunk "
+            "(each is self-contained: statement, explanation, code, details, scope and numbered sources). Keep "
+            "`id`, `topic`, `type`, `polarity`, `status`, `usage`, `verification_level`, `product_version` and "
+            "`citations` as metadata.",
+            "3. Filter by `usage`: `cite` records can be answered with; `caution` (CONFLICTED / STALE) should "
+            "be surfaced with a warning; `historical` (superseded) should not be answered with. Prefer "
+            "`verification_level` ≥ 2 and VERIFIED over SUPPORTED.",
+            "4. Answer with citations: every record carries `citations` (document url/title/section/excerpt or the "
+            "person/organisation that provided it). Negative records (`polarity: negative`) say what does *not* "
+            "work — use them to avoid recommending unsupported behaviour.",
+            "5. Navigate with `ai/index.json` (taxonomy → ids, subjects → ids, counts) and `glossary.json`; "
+            "`ai/knowledge.md` is the same knowledge as one long-context document.",
+            "6. Stay current: apply delta snapshots on top of this one (see the platform's delta README) or "
+            "replace it with a newer full snapshot; `dependencies` tell you which records may be affected "
+            "when another one changes.",
             "",
         ]
     )

@@ -86,6 +86,7 @@ powerbi-knowledge-v5/
 ├── evidence.jsonl       source, document, version, hash, section, verbatim excerpt, retrieval time
 ├── sources.jsonl · relationships.jsonl · examples.jsonl · negative.jsonl · glossary.json · conflicts.json · changelog.jsonl
 ├── ai/knowledge.jsonl   AI Knowledge Source: one self-contained text record per item with citations (index this)
+├── ai/index.json        navigation index: taxonomy → ids, subjects → ids, counts, recommended filters
 ├── ai/knowledge.md      the same knowledge grouped by taxonomy (long-context ingestion / reading)
 ├── knowledge.html · README.md
 └── ext/                 optional plugin-provided files (DomainPlugin.export_extensions)
@@ -96,6 +97,14 @@ DIRECT item has verified evidence; DERIVED items have a `derived_from` chain), c
 then integrity hashing. Canonical serialisation (sorted keys, ordered records, UTC timestamps, no volatile fields, no
 identity in rendered files) makes unchanged knowledge hash identically across builds; `Verify integrity` recomputes
 every hash. Included: VERIFIED, SUPPORTED, CONFLICTED, STALE (flagged) and SUPERSEDED (`historical: true`).
+
+**AI Knowledge Source** (`ai/`): each `ai/knowledge.jsonl` record carries a `text` block that stands on its own —
+statement, explanation, code, structured details (expected result, common mistake, how to validate), scope
+(product version, effective dates) and numbered sources — plus metadata an AI system can filter on: `usage`
+(`cite` / `caution` for CONFLICTED–STALE / `historical` for superseded), `verification_level`, `polarity`
+(negative records say what does *not* work), `validated_by`, `dependencies` and `citations` (documents with
+url/title/section/excerpt, or the person/organisation that provided the knowledge). The snapshot README spells out
+the consumption steps; `ai/index.json` lets an agent navigate by taxonomy or subject without reading everything.
 
 **Delta snapshots** (`Export delta` in the UI, `kp export delta powerbi [--base <id>]`) describe what changed between
 two full snapshots. A fresh full snapshot is built as the head, then diffed record-by-record against the base using
