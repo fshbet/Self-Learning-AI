@@ -9,7 +9,7 @@ description: >
   the Power BI Service, administration, security, gateways and refresh, the REST API,
   and Microsoft Fabric integration.
 
-knowledge_types: [fact, definition, procedure, example, best_practice, limitation, warning]
+knowledge_types: [fact, definition, procedure, example, best_practice, limitation, warning, anti_pattern]
 
 taxonomy:
   - name: DAX

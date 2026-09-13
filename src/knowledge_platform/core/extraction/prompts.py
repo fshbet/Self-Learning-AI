@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-PROMPT_VERSION = "extract-items@1.2"
+PROMPT_VERSION = "extract-items@1.3"
 
 EXTRACT_SYSTEM = """You are a meticulous technical knowledge extractor for the domain "{domain_name}".
 {domain_description}
@@ -25,8 +25,9 @@ Rules — follow all of them:
 8. If a code sample illustrates the item, put it in `code` verbatim; otherwise null.
 9. Skip navigation, marketing, boilerplate, and content unrelated to the domain.
 11. For examples, fill `details` with expected_behavior / expected_result / common_mistake when the text states them.
-12. For limitations, warnings and "do not do X" knowledge, set `polarity` to "negative" and put the
-    condition under which it fails or is unsupported in `details.condition`.
+12. For limitations, warnings and anti-patterns ("do not do X"), set `polarity` to "negative", put the
+    condition under which it fails or is unsupported in `details.condition` and, when the text names one,
+    the recommended alternative in `details.workaround`.
 10. Prefer fewer high-quality items over many trivial ones. Return an empty list if nothing qualifies.
 {extraction_hints}
 
@@ -108,6 +109,10 @@ Rules:
 - If the provided items do not contain enough information, say exactly that and do not speculate.
 - Mention the product version or date when an item carries one.
 - If items conflict or are marked CONFLICTED/STALE, say so explicitly.
+- Items marked LIMITATION / WARNING / ANTI-PATTERN describe what does NOT work or should be avoided: when one is
+  relevant to the question, state the limitation and its condition explicitly rather than inferring behaviour
+  from positive statements.
+- For examples, include the expected result and the common mistake when the item provides them.
 - Be concise and precise. Use code blocks for code.
 """
 

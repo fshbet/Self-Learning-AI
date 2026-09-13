@@ -55,8 +55,8 @@ Legend: ✅ complete · 🟡 partial / needs modification · ❌ missing · ⚪ 
 | *15* | Automated self-evaluation | ❌ | Golden set exists (9 Power BI questions) and is loaded by the plugin; no runner, no metrics, no history |
 | *16* | Self-correction loop | 🟡 | Human review + audit trail exist; no failure-analysis output; rule "no automatic knowledge change" already true |
 | *17* | Dependency graph + revalidation | ❌ | No relations table; no `needs_revalidation` |
-| *18* | Examples as first-class knowledge | 🟡 | `knowledge_type=example` + `code` column; no expected result / common mistake / validation method structure |
-| *19* | Negative knowledge | 🟡 | `limitation`, `warning` types exist and are searchable; no explicit polarity, no `anti_pattern`, not separately exported |
+| *18* | Examples as first-class knowledge | ✅ (P2/P6) | `details` (expected_behavior/expected_result/common_mistake/validation_method), validators, `example_of` relations, `examples.jsonl`, entry form |
+| *19* | Negative knowledge | ✅ (P2/P6) | `polarity`, `anti_pattern` type, `details.condition/workaround`, `negative.jsonl`, answer-context labels, `negative_coverage` eval metric |
 | *20* | User URLs/keywords survive sync | ✅ | `origin` column; sync only touches `plugin` rows; API tests cover it |
 | *21* | Source registry | 🟡 | All listed fields exist except: `relevance`, `reliability_history` (column exists, never updated), approval state (= status CANDIDATE/ACTIVE) ✓; per-source interval editable via API only |
 | *22* | Collection strategy | ✅/🟡 | Scoped, ranked by authority, dedup, relevance filter (heuristic). Deep reference following limited to same-host scope — by design |

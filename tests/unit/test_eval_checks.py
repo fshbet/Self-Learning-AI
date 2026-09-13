@@ -98,3 +98,42 @@ def test_failure_causes_and_metrics_and_regression():
     assert regressed and details["metrics"]["accuracy"]["delta"] == -0.4
     assert not detect_regression({"accuracy": 0.9}, {"accuracy": 0.92}, 0.05)[0]
     assert not detect_regression({"accuracy": 0.5}, None, 0.05)[0]
+
+
+def test_negative_questions_need_negative_knowledge_cited():
+    q = EvalQuestion(id="n1", question="?", required_concepts=["not all"], negative=True, topic="DAX")
+    positive_only = run_all_checks(
+        answer="Not all functions exist everywhere.",
+        insufficient_flag=False,
+        question=q,
+        cited=[CitedItem(id="a", n=1, status="VERIFIED", evidence_verified=True, topic="DAX")],
+        retrieved=[RetrievedItem(id="a", topic="DAX")],
+    )
+    assert positive_only["negative_knowledge"]["value"] == 0.0
+    assert "limitation_not_surfaced" in failure_causes(positive_only, {}, False)
+    with_negative = run_all_checks(
+        answer="Not all functions exist everywhere.",
+        insufficient_flag=False,
+        question=q,
+        cited=[CitedItem(id="b", n=1, status="VERIFIED", evidence_verified=True, topic="DAX", polarity="negative")],
+        retrieved=[RetrievedItem(id="b", topic="DAX")],
+    )
+    assert with_negative["negative_knowledge"] == {
+        "ok": True,
+        "detail": "negative-knowledge items cited [1]",
+        "value": 1.0,
+        "cited_negative": [1],
+    }
+    # informational for ordinary questions, and a metric only over negative questions
+    plain = EvalQuestion(id="p1", question="?", topic="DAX")
+    assert (
+        run_all_checks(answer="x", insufficient_flag=False, question=plain, cited=[], retrieved=[])[
+            "negative_knowledge"
+        ]["value"]
+        is None
+    )
+    m = compute_metrics(
+        [_result("n1", True, checks=with_negative), _result("p1", True, checks={"abstention": {"ok": True}})],
+        [q, plain],
+    )
+    assert m["negative_coverage"] == 1.0

@@ -132,7 +132,8 @@ export default function AddKnowledge({ open, onClose, onCreated }: { open: boole
             <>
               <label className="text-xs muted">Expected behaviour<input className="input w-full mt-1" value={f.details?.expected_behavior ?? ""} onChange={(e) => setDetail("expected_behavior", e.target.value)} /></label>
               <label className="text-xs muted">Expected result<input className="input w-full mt-1" value={f.details?.expected_result ?? ""} onChange={(e) => setDetail("expected_result", e.target.value)} /></label>
-              <label className="text-xs muted md:col-span-2">Common mistake<input className="input w-full mt-1" value={f.details?.common_mistake ?? ""} onChange={(e) => setDetail("common_mistake", e.target.value)} /></label>
+              <label className="text-xs muted">Common mistake<input className="input w-full mt-1" value={f.details?.common_mistake ?? ""} onChange={(e) => setDetail("common_mistake", e.target.value)} /></label>
+              <label className="text-xs muted">How to validate<input className="input w-full mt-1" placeholder="e.g. run the measure on the sample model and compare totals" value={f.details?.validation_method ?? ""} onChange={(e) => setDetail("validation_method", e.target.value)} /></label>
             </>
           )}
         </div>

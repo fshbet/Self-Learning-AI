@@ -20,6 +20,7 @@ const METRICS: { key: string; label: string; higherIsBetter: boolean }[] = [
   { key: "contradiction_handling", label: "Contradiction handling", higherIsBetter: true },
   { key: "version_correctness", label: "Version correctness", higherIsBetter: true },
   { key: "validator_success", label: "Validator success", higherIsBetter: true },
+  { key: "negative_coverage", label: "Negative-knowledge coverage", higherIsBetter: true },
 ];
 
 function fmt(v: number | null | undefined): string {

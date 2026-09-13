@@ -180,8 +180,11 @@ URLs and keywords to it from the UI exactly like Power BI. Advanced users can ad
   <li>Choose the <strong>provenance</strong>: <em>user</em> (your own knowledge) or <em>organisation</em> (an internal standard or
   policy). Say what it is based on and how much it should be trusted (authority). Items keep this label everywhere —
   lists, answers and exports — so they are never confused with official documentation.</li>
-  <li>For things that do <em>not</em> work, set polarity to <strong>negative</strong> and describe the condition. Negative knowledge
-  is searchable and exported separately.</li>
+  <li>For things that do <em>not</em> work, set polarity to <strong>negative</strong> and describe the condition (and a workaround if
+  there is one). Negative knowledge is searchable, exported separately and handed to the answer model as an explicit
+  <em>LIMITATION</em> / <em>WARNING</em> so answers state it rather than guess.</li>
+  <li>For <strong>examples</strong>, add the code, the expected result, the common mistake and how to validate it. Examples are
+  checked by the domain validators and linked to the definitions and facts they illustrate.</li>
 </ul>
 <p>Every item also shows its <strong>origin</strong>: <em>direct</em> (stated by a source), <em>validated</em> (passed a domain
 validator), <em>derived</em> or <em>synthesized</em> (built from other items, with the chain recorded).</p>

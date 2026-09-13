@@ -133,8 +133,15 @@ Every item records **how** it was obtained and **where** it came from (req. 8–
 |---|---|---|
 | `origin` | `DIRECT`, `EXPERIMENTALLY_VALIDATED`, `DERIVED`, `SYNTHESIZED` | stated verbatim by a source · plus passed a domain validator · derived/combined from other items (evidence chain via `derived_from` relations) |
 | `provenance` | `OFFICIAL`, `EXTERNAL`, `COMMUNITY`, `USER`, `ORGANIZATION`, `DERIVED` | from the *class* of the most authoritative source; `USER`/`ORGANIZATION` only for knowledge a person entered (Knowledge → **Add knowledge**) — a URL a user adds is still official/external content |
-| `polarity` | `positive`, `negative` | negative = what does **not** work (limitations, warnings, conditions in `details.condition`); searchable, exported as `negative.jsonl` |
-| `details` | structured fields | examples: `expected_behavior`, `expected_result`, `common_mistake`; negatives: `condition` |
+| `polarity` | `positive`, `negative` | negative = what does **not** work (`limitation`, `warning`, `anti_pattern`); searchable, exported as `negative.jsonl`, shown to the answer model as LIMITATION/WARNING blocks so limitations are stated, not inferred |
+| `details` | structured fields | examples: `expected_behavior`, `expected_result`, `common_mistake`, `validation_method`; negatives: `condition`, `workaround` |
+
+**Examples and negative knowledge are first-class** (req. 18–19): examples keep their code, expected result, common
+mistake and validation method, run through the domain validators (results exported in `examples.jsonl`) and are linked
+`example_of` the definitions/facts they illustrate. Negative knowledge is extracted with its condition and workaround,
+filtered on the Knowledge page (polarity), rendered with a `Limitation:` / `Warning:` prefix in the AI Knowledge Source,
+and evaluated: golden questions marked `negative: true` only pass the **negative-knowledge coverage** check when the
+answer cites a negative item — otherwise the finding `limitation_not_surfaced` tells you which limitation to extract.
 
 Human-authored items carry a `human` evidence record with the author, declared authority and what it is based on; they go
 through the same dedup, validators, scoring, conflicts and export as extracted knowledge and stay distinguishable.
@@ -155,7 +162,7 @@ detection and clears the flag only when all dependencies are live again. Flagged
 
 Every domain plugin ships a golden question set (`evaluation.yaml`). The runner answers each question from the current
 knowledge base, applies mechanical checks (required concepts, citation validity, abstention, stale/conflict flagging,
-version, validators, retrieval precision/recall) and an LLM judge (correctness, evidence support, hallucinated claims);
+version, validators, negative-knowledge coverage, retrieval precision/recall) and an LLM judge (correctness, evidence support, hallucinated claims);
 a question passes only when both agree. Metrics and per-question results are stored, each run is compared with the
 previous run on the same dataset version, and a drop in accuracy or citation correctness beyond
 `KP_EVAL_REGRESSION_THRESHOLD` (default 5 points) flags a **regression** on the dashboard.

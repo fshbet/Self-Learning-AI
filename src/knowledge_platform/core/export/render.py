@@ -11,7 +11,7 @@ from .schema import ConflictRecord, EvidenceRecord, KnowledgeRecord, Manifest
 
 RENDER_VERSION = "render@1.1"  # bump when README/markdown/html output changes: it alters file hashes
 
-TYPE_ORDER = ["definition", "fact", "procedure", "example", "best_practice", "limitation", "warning"]
+TYPE_ORDER = ["definition", "fact", "procedure", "example", "best_practice", "limitation", "warning", "anti_pattern"]
 TYPE_LABEL = {
     "definition": "Definitions",
     "fact": "Facts",
@@ -20,6 +20,7 @@ TYPE_LABEL = {
     "best_practice": "Best practices",
     "limitation": "Limitations",
     "warning": "Warnings",
+    "anti_pattern": "Anti-patterns",
 }
 
 

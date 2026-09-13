@@ -1,5 +1,5 @@
 # Golden evaluation set (§34). Versioned with the plugin. Extend as knowledge grows.
-version: 0.2.0
+version: 0.3.0
 questions:
   - id: dax-calculate-01
     question: What does the CALCULATE function do in DAX?
@@ -69,10 +69,17 @@ questions:
     question: What happens when DIVIDE's denominator is zero?
     expected_answer: DIVIDE returns BLANK (or the optional alternate result) instead of raising a division-by-zero error.
     required_concepts: [BLANK]
-    negative: true
     difficulty: easy
     risk_class: technical
     topic: DAX/Functions
+  - id: negative-versions-01
+    question: Are all DAX functions available in every version of Power BI Desktop, Analysis Services and Power Pivot in Excel?
+    expected_answer: No. Not all DAX functions are supported or included in all versions of Power BI Desktop, Analysis Services and Power Pivot in Excel; some are only available in newer releases.
+    required_concepts: [not all]
+    negative: true
+    difficulty: easy
+    risk_class: technical
+    topic: DAX
   - id: visual-calc-01
     question: Which DAX functions are only available in visual calculations?
     expected_answer: Functions such as PREVIOUS, NEXT, FIRST, LAST, LOOKUP and LOOKUPWITHTOTALS are only available in visual calculations.

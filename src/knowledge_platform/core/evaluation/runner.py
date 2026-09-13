@@ -51,6 +51,7 @@ METRIC_KEYS = (
     "contradiction_handling",
     "version_correctness",
     "validator_success",
+    "negative_coverage",
     "unanswered_rate",
 )
 REGRESSION_METRICS = ("accuracy", "citation_correctness")
@@ -76,6 +77,7 @@ def _item_facts(session: Session, ids: list[uuid.UUID]) -> dict[str, dict[str, A
             "status": it.status,
             "topic": it.topic,
             "product_version": it.product_version,
+            "polarity": it.polarity,
             "evidence_verified": any(e.verified for e in it.evidence if e.evidence_type == "extraction"),
             "evidence_urls": [e.url for e in it.evidence if e.url],
             "validator_results": [bool(e.details.get("passed")) for e in it.evidence if e.evidence_type == "validator"],
@@ -156,6 +158,7 @@ def evaluate_question(session: Session, plugin: DomainPlugin, q: EvalQuestion, *
             evidence_urls=facts.get(c["id"], {}).get("evidence_urls", []),
             validator_results=facts.get(c["id"], {}).get("validator_results", []),
             product_version=facts.get(c["id"], {}).get("product_version"),
+            polarity=facts.get(c["id"], {}).get("polarity", "positive"),
         )
         for c in ans.citations
     ]
@@ -229,6 +232,7 @@ def compute_metrics(results: list[EvaluationResult], questions: list[EvalQuestio
         "contradiction_handling": _rate([ok(r, "contradictions") for r in answerable]),
         "version_correctness": _rate([ok(r, "version") for r in answerable if by_id[r.question_id].expected_version]),
         "validator_success": _rate([val(r, "validators") for r in answerable]),
+        "negative_coverage": _rate([val(r, "negative_knowledge") for r in answerable if by_id[r.question_id].negative]),
         "unanswered_rate": _rate([1.0 if r.checks["abstention"].get("abstained") else 0.0 for r in answerable]),
         "mean_latency_ms": int(sum(r.latency_ms for r in results) / len(results)) if results else 0,
         "failure_causes": dict(Counter(c for r in results for c in r.failure_causes)),

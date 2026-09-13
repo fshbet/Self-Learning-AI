@@ -42,6 +42,7 @@ class CitedItem:
     evidence_urls: list[str] = field(default_factory=list)
     validator_results: list[bool] = field(default_factory=list)  # passed flags of validator evidence
     product_version: str | None = None
+    polarity: str = "positive"
 
 
 @dataclass
@@ -170,6 +171,20 @@ def check_version(answer: str, expected_version: str) -> dict[str, Any]:
     return {"ok": ok, "detail": f"expected version '{expected_version}' {'mentioned' if ok else 'missing'}"}
 
 
+def check_negative_knowledge(cited: list[CitedItem], negative: bool) -> dict[str, Any]:
+    """Questions about limitations must be answered from negative knowledge (req. 19), not inferred from
+    positive statements."""
+    if not negative:
+        return {"ok": True, "detail": "n/a", "value": None}
+    hits = [c.n for c in cited if c.polarity == "negative"]
+    return {
+        "ok": bool(hits),
+        "detail": f"negative-knowledge items cited {hits}" if hits else "no limitation/warning item cited",
+        "value": 1.0 if hits else 0.0,
+        "cited_negative": hits,
+    }
+
+
 def check_validators(cited: list[CitedItem]) -> dict[str, Any]:
     results = [r for c in cited for r in c.validator_results]
     if not results:
@@ -200,6 +215,7 @@ def run_all_checks(
         checks["contradictions"] = check_contradictions(cited, answer)
         checks["version"] = check_version(answer, question.expected_version)
         checks["validators"] = check_validators(cited)
+        checks["negative_knowledge"] = check_negative_knowledge(cited, getattr(question, "negative", False))
     return checks
 
 
@@ -248,6 +264,8 @@ def failure_causes(checks: dict[str, dict[str, Any]], judge: dict[str, Any], exp
         causes.append("wrong_or_missing_version")
     if c.get("validators", {}).get("value") not in (None, 1.0):
         causes.append("validator_failures_cited")
+    if c.get("negative_knowledge", {}).get("value") == 0.0:
+        causes.append("limitation_not_surfaced")
     if judge and judge.get("correct") is False:
         causes.append("judge_incorrect")
     if judge and judge.get("supported_by_citations") is False:
@@ -267,6 +285,8 @@ SUGGESTED_ACTIONS = {
     "conflict_cited_without_warning": "Resolve the open conflict on the Review page.",
     "wrong_or_missing_version": "Add product-version information to the items or their source.",
     "validator_failures_cited": "Cited examples failed a domain validator: review them.",
+    "limitation_not_surfaced": "The answer did not cite a limitation/warning item: extract or add the negative "
+    "knowledge (polarity: negative) that covers this question.",
     "judge_incorrect": "Answer disagrees with the reference: inspect cited items vs. expected answer (one is wrong).",
     "judge_unsupported": "Answer contains claims beyond the citations: tighten the answer prompt or add knowledge.",
     "hallucination": "Answer invented claims: tighten the answer prompt; consider a stronger answer model.",

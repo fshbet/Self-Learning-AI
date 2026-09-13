@@ -25,6 +25,16 @@ class Answer:
     insufficient: bool = False
 
 
+_DETAIL_LABELS = {
+    "condition": "Condition",
+    "workaround": "Workaround",
+    "expected_behavior": "Expected behaviour",
+    "expected_result": "Expected result",
+    "common_mistake": "Common mistake",
+    "validation_method": "How to validate",
+}
+
+
 def _format_items(results: list[SearchResult]) -> str:
     lines = []
     for n, r in enumerate(results, start=1):
@@ -34,11 +44,19 @@ def _format_items(results: list[SearchResult]) -> str:
             meta.append(f"version={it.product_version}")
         if it.publication_date:
             meta.append(f"date={it.publication_date}")
-        block = f"[{n}] ({', '.join(meta)}) {it.statement}"
+        label = ""
+        if it.polarity == "negative":
+            label = f"{it.knowledge_type.replace('_', '-').upper()}: "
+        elif it.knowledge_type == "example":
+            label = "EXAMPLE: "
+        block = f"[{n}] ({', '.join(meta)}) {label}{it.statement}"
         if it.explanation:
             block += f"\n    Explanation: {it.explanation[:500]}"
         if it.code:
             block += f"\n    Code:\n{it.code[:800]}"
+        for key, name in _DETAIL_LABELS.items():
+            if (it.details or {}).get(key):
+                block += f"\n    {name}: {str(it.details[key])[:300]}"
         lines.append(block)
     return "\n\n".join(lines)
 
