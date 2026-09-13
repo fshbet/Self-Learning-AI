@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from ..models import Conflict, Document, DocumentStatus, Evidence, ItemStatus, KnowledgeItem, Source, utcnow
 from .extraction.extractor import ExtractedItem, extract_from_text
+from .extraction.prompts import PROMPT_VERSION
 from .plugins.base import DomainPlugin
 from .quality.dedup import find_exact, find_near
 from .quality.provenance import derive_provenance
@@ -71,6 +72,7 @@ def _evidence_summary(session: Session, item: KnowledgeItem) -> tuple[int, int, 
     authorities = []
     if source_ids:
         authorities = list(session.execute(select(Source.authority).where(Source.id.in_(source_ids))).scalars())
+        source_ids = independent_source_ids(session, item, source_ids)
     # user/organization-provided knowledge (req. 9): the human evidence carries its own declared authority
     provided = [e for e in item.evidence if e.evidence_type == "human" and e.details.get("provided")]
     distinct_keys = {str(s) for s in source_ids} | {f"human:{e.details.get('provided_by', '?')}" for e in provided}
@@ -81,6 +83,29 @@ def _evidence_summary(session: Session, item: KnowledgeItem) -> tuple[int, int, 
     validator_passed = bool(validator_results) and all(v["passed"] for v in validator_results)
     human_approved = any(e.evidence_type == "human" and e.details.get("approved") for e in item.evidence)
     return len(distinct_keys), max(authorities, default=0), validator_passed, human_approved, validator_results
+
+
+def independent_source_ids(session: Session, item: KnowledgeItem, source_ids: set[uuid.UUID]) -> set[uuid.UUID]:
+    """Collapse sources whose documents mirror another source's document: a copy is not an independent
+    confirmation (source independence). The mirror's evidence counts for the canonical document's source."""
+    doc_ids = {e.document_id for e in item.evidence if e.document_id and e.evidence_type == "extraction" and e.verified}
+    if not doc_ids:
+        return source_ids
+    mirrors = session.execute(
+        select(Document.source_id, Document.canonical_document_id).where(
+            Document.id.in_(doc_ids), Document.canonical_document_id.is_not(None)
+        )
+    ).all()
+    if not mirrors:
+        return source_ids
+    canonical_sources = dict(
+        session.execute(select(Document.id, Document.source_id).where(Document.id.in_([c for _, c in mirrors]))).all()
+    )
+    out = set(source_ids)
+    for src_id, canonical_id in mirrors:
+        out.discard(src_id)
+        out.add(canonical_sources.get(canonical_id, src_id))
+    return out
 
 
 def has_open_conflict(session: Session, item: KnowledgeItem) -> bool:
@@ -247,10 +272,21 @@ def ingest_document(
     stats = IngestStats()
     stats.items_stale = mark_stale_items(session, doc)
 
+    # section-level delta (req. 25): chunks whose text and prompt version are unchanged since the last extraction
+    # are not sent to the model again — their items already exist and keep their (re-verified) evidence.
+    previous = {h["sha256"] for h in (doc.chunk_hashes or []) if h.get("prompt") == PROMPT_VERSION and h.get("sha256")}
     extracted, ext_stats = extract_from_text(
-        plugin, text=doc.text, title=doc.title, url=doc.url, session=session, run_id=run_id, max_chunks=max_chunks
+        plugin,
+        text=doc.text,
+        title=doc.title,
+        url=doc.url,
+        session=session,
+        run_id=run_id,
+        max_chunks=max_chunks,
+        skip_hashes=previous if doc.version > 1 or previous else None,
     )
     stats.extraction = ext_stats
+    doc.chunk_hashes = ext_stats.pop("chunk_hashes", [])
 
     new_items: list[KnowledgeItem] = []
     touched: dict[uuid.UUID, KnowledgeItem] = {}

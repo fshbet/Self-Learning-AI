@@ -180,7 +180,11 @@ On the **Sources** page of the UI:
 
 * **Add your own URL** — any documentation site, manual or blog. Set authority (trust, 0–100), page budget and link depth;
   the crawler stays under the path you give it. User-added sources are tagged `user`, survive plugin re-syncs, and can be
-  paused, re-crawled or removed. API: `POST /api/sources`.
+  paused, re-crawled or removed. API: `POST /api/sources`. Internal addresses (localhost, private ranges, cloud
+  metadata endpoints, `*.local`) are refused — see *SSRF guard* below.
+* **Edit a source** (pencil) — source class (official / external / community / organization), authority, relevance,
+  re-check interval, link depth and page budget are per source; the scheduler re-crawls each source when its own
+  interval is due. API: `PATCH /api/sources/{id}`.
 * **Discovery keywords** — search phrases merged with the plugin's built-in queries when **Discover sources** runs
   (needs SearXNG: `docker compose --profile discovery up -d`). Found sites appear as candidates you approve.
   API: `POST /api/domains/{id}/keywords`.
@@ -228,6 +232,14 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 * **Contradictions are surfaced, not resolved silently** — same subject and predicate with a different object opens a conflict
   for human review.
 * **Change detection** — content hashes + ETag/If-Modified-Since; when a page changes, items whose quotes vanished become `STALE`.
+  **Section-level delta**: every chunk's hash (heading path + text, plus the extractor prompt version) is stored on the
+  document; on re-extraction only changed sections go to the model — unchanged sections keep their items and evidence.
+* **Source independence** — the same text fetched from a second source (a mirror, a syndicated copy) is linked to the
+  earliest copy (`documents.canonical_document_id`) and counts **once** in confidence scoring; only genuinely independent
+  sources raise the agreement factor.
+* **SSRF guard** — every outbound fetch (plugin sources, user URLs, discovered pages and every redirect hop) must resolve
+  to a public address; loopback, RFC 1918, link-local, CGNAT, multicast, reserved ranges and internal hostnames are
+  refused, as are non-http(s) schemes and URLs carrying credentials (`KP_FETCH_ALLOW_PRIVATE=true` for intranet crawls).
 * **Responsible collection** — robots.txt (incl. Crawl-delay), identified User-Agent, per-host rate limits, backoff on 429/5xx.
 * **Accounting** — every model call is recorded (model, tokens, latency) so cost per knowledge item is visible on the dashboard.
 

@@ -63,6 +63,29 @@ class UrlScope:
         return parts.path.startswith(self.base_path)
 
 
+def link_mirror(session: Session, doc: Document) -> Document | None:
+    """Source independence (req. 22/31): the same text fetched from a *different* source is a mirror, not a second
+    confirmation. The earliest copy is canonical; mirrors point at it and count once in confidence scoring."""
+    canonical = session.execute(
+        select(Document)
+        .where(
+            Document.domain_id == doc.domain_id,
+            Document.content_hash == doc.content_hash,
+            Document.id != doc.id,
+            Document.canonical_document_id.is_(None),
+        )
+        .order_by(Document.fetched_at.asc(), Document.id.asc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if canonical is None or canonical.source_id == doc.source_id:
+        doc.canonical_document_id = None
+        return None
+    doc.canonical_document_id = canonical.id
+    doc.meta = {**(doc.meta or {}), "mirror_of": canonical.url}
+    log.info("document %s mirrors %s (same content from another source)", doc.url, canonical.url)
+    return canonical
+
+
 def _raw_key(domain_id: str, raw: bytes, content_type: str) -> str:
     digest = hashlib.sha256(raw).hexdigest()
     ext = "pdf" if "pdf" in content_type.lower() else "html"
@@ -165,6 +188,7 @@ def crawl_source(
                     )
                     session.add(doc)
                     session.flush()
+                    link_mirror(session, doc)
                     stats.new += 1
                     stats.to_extract.append(str(doc.id))
                 elif existing.content_hash != nd.content_hash:
@@ -181,6 +205,7 @@ def crawl_source(
                     existing.byte_size = len(result.content)
                     existing.status = DocumentStatus.FETCHED
                     existing.error = None
+                    link_mirror(session, existing)
                     stats.changed += 1
                     stats.to_extract.append(str(existing.id))
                     source.last_changed_at = utcnow()

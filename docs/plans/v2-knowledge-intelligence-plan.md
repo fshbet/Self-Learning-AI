@@ -58,11 +58,11 @@ Legend: ✅ complete · 🟡 partial / needs modification · ❌ missing · ⚪ 
 | *18* | Examples as first-class knowledge | ✅ (P2/P6) | `details` (expected_behavior/expected_result/common_mistake/validation_method), validators, `example_of` relations, `examples.jsonl`, entry form |
 | *19* | Negative knowledge | ✅ (P2/P6) | `polarity`, `anti_pattern` type, `details.condition/workaround`, `negative.jsonl`, answer-context labels, `negative_coverage` eval metric |
 | *20* | User URLs/keywords survive sync | ✅ | `origin` column; sync only touches `plugin` rows; API tests cover it |
-| *21* | Source registry | 🟡 | All listed fields exist except: `relevance`, `reliability_history` (column exists, never updated), approval state (= status CANDIDATE/ACTIVE) ✓; per-source interval editable via API only |
+| *21* | Source registry | ✅ (P2/P7) | `source_class`, `relevance`, approval state, per-source interval/class/authority/scope editable in the Sources UI; `reliability_history` still unused |
 | *22* | Collection strategy | ✅/🟡 | Scoped, ranked by authority, dedup, relevance filter (heuristic). Deep reference following limited to same-host scope — by design |
 | *23* | Media handling | ⚪ | No media collected at all (compliant with "do not store everything"); OCR/transcripts not implemented — recommend defer |
 | *24* | Hot/cold storage | ✅ | Postgres (hot) + object store (raw HTML/PDF) |
-| *25* | Delta processing | 🟡 | ETag/Last-Modified/doc hash ✓; **section-level hashes** missing → unchanged chunks are re-extracted when any part of a page changes |
+| *25* | Delta processing | ✅ (P7) | ETag/Last-Modified/doc hash + section-level chunk hashes (`documents.chunk_hashes`): unchanged sections skip the model |
 | *26* | Plugin export contract | ❌ | Contract lacks export hooks |
 | *27* | AI Knowledge Source export | ✅ (P1/P5) | `ai/knowledge.jsonl` self-contained records + usage hints, `ai/index.json`, `ai/knowledge.md`, README consumption guide |
 | *28* | Human-readable export | ✅ (P1) | `ai/knowledge.md` + `knowledge.html` + README (PDF not provided, per D8) |

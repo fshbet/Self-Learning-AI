@@ -25,7 +25,7 @@ from knowledge_platform.core.pipeline import ingest_document
 from knowledge_platform.core.plugins.registry import load_plugin_dir
 from knowledge_platform.core.retrieval.search import hybrid_search
 from knowledge_platform.db import session_scope
-from knowledge_platform.models import Conflict, Document, Domain, ItemStatus, KnowledgeItem, Source
+from knowledge_platform.models import Conflict, Document, Domain, Evidence, ItemStatus, KnowledgeItem, Source
 
 pytestmark = requires_db
 
@@ -229,8 +229,15 @@ def test_crawl_extract_dedup_stale_and_search(plugin, fake_providers):
             select(Document).where(Document.domain_id == DOMAIN_ID, Document.url.like("%/calculate"))
         ).scalar_one()
         assert changed.version == 2
+        assert changed.chunk_hashes and all(h["sha256"] for h in changed.chunk_hashes)
         result = ingest_document(s, changed, plugin)
         assert result.conflicts >= 1 or result.items_stale >= 1
+        # section-level delta: the chunk hashes were re-recorded for version 2
+        assert result.extraction["chunks"] == len(changed.chunk_hashes)
+        # re-ingesting the *same* version sends nothing to the model: every chunk hash is unchanged
+        again = ingest_document(s, changed, plugin)
+        assert again.extraction["chunks_unchanged"] == again.extraction["chunks"] - again.extraction["chunks_skipped"]
+        assert again.extraction["raw_items"] == 0
 
     with session_scope() as s:
         conflicts = s.execute(select(Conflict).where(Conflict.domain_id == DOMAIN_ID)).scalars().all()
@@ -238,6 +245,66 @@ def test_crawl_extract_dedup_stale_and_search(plugin, fake_providers):
             i.status for i in s.execute(select(KnowledgeItem).where(KnowledgeItem.domain_id == DOMAIN_ID)).scalars()
         }
         assert conflicts or ItemStatus.STALE in statuses
+
+
+@respx.mock
+def test_mirror_source_is_not_an_independent_confirmation(plugin, fake_providers):
+    """The same page served by a second source is linked as a mirror and does not raise the source count."""
+    _mock_site(2)
+    page = (FIXTURES / "page_v2.html").read_text()
+    respx.get("https://mirror.test/robots.txt").mock(return_value=httpx.Response(200, text="User-agent: *\nAllow: /\n"))
+    respx.get("https://mirror.test/docs/").mock(
+        return_value=httpx.Response(200, text=page, headers={"Content-Type": "text/html"})
+    )
+    with session_scope() as s:
+        mirror = Source(
+            domain_id=DOMAIN_ID,
+            key="mirror",
+            origin="user",
+            name="Mirror site",
+            url="https://mirror.test/docs/",
+            publisher="mirror",
+            source_type="docs",
+            authority=80,
+            access_type="public",
+            license="unknown",
+            permissions={},
+            crawl_frequency_hours=24,
+            max_depth=0,
+            max_pages=5,
+            status="ACTIVE",
+            enabled=True,
+        )
+        s.add(mirror)
+        s.flush()
+        stats = crawl_source(s, mirror, fetcher=Fetcher(default_delay=0, max_retries=1))
+        assert stats.new == 1
+        doc = s.execute(select(Document).where(Document.source_id == mirror.id)).scalar_one()
+        original = s.execute(
+            select(Document).where(Document.domain_id == DOMAIN_ID, Document.url.like("%/calculate"))
+        ).scalar_one()
+        assert doc.canonical_document_id == original.id and doc.meta["mirror_of"] == original.url
+        # extraction from the mirror attaches evidence, but the item still has one *independent* source
+        result = ingest_document(s, doc, plugin)
+        assert result.items_merged + result.items_near_duplicate + result.items_created >= 1
+        s.expire_all()
+        item = (
+            s.execute(
+                select(KnowledgeItem).where(
+                    KnowledgeItem.id.in_(select(Evidence.knowledge_item_id).where(Evidence.document_id == doc.id)),
+                    KnowledgeItem.status != ItemStatus.REJECTED,
+                )
+            )
+            .scalars()
+            .first()
+        )
+        assert item is not None
+        sources = {e.source_id for e in item.evidence if e.evidence_type == "extraction" and e.verified}
+        assert len(sources) == 2
+        assert item.quality_factors["source_agreement"] == 1 / 3  # one independent source, not two
+        # leave the fixture domain as it was for the snapshot tests that follow
+        s.execute(delete(Evidence).where(Evidence.document_id == doc.id))
+        s.delete(mirror)
 
 
 def test_evaluation_runner_records_metrics_and_regression(plugin, fake_providers):

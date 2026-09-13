@@ -18,8 +18,15 @@ from urllib.parse import urlsplit
 import httpx
 
 from ...config import get_settings
+from .netguard import check_url
 
 log = logging.getLogger(__name__)
+
+
+def _guard_request(request: httpx.Request) -> None:
+    ok, reason = check_url(str(request.url))
+    if not ok:
+        raise FetchBlocked(f"refusing {request.url}: {reason}")
 
 
 class FetchBlocked(Exception):
@@ -67,6 +74,7 @@ class Fetcher:
             },
             timeout=timeout or s.crawl_timeout_seconds,
             follow_redirects=True,
+            event_hooks={"request": [_guard_request]},  # SSRF guard applies to every hop, redirects included
         )
         self._hosts: dict[str, _HostPolicy] = {}
         self._hosts_lock = threading.Lock()

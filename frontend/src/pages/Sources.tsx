@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Compass, Download, ExternalLink, Link2, Plus, RefreshCw, Shield, Tag, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { Compass, Download, ExternalLink, Link2, Pencil, Plus, RefreshCw, Shield, Tag, Trash2, X } from "lucide-react";
+import React, { useState } from "react";
 import { Card, Empty, ErrorBox, Loading, PageHeader, StatusChip, useToast } from "../components/ui";
 import { api, type Source } from "../lib/api";
 import { useDomain } from "../lib/domain";
@@ -25,6 +25,51 @@ function OriginChip({ origin }: { origin: Source["origin"] }) {
     discovered: "bg-violet-500/15 text-violet-700 dark:text-violet-300",
   }[origin];
   return <span className={`chip ${cls}`}>{origin}</span>;
+}
+
+const CLASS_HINT: Record<string, string> = {
+  official: "vendor / standards body documentation",
+  external: "reputable third party",
+  community: "forums, blogs, Q&A",
+  organization: "internal standards and policies",
+};
+
+/** Inline editor for the per-source knobs the scheduler and scorer use (req. 21). */
+function EditSource({ s, onSave, onCancel, busy }: { s: Source; onSave: (body: Partial<Source>) => void; onCancel: () => void; busy: boolean }) {
+  const [f, setF] = useState({
+    authority: s.authority,
+    source_class: s.source_class,
+    relevance: s.relevance,
+    crawl_frequency_hours: s.crawl_frequency_hours,
+    max_depth: s.max_depth,
+    max_pages: s.max_pages,
+  });
+  const num = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((x) => ({ ...x, [k]: Number(e.target.value) }));
+  return (
+    <tr>
+      <td colSpan={8} className="panel-2">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end p-1">
+          <label className="text-xs muted">Class
+            <select className="input w-full mt-1" value={f.source_class} onChange={(e) => setF((x) => ({ ...x, source_class: e.target.value as Source["source_class"] }))} title={CLASS_HINT[f.source_class]}>
+              {Object.keys(CLASS_HINT).map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <label className="text-xs muted">Authority (0–100)<input className="input w-full mt-1" type="number" min={0} max={100} value={f.authority} onChange={num("authority")} /></label>
+          <label className="text-xs muted">Relevance (0–100)<input className="input w-full mt-1" type="number" min={0} max={100} value={f.relevance} onChange={num("relevance")} /></label>
+          <label className="text-xs muted">Re-check every (h)<input className="input w-full mt-1" type="number" min={1} value={f.crawl_frequency_hours} onChange={num("crawl_frequency_hours")} /></label>
+          <label className="text-xs muted">Link depth<input className="input w-full mt-1" type="number" min={0} max={6} value={f.max_depth} onChange={num("max_depth")} /></label>
+          <label className="text-xs muted">Page budget<input className="input w-full mt-1" type="number" min={1} max={5000} value={f.max_pages} onChange={num("max_pages")} /></label>
+        </div>
+        <div className="flex items-center justify-between px-1 pb-1">
+          <span className="muted text-[11px]">{CLASS_HINT[f.source_class]} · authority feeds confidence; the interval is per source — the scheduler re-checks it when due.</span>
+          <div className="flex gap-1">
+            <button className="btn btn-sm" onClick={onCancel}>Cancel</button>
+            <button className="btn btn-sm btn-primary" disabled={busy} onClick={() => onSave(f)}>Save</button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
 }
 
 /** Add-your-own-URL form. Scope defaults to "pages under the same path" — see the help doc for patterns. */
@@ -195,6 +240,7 @@ export default function Sources() {
     onError: (e) => toast("err", (e as Error).message),
   });
 
+  const [editing, setEditing] = useState<string | null>(null);
   const candidates = sources.data?.filter((s) => s.status === "CANDIDATE") ?? [];
   const catalog = sources.data?.filter((s) => s.status !== "CANDIDATE") ?? [];
 
@@ -254,10 +300,12 @@ export default function Sources() {
             </thead>
             <tbody>
               {catalog.map((s) => (
-                <tr key={s.id}>
+                <React.Fragment key={s.id}>
+                <tr>
                   <td>
                     <div className="font-medium flex items-center gap-2">
                       {s.name} <OriginChip origin={s.origin} />
+                      <span className="chip panel-2" title={CLASS_HINT[s.source_class]}>{s.source_class}</span>
                     </div>
                     <a href={s.url} target="_blank" rel="noreferrer" className="muted text-xs inline-flex items-center gap-1 hover:text-accent-600">
                       {hostOf(s.url)} <ExternalLink size={10} />
@@ -291,6 +339,9 @@ export default function Sources() {
                       <button className="btn btn-sm" title="Crawl now" disabled={crawl.isPending || !s.enabled} onClick={() => crawl.mutate(s.id)}>
                         <Download size={12} />
                       </button>
+                      <button className="btn btn-sm" title="Edit class, authority, cadence and scope" onClick={() => setEditing(editing === s.id ? null : s.id)}>
+                        <Pencil size={12} />
+                      </button>
                       <button className="btn btn-sm" onClick={() => patch.mutate({ id: s.id, body: { enabled: !s.enabled } })}>
                         {s.enabled ? "Pause" : "Enable"}
                       </button>
@@ -302,6 +353,10 @@ export default function Sources() {
                     </div>
                   </td>
                 </tr>
+                {editing === s.id && (
+                  <EditSource s={s} busy={patch.isPending} onCancel={() => setEditing(null)} onSave={(body) => patch.mutate({ id: s.id, body }, { onSuccess: () => { setEditing(null); toast("ok", "Source updated"); } })} />
+                )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

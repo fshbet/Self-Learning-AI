@@ -64,6 +64,7 @@ class Settings(BaseSettings):
     crawl_default_delay_seconds: float = 1.5
     crawl_timeout_seconds: float = 30.0
     crawl_max_pages_default: int = 50
+    fetch_allow_private: bool = False  # SSRF guard: refuse loopback/private/link-local targets and redirects
 
     # Extraction
     chunk_max_chars: int = 6000

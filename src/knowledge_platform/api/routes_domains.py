@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ..core.collection.netguard import check_url
 from ..core.collection.normalize import canonicalize_url
 from ..core.domains import sync_domain
 from ..core.orchestration.jobs import start_run
@@ -178,6 +179,9 @@ def create_source(body: SourceCreate, db: Session = Depends(get_db)) -> SourceOu
     url = canonicalize_url(body.url)
     if not url:
         raise HTTPException(422, "url must be an absolute http(s) URL")
+    ok, reason = check_url(url)
+    if not ok:
+        raise HTTPException(422, f"this URL cannot be crawled: {reason}")
     dup = db.execute(select(Source).where(Source.domain_id == body.domain, Source.url == url)).scalar_one_or_none()
     if dup:
         raise HTTPException(409, f"this URL is already registered as source '{dup.name}'")

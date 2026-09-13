@@ -58,6 +58,17 @@ def test_user_source_lifecycle_and_plugin_protection():
     assert client.post("/api/sources", json={"domain": DOMAIN, "url": url}).status_code == 409
     # bad input
     assert client.post("/api/sources", json={"domain": DOMAIN, "url": "ftp://x"}).status_code == 422
+    # SSRF guard: internal addresses are refused at registration
+    for bad in ("http://127.0.0.1:5433/", "http://localhost:8010/api/settings", "http://169.254.169.254/"):
+        r = client.post("/api/sources", json={"domain": DOMAIN, "url": bad})
+        assert r.status_code == 422 and "cannot be crawled" in r.text, bad
+    # per-source cadence, class and scope are editable
+    r = client.patch(
+        f"/api/sources/{src['id']}",
+        json={"crawl_frequency_hours": 6, "source_class": "community", "authority": 40, "max_depth": 0},
+    )
+    assert r.status_code == 200 and r.json()["crawl_frequency_hours"] == 6
+    assert r.json()["source_class"] == "community" and r.json()["authority"] == 40
     assert client.post("/api/sources", json={"domain": "nope", "url": "https://x.test/"}).status_code == 404
     # plugin sync must not remove or alter the user source
     with session_scope() as s:

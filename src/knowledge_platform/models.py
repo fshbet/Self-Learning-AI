@@ -205,6 +205,12 @@ class Document(Base):
     error: Mapped[str | None] = mapped_column(Text)
     extracted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     meta: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    # section-level change detection: [{index, heading, sha256, prompt}] of the last extraction (req. 25)
+    chunk_hashes: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    # same text fetched from another source: this document mirrors the earliest one (source independence)
+    canonical_document_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("documents.id", ondelete="SET NULL"), index=True
+    )
 
     source: Mapped[Source] = relationship(back_populates="documents")
     evidence: Mapped[list[Evidence]] = relationship(back_populates="document", passive_deletes=True)

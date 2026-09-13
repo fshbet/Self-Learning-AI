@@ -109,6 +109,12 @@ def build_prompts(plugin: DomainPlugin, *, title: str, section: str, url: str, t
     return system, user
 
 
+def chunk_hash(chunk: Chunk) -> str:
+    """Section-level content hash: heading path + normalised text (req. 25)."""
+    body = " ".join(chunk.text.split())
+    return hashlib.sha256(f"{chunk.title}\n{body}".encode()).hexdigest()
+
+
 def extract_from_text(
     plugin: DomainPlugin,
     *,
@@ -118,7 +124,8 @@ def extract_from_text(
     session: Session | None = None,
     run_id: uuid.UUID | None = None,
     max_chunks: int | None = None,
-) -> tuple[list[ExtractedItem], dict[str, int]]:
+    skip_hashes: set[str] | None = None,
+) -> tuple[list[ExtractedItem], dict[str, Any]]:
     settings = get_settings()
     chunks = chunk_text(text, max_chars=settings.chunk_max_chars, min_chars=settings.chunk_min_chars)
     if max_chunks:
@@ -127,11 +134,25 @@ def extract_from_text(
     valid_topics = set(plugin.taxonomy_paths())
     model = model_for("extract")
     items: list[ExtractedItem] = []
-    stats = {"chunks": len(chunks), "chunks_skipped": 0, "raw_items": 0, "unverified_dropped": 0}
+    stats: dict[str, Any] = {
+        "chunks": len(chunks),
+        "chunks_skipped": 0,
+        "chunks_unchanged": 0,
+        "raw_items": 0,
+        "unverified_dropped": 0,
+        "chunk_hashes": [],
+    }
 
     for chunk in chunks:
+        digest = chunk_hash(chunk)
+        stats["chunk_hashes"].append(
+            {"index": chunk.index, "heading": chunk.title[:200], "sha256": digest, "prompt": PROMPT_VERSION}
+        )
         if looks_like_boilerplate(chunk):
             stats["chunks_skipped"] += 1
+            continue
+        if skip_hashes and digest in skip_hashes:
+            stats["chunks_unchanged"] += 1
             continue
         system, user = build_prompts(plugin, title=title, section=chunk.title, url=url, text=chunk.text)
         try:

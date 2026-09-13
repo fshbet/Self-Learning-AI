@@ -47,6 +47,8 @@ export type Source = {
   domain_id: string;
   key: string;
   origin: "plugin" | "user" | "discovered";
+  source_class: "official" | "external" | "community" | "organization";
+  relevance: number;
   name: string;
   url: string;
   publisher: string;
