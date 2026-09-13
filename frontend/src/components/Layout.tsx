@@ -5,6 +5,7 @@ import {
   Boxes,
   Database,
   FileText,
+  FlaskConical,
   LayoutDashboard,
   LifeBuoy,
   Lightbulb,
@@ -25,6 +26,7 @@ const NAV = [
   { to: "/knowledge", label: "Knowledge", icon: BookOpen },
   { to: "/search", label: "Search & Ask", icon: Search },
   { to: "/review", label: "Review", icon: ShieldCheck },
+  { to: "/evaluation", label: "Evaluation", icon: FlaskConical },
   { to: "/sources", label: "Sources", icon: Database },
   { to: "/documents", label: "Documents", icon: FileText },
   { to: "/pipeline", label: "Pipeline", icon: Workflow },
@@ -96,6 +98,9 @@ export default function Layout() {
               {label}
               {to === "/review" && (stats.data?.conflicts_open ?? 0) > 0 && (
                 <span className="ml-auto chip bg-rose-500/25 text-rose-200">{stats.data?.conflicts_open}</span>
+              )}
+              {to === "/evaluation" && stats.data?.evaluation?.regression && (
+                <span className="ml-auto chip bg-rose-500/25 text-rose-200">regression</span>
               )}
               {to === "/pipeline" && running > 0 && (
                 <span className="ml-auto chip bg-sky-500/25 text-sky-200 flex items-center gap-1">

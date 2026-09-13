@@ -42,12 +42,27 @@ class FakeLLM(LLMProvider):
         self.calls = 0
 
     def generate(self, *, system, user, model, temperature=0.0):
-        return LLMResult(text="Answer [1].", model=model)
+        if "swallow" in user:  # off-topic question: the answer model must abstain
+            return LLMResult(text="The knowledge base does not contain information about this.", model=model)
+        return LLMResult(text="CALCULATE modifies the filter context [1].", model=model)
 
     def generate_json(self, *, system, user, model, schema, temperature=0.0):
         self.calls += 1
         if "verdict" in json.dumps(schema):  # conflict adjudication
             return LLMResult(text=json.dumps({"verdict": "contradict", "rationale": "fixture"}), model=model)
+        if "supported_by_citations" in json.dumps(schema):  # evaluation judge
+            return LLMResult(
+                text=json.dumps(
+                    {
+                        "correct": True,
+                        "supported_by_citations": True,
+                        "hallucinated_claims": [],
+                        "missing_points": [],
+                        "rationale": "fixture",
+                    }
+                ),
+                model=model,
+            )
         text = user.split("--- SECTION TEXT START ---")[1].split("--- SECTION TEXT END ---")[0].strip()
         first = text.split(". ")[0].strip()[:160]
         obj = "filter context" if "CALCULATE" in text else "something"
@@ -96,6 +111,25 @@ def plugin(tmp_path_factory):
     (d / "plugin.yaml").write_text(
         f"api_version: '1.0'\nid: {DOMAIN_ID}\nname: ITest\n"
         "taxonomy:\n  - name: Concepts\n    children: [Terminology]\n",
+        encoding="utf-8",
+    )
+    (d / "evaluation.yaml").write_text(
+        "\n".join(
+            [
+                "version: '1'",
+                "questions:",
+                "  - id: q-calc",
+                "    question: What does CALCULATE modify?",
+                "    expected_answer: the filter context",
+                "    required_concepts: [filter context]",
+                "    topic: Concepts",
+                "    authoritative_sources: [https://fixture.test/docs/calculate]",
+                "  - id: q-abstain",
+                "    question: What is the airspeed of a swallow?",
+                "    expect_abstain: true",
+                "",
+            ]
+        ),
         encoding="utf-8",
     )
     (d / "sources.yaml").write_text(
@@ -195,3 +229,31 @@ def test_crawl_extract_dedup_stale_and_search(plugin, fake_providers):
             i.status for i in s.execute(select(KnowledgeItem).where(KnowledgeItem.domain_id == DOMAIN_ID)).scalars()
         }
         assert conflicts or ItemStatus.STALE in statuses
+
+
+def test_evaluation_runner_records_metrics_and_regression(plugin, fake_providers):
+    """Runs after the pipeline test: the fixture domain has a verified CALCULATE item and a changed page."""
+    from knowledge_platform.core.evaluation.runner import run_evaluation
+    from knowledge_platform.models import EvaluationRun
+
+    with session_scope() as s:
+        ev = run_evaluation(s, plugin, triggered_by="test")
+        assert ev.status == "DONE", ev.error
+        assert ev.metrics["questions"] == 2
+        by_id = {r.question_id: r for r in ev.results}
+        assert by_id["q-abstain"].checks["abstention"]["ok"]
+        calc = by_id["q-calc"]
+        assert calc.citations, calc.answer
+        assert calc.checks["required_concepts"]["ok"]
+        assert calc.checks["retrieval_recall"]["value"] == 1.0
+        assert calc.judge["correct"] is True
+        assert ev.config["prompt_version"] and ev.config["embedding"]
+        assert ev.baseline_run_id is None and not ev.regression
+        first_id = ev.id
+
+    with session_scope() as s:
+        ev2 = run_evaluation(s, plugin, triggered_by="test")
+        assert ev2.baseline_run_id == first_id
+        assert ev2.regression is False
+        assert "accuracy" in ev2.regression_details["metrics"]
+        assert s.get(EvaluationRun, first_id).metrics["accuracy"] == ev2.metrics["accuracy"]

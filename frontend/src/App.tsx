@@ -4,6 +4,7 @@ import { ToastProvider } from "./components/ui";
 import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
 import Domains from "./pages/Domains";
+import Evaluation from "./pages/Evaluation";
 import Knowledge from "./pages/Knowledge";
 import Pipeline from "./pages/Pipeline";
 import Review from "./pages/Review";
@@ -19,6 +20,7 @@ export default function App() {
           <Route path="knowledge" element={<Knowledge />} />
           <Route path="search" element={<SearchAsk />} />
           <Route path="review" element={<Review />} />
+          <Route path="evaluation" element={<Evaluation />} />
           <Route path="sources" element={<Sources />} />
           <Route path="documents" element={<Documents />} />
           <Route path="pipeline" element={<Pipeline />} />

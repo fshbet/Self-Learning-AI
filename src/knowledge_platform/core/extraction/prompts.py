@@ -131,3 +131,40 @@ CONFLICT_SCHEMA = {
     },
     "required": ["verdict", "rationale"],
 }
+
+
+JUDGE_VERSION = "judge@1.0"
+
+JUDGE_SYSTEM = """You grade an assistant's answer to a question about "{domain_name}" against a reference answer.
+
+Grade strictly and only on content:
+- "correct": the answer conveys the same facts as the reference (wording may differ; acceptable alternatives count).
+- "supported_by_citations": every factual claim in the answer is backed by one of the cited knowledge items shown.
+- "hallucinated_claims": list claims in the answer that are NOT present in the cited items (empty if none).
+- "missing_points": key points of the reference that the answer omits (empty if none).
+Give a one-sentence rationale.
+"""
+
+JUDGE_USER = """Question: {question}
+
+Reference answer: {expected}
+Acceptable alternatives: {alternatives}
+
+Cited knowledge items available to the assistant:
+{items}
+
+Assistant answer:
+{answer}
+"""
+
+JUDGE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "correct": {"type": "boolean"},
+        "supported_by_citations": {"type": "boolean"},
+        "hallucinated_claims": {"type": "array", "items": {"type": "string"}},
+        "missing_points": {"type": "array", "items": {"type": "string"}},
+        "rationale": {"type": "string"},
+    },
+    "required": ["correct", "supported_by_citations", "hallucinated_claims", "missing_points", "rationale"],
+}

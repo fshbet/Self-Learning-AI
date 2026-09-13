@@ -75,6 +75,10 @@ class Settings(BaseSettings):
     worker_poll_seconds: float = 2.0
     scheduler_enabled: bool = True
     scheduler_interval_seconds: int = 600
+    eval_after_pipeline: bool = True  # run the golden set after every completed pipeline run
+    eval_interval_hours: int = 24  # periodic evaluation while serving (0 disables)
+    eval_regression_threshold: float = 0.05  # accuracy / citation drop that flags a regression
+    eval_retrieval_k: int = 8
     log_level: str = "INFO"
 
     # Derived helpers -----------------------------------------------------

@@ -228,6 +228,40 @@ export type Job = {
   finished_at: string | null;
 };
 
+export type EvaluationResult = {
+  id: string;
+  question_id: string;
+  question: string;
+  expected_answer: string;
+  answer: string;
+  retrieved: { n: number; id: string; statement: string; status: string; confidence: number; topic: string; score: number }[];
+  citations: { n: number; id: string; statement: string; status: string; confidence: number; topic: string }[];
+  checks: Record<string, { ok: boolean; detail: string; value?: number | null; [k: string]: unknown }>;
+  judge: { correct?: boolean; supported_by_citations?: boolean; hallucinated_claims?: string[]; missing_points?: string[]; rationale?: string; error?: string };
+  passed: boolean;
+  failure_causes: string[];
+  latency_ms: number;
+};
+
+export type EvaluationRun = {
+  id: string;
+  domain_id: string;
+  dataset_version: string;
+  status: string;
+  config: Record<string, unknown>;
+  metrics: Record<string, number | null | Record<string, number>> & { failure_causes?: Record<string, number> };
+  baseline_run_id: string | null;
+  regression: boolean;
+  regression_details: { threshold?: number; metrics?: Record<string, { baseline: number; current: number; delta: number }>; reason?: string };
+  findings: { cause: string; questions: string[]; count: number; action: string }[];
+  triggered_by: string;
+  error: string | null;
+  started_at: string;
+  finished_at: string | null;
+};
+
+export type EvaluationRunDetail = EvaluationRun & { results: EvaluationResult[] };
+
 export type Stats = {
   domain: string | null;
   sources: Record<string, number>;
@@ -241,6 +275,14 @@ export type Stats = {
   llm: { calls: number; prompt_tokens: number; completion_tokens: number; avg_latency_ms: number; failed: number; cost_tokens_per_item: number };
   topics: { topic: string; count: number }[];
   recent_runs: Run[];
+  evaluation: {
+    id: string;
+    finished_at: string | null;
+    metrics: Record<string, number | null>;
+    regression: boolean;
+    regression_details: Record<string, unknown>;
+    dataset_version: string;
+  } | null;
 };
 
 export type Health = {
@@ -346,4 +388,8 @@ export const api = {
   jobs: (params: { run?: string; status?: string; type?: string; page?: number; page_size?: number }) =>
     request<Page<Job>>(`/jobs${qs(params)}`),
   retryJob: (id: string) => request<Job>(`/jobs/${id}/retry`, { method: "POST" }),
+  evaluations: (domain?: string, limit = 30) => request<EvaluationRun[]>(`/evaluations${qs({ domain, limit })}`),
+  evaluation: (id: string) => request<EvaluationRunDetail>(`/evaluations/${id}`),
+  createEvaluation: (domain: string, question_ids?: string[]) =>
+    request<EvaluationRun>("/evaluations", { method: "POST", body: JSON.stringify({ domain, question_ids }) }),
 };

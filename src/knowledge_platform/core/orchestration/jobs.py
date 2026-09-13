@@ -13,11 +13,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ...adapters import get_search
+from ...config import get_settings
 from ...models import (
     Document,
     DomainKeyword,
+    EvaluationRun,
     Job,
     JobStatus,
+    KnowledgeItem,
     Run,
     RunStatus,
     Source,
@@ -26,6 +29,7 @@ from ...models import (
 )
 from ..collection.collector import crawl_source
 from ..collection.normalize import canonicalize_url
+from ..evaluation.runner import run_evaluation
 from ..pipeline import ingest_document
 from ..plugins.registry import get_registry
 from .queue import enqueue
@@ -133,7 +137,39 @@ def finalize_run_if_complete(session: Session, run_id: uuid.UUID) -> bool:
     run.status = RunStatus.FAILED if agg["jobs_dead"] and not agg["jobs_done"] else RunStatus.DONE
     run.finished_at = utcnow()
     session.flush()
+    if (
+        run.kind in ("pipeline", "scheduled", "extract")
+        and run.status == RunStatus.DONE
+        and run.domain_id
+        and get_settings().eval_after_pipeline
+        and totals.get("extract_document", {}).get("items_created", 0)
+    ):
+        enqueue_evaluation(session, run.domain_id, triggered_by=f"after-run:{run.id}")
     return True
+
+
+def enqueue_evaluation(session: Session, domain_id: str, *, triggered_by: str = "api", question_ids=None):
+    """Queue a golden-set evaluation for a domain (one queued/running at a time per domain)."""
+    run = start_run(session, domain_id=domain_id, kind="evaluate", triggered_by=triggered_by)
+    payload = {"domain_id": domain_id, "triggered_by": triggered_by}
+    if question_ids:
+        payload["question_ids"] = list(question_ids)
+    job = enqueue(
+        session,
+        "evaluate",
+        payload,
+        run_id=run.id,
+        idempotency_key=f"evaluate:{domain_id}",
+        priority=120,
+        max_attempts=1,
+    )
+    if job is None:
+        run.status = RunStatus.FAILED
+        run.stats = {"note": "an evaluation for this domain is already queued or running"}
+        run.finished_at = utcnow()
+        session.flush()
+        return run, None
+    return run, job
 
 
 # ----------------------------------------------------------------------------- handlers
@@ -172,6 +208,27 @@ def extract_document_job(session: Session, job: Job) -> dict[str, Any]:
     out = stats.as_dict()
     ext = out.pop("extraction", {})
     out.update({f"extraction_{k}": v for k, v in ext.items()})
+    return out
+
+
+@handler("evaluate")
+def evaluate_job(session: Session, job: Job) -> dict[str, Any]:
+    """Run the domain's golden question set and store results, metrics and regression status (req. 15)."""
+    plugin = get_registry().get(job.payload["domain_id"])
+    ev = run_evaluation(
+        session,
+        plugin,
+        triggered_by=job.payload.get("triggered_by", "worker"),
+        run_id=job.run_id,
+        question_ids=job.payload.get("question_ids"),
+    )
+    out = {"evaluation_run_id": str(ev.id), "status": ev.status, "regression": ev.regression}
+    for k in ("questions", "passed", "accuracy", "citation_correctness", "hallucination_rate"):
+        v = ev.metrics.get(k)
+        if isinstance(v, (int, float)):
+            out[k] = v
+    if ev.error:
+        out["error"] = ev.error
     return out
 
 
@@ -230,6 +287,28 @@ def discover_job(session: Session, job: Job) -> dict[str, Any]:
 
 
 # ----------------------------------------------------------------------------- scheduler
+
+
+def schedule_due_evaluations(session: Session) -> int:
+    """Periodic evaluation per domain that has knowledge (req. 37)."""
+    hours = get_settings().eval_interval_hours
+    if hours <= 0:
+        return 0
+    cutoff = utcnow() - timedelta(hours=hours)
+    count = 0
+    for domain_id in session.execute(
+        select(KnowledgeItem.domain_id).where(KnowledgeItem.status.in_(["SUPPORTED", "VERIFIED"])).distinct()
+    ).scalars():
+        if domain_id not in get_registry() or not get_registry().get(domain_id).evaluation_set():
+            continue
+        last = session.execute(
+            select(func.max(EvaluationRun.started_at)).where(EvaluationRun.domain_id == domain_id)
+        ).scalar_one()
+        if last is None or last <= cutoff:
+            _, job = enqueue_evaluation(session, domain_id, triggered_by="scheduler")
+            if job:
+                count += 1
+    return count
 
 
 def schedule_due_sources(session: Session) -> int:

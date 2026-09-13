@@ -367,3 +367,55 @@ class LLMCall(Base):
     ok: Mapped[bool] = mapped_column(Boolean, default=True)
     error: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+
+
+# --------------------------------------------------------------------------- evaluation (§34/§35, req. 15/38)
+
+
+class EvaluationRun(Base):
+    """One execution of a domain's golden question set against the current knowledge base."""
+
+    __tablename__ = "evaluation_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_id)
+    domain_id: Mapped[str] = mapped_column(ForeignKey("domains.id", ondelete="CASCADE"), index=True)
+    dataset_version: Mapped[str] = mapped_column(String(32), default="")
+    status: Mapped[str] = mapped_column(String(20), default=RunStatus.RUNNING)  # RUNNING|DONE|FAILED
+    config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # models, prompt/scoring versions, counts
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    baseline_run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("evaluation_runs.id", ondelete="SET NULL"))
+    regression: Mapped[bool] = mapped_column(Boolean, default=False)
+    regression_details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    findings: Mapped[list[Any]] = mapped_column(JSON, default=list)  # failure analysis (req. 16)
+    triggered_by: Mapped[str] = mapped_column(String(120), default="cli")
+    error: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("runs.id", ondelete="SET NULL"))
+
+    results: Mapped[list[EvaluationResult]] = relationship(
+        back_populates="evaluation_run", cascade="all, delete-orphan", order_by="EvaluationResult.question_id"
+    )
+
+
+class EvaluationResult(Base):
+    __tablename__ = "evaluation_results"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_id)
+    evaluation_run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("evaluation_runs.id", ondelete="CASCADE"), index=True
+    )
+    question_id: Mapped[str] = mapped_column(String(120))
+    question: Mapped[str] = mapped_column(Text)
+    expected_answer: Mapped[str] = mapped_column(Text, default="")
+    answer: Mapped[str] = mapped_column(Text, default="")
+    retrieved: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    citations: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    checks: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # mechanical checks, each {ok, detail}
+    judge: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # LLM judge verdict + rationale
+    passed: Mapped[bool] = mapped_column(Boolean, default=False)
+    failure_causes: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    latency_ms: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+    evaluation_run: Mapped[EvaluationRun] = relationship(back_populates="results")

@@ -1,5 +1,5 @@
 # Golden evaluation set (§34). Versioned with the plugin. Extend as knowledge grows.
-version: 0.1.0
+version: 0.2.0
 questions:
   - id: dax-calculate-01
     question: What does the CALCULATE function do in DAX?
@@ -61,6 +61,23 @@ questions:
   - id: abstain-01
     question: What is the maximum number of pages a Tableau workbook can contain?
     expected_answer: (abstain) The Power BI domain has no knowledge about Tableau workbooks.
+    expect_abstain: true
     difficulty: easy
     risk_class: default
     topic: ""
+  - id: negative-divide-01
+    question: What happens when DIVIDE's denominator is zero?
+    expected_answer: DIVIDE returns BLANK (or the optional alternate result) instead of raising a division-by-zero error.
+    required_concepts: [BLANK]
+    negative: true
+    difficulty: easy
+    risk_class: technical
+    topic: DAX/Functions
+  - id: visual-calc-01
+    question: Which DAX functions are only available in visual calculations?
+    expected_answer: Functions such as PREVIOUS, NEXT, FIRST, LAST, LOOKUP and LOOKUPWITHTOTALS are only available in visual calculations.
+    required_concepts: [PREVIOUS, NEXT]
+    authoritative_sources: [https://learn.microsoft.com/en-us/dax/new-dax-functions]
+    difficulty: medium
+    risk_class: technical
+    topic: DAX/Functions

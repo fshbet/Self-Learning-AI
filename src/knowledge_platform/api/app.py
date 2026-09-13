@@ -16,12 +16,14 @@ from sqlalchemy.orm import Session
 from .. import __version__
 from ..adapters import get_embedder, get_llm, get_object_store, get_search
 from ..config import get_settings
+from ..core.evaluation.runner import latest_evaluation
 from ..core.orchestration.worker import Worker
 from ..core.plugins.registry import get_registry
 from ..db import get_db, get_engine
 from ..models import Conflict, Document, ItemStatus, Job, KnowledgeItem, LLMCall, Run, Source
 from .routes_documents import router as documents_router
 from .routes_domains import router as domains_router
+from .routes_eval import router as eval_router
 from .routes_knowledge import router as knowledge_router
 from .routes_runs import _run_out
 from .routes_runs import router as runs_router
@@ -59,7 +61,7 @@ app = FastAPI(
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-for r in (domains_router, documents_router, knowledge_router, runs_router):
+for r in (domains_router, documents_router, knowledge_router, runs_router, eval_router):
     app.include_router(r, prefix="/api")
 
 
@@ -132,6 +134,18 @@ def stats(domain: str | None = None, db: Session = Depends(get_db)) -> StatsOut:
     runs_stmt = select(Run).order_by(Run.started_at.desc()).limit(5)
     if domain:
         runs_stmt = runs_stmt.where(Run.domain_id == domain)
+    evaluation = None
+    if domain:
+        ev = latest_evaluation(db, domain)
+        if ev:
+            evaluation = {
+                "id": str(ev.id),
+                "finished_at": ev.finished_at.isoformat() if ev.finished_at else None,
+                "metrics": ev.metrics,
+                "regression": ev.regression,
+                "regression_details": ev.regression_details,
+                "dataset_version": ev.dataset_version,
+            }
     return StatsOut(
         domain=domain,
         sources=by(None, Source, Source.status),
@@ -152,6 +166,7 @@ def stats(domain: str | None = None, db: Session = Depends(get_db)) -> StatsOut:
         },
         topics=topics,
         recent_runs=_run_out(db, db.execute(runs_stmt).scalars().all()),
+        evaluation=evaluation,
     )
 
 

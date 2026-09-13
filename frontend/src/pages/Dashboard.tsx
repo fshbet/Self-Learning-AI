@@ -58,12 +58,26 @@ export default function Dashboard() {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-5">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-5">
         <Stat label="Live knowledge" value={fmtNum(live)} hint={`${fmtNum(s.knowledge_total)} extracted in total`} />
         <Stat label="Verified" value={pct(s.verified_ratio)} hint={`${fmtNum(s.knowledge.VERIFIED ?? 0)} items · avg confidence ${pct(s.avg_confidence)}`} accent="text-emerald-600" />
         <Stat label="Open conflicts" value={fmtNum(s.conflicts_open)} hint={s.conflicts_open ? <Link to="/review" className="text-accent-600 hover:underline">Review now</Link> : "No disagreements detected"} accent={s.conflicts_open ? "text-rose-600" : undefined} />
         <Stat label="Documents" value={fmtNum(docsTotal)} hint={`${fmtNum(s.documents.EXTRACTED ?? 0)} extracted · ${sourcesActive} active sources`} />
         <Stat label="Model calls" value={fmtNum(s.llm.calls)} hint={`${fmtNum(s.llm.prompt_tokens + s.llm.completion_tokens)} tokens · ${fmtNum(s.llm.cost_tokens_per_item)} / item`} />
+        <Stat
+          label="Evaluation"
+          value={s.evaluation?.metrics?.accuracy != null ? pct(s.evaluation.metrics.accuracy as number) : "—"}
+          hint={
+            s.evaluation ? (
+              <Link to="/evaluation" className={s.evaluation.regression ? "text-rose-600 hover:underline" : "text-accent-600 hover:underline"}>
+                {s.evaluation.regression ? "regression detected" : `citations ${pct((s.evaluation.metrics.citation_correctness as number) ?? 0)} · ${timeAgo(s.evaluation.finished_at)}`}
+              </Link>
+            ) : (
+              <Link to="/evaluation" className="text-accent-600 hover:underline">not run yet</Link>
+            )
+          }
+          accent={s.evaluation?.regression ? "text-rose-600" : undefined}
+        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

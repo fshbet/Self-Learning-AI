@@ -57,6 +57,22 @@ page budget and let the scheduler grow the repository over time.
 
 Frontend development with hot reload: `cd frontend && npm run dev` (proxies `/api` to port 8010).
 
+## Self-evaluation and regression protection
+
+Every domain plugin ships a golden question set (`evaluation.yaml`). The runner answers each question from the current
+knowledge base, applies mechanical checks (required concepts, citation validity, abstention, stale/conflict flagging,
+version, validators, retrieval precision/recall) and an LLM judge (correctness, evidence support, hallucinated claims);
+a question passes only when both agree. Metrics and per-question results are stored, each run is compared with the
+previous run on the same dataset version, and a drop in accuracy or citation correctness beyond
+`KP_EVAL_REGRESSION_THRESHOLD` (default 5 points) flags a **regression** on the dashboard.
+
+* UI: **Evaluation** page (run, history, trend, failure analysis with suggested actions, per-question checks and judge).
+* CLI: `kp eval run powerbi [--fail-on-regression]`, `kp eval list`.
+* Automatic: after every pipeline run that produced knowledge (`KP_EVAL_AFTER_PIPELINE`) and every
+  `KP_EVAL_INTERVAL_HOURS` (default 24) while serving.
+
+The runner never edits knowledge; its findings tell you what to crawl, review or tune (req. 16 of the V2 plan).
+
 ## Adding your own URLs and keywords (no files needed)
 
 On the **Sources** page of the UI:
@@ -93,6 +109,7 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 | `kp run pipeline <domain> [--source key] [--max-pages N]` | crawl + extract (runs the worker inline) |
 | `kp run extract <domain>` | extract documents that were fetched but not extracted |
 | `kp run discover <domain>` | web discovery → candidate sources (needs SearXNG: `docker compose --profile discovery up -d`) |
+| `kp eval run <domain> [--fail-on-regression]` / `kp eval list` | golden-set evaluation, regression detection |
 | `kp serve` | API + UI + embedded worker + scheduler |
 | `kp worker` | standalone worker (set `KP_EMBEDDED_WORKER=false` for the API) |
 | `kp search <domain> "query"` / `kp ask <domain> "question"` | retrieval from the terminal |
@@ -135,6 +152,7 @@ src/knowledge_platform/
     verification/ conflicts
     versioning/  lifecycle (status machine, verification levels)
     retrieval/   embeddings · hybrid search (RRF) · grounded answers
+    evaluation/  checks · runner (golden set, judge, metrics, regression, findings)
     orchestration/ queue · jobs · worker · scheduler
     pipeline.py  document → knowledge stage
   api/           FastAPI routes + schemas
@@ -149,5 +167,4 @@ tests/           unit · contract · integration (fixtures, fake providers)
 ## Roadmap (from the design document)
 
 Phase 1 collector ✔ · Phase 2 verification (conflicts, stale, review) ✔ basic · Phase 3 hybrid retrieval + grounded answers ✔ ·
-Phase 4 executable validators (sandboxed) · Phase 5 scheduler ✔ basic, source reliability history · Phase 6 golden-set
-evaluation runner · Phase 7/8 additional domains to prove the plugin architecture.
+Phase 4 executable validators (sandboxed) · Phase 5 scheduler ✔ basic, source reliability history · Phase 6 golden-set evaluation runner ✔ · Phase 7/8 additional domains to prove the plugin architecture.

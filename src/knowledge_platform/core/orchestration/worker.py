@@ -12,7 +12,7 @@ import traceback
 from ...config import get_settings
 from ...db import session_scope
 from . import jobs as _jobs  # noqa: F401  (registers handlers)
-from .jobs import HANDLERS, finalize_run_if_complete, schedule_due_sources
+from .jobs import HANDLERS, finalize_run_if_complete, schedule_due_evaluations, schedule_due_sources
 from .queue import claim, complete, fail, requeue_stuck
 
 log = logging.getLogger(__name__)
@@ -76,6 +76,9 @@ class Worker:
                 n = schedule_due_sources(session)
                 if n:
                     log.info("scheduler enqueued %d due sources", n)
+                m = schedule_due_evaluations(session)
+                if m:
+                    log.info("scheduler enqueued %d evaluations", m)
 
     # ------------------------------------------------------------------ loop
     def run_forever(self) -> None:

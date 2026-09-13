@@ -18,9 +18,11 @@ app = typer.Typer(help="Modular self-updating knowledge platform", no_args_is_he
 domains_app = typer.Typer(help="Domain plugins", no_args_is_help=True)
 db_app = typer.Typer(help="Database", no_args_is_help=True)
 run_app = typer.Typer(help="Pipeline runs", no_args_is_help=True)
+eval_app = typer.Typer(help="Golden-set evaluation", no_args_is_help=True)
 app.add_typer(domains_app, name="domains")
 app.add_typer(db_app, name="db")
 app.add_typer(run_app, name="run")
+app.add_typer(eval_app, name="eval")
 console = Console()
 
 
@@ -203,6 +205,78 @@ def _drain(run_id) -> None:
         import time
 
         time.sleep(1)
+
+
+# ----------------------------------------------------------------------------- evaluation
+
+
+@eval_app.command("run")
+def eval_run(
+    domain: str,
+    question: list[str] = typer.Option(None, "--question", "-q", help="limit to question id(s)"),
+    fail_on_regression: bool = typer.Option(False, help="exit with code 2 when a regression is detected"),
+) -> None:
+    """Run the domain's golden questions against the current knowledge base and store the results."""
+    from .core.evaluation.runner import METRIC_KEYS, run_evaluation
+    from .core.plugins.registry import get_registry
+    from .db import session_scope
+
+    with session_scope() as session:
+        ev = run_evaluation(session, get_registry().get(domain), triggered_by="cli", question_ids=question or None)
+        session.flush()
+        console.print(f"evaluation [bold]{ev.id}[/bold] {ev.status}  dataset v{ev.dataset_version}")
+        if ev.error:
+            console.print(f"[red]{ev.error}[/red]")
+        table = Table("metric", "value")
+        for k in ("questions", "passed", *METRIC_KEYS, "mean_latency_ms"):
+            v = ev.metrics.get(k)
+            table.add_row(
+                k,
+                "—"
+                if v is None
+                else (f"{v:.1%}" if isinstance(v, float) and k not in ("mean_latency_ms",) else str(v)),
+            )
+        console.print(table)
+        for r in ev.results:
+            mark = "[green]PASS[/green]" if r.passed else "[red]FAIL[/red]"
+            console.print(f"  {mark} {r.question_id}: {', '.join(r.failure_causes) or 'ok'}")
+        if ev.regression:
+            console.print(f"[red bold]REGRESSION detected[/red bold]: {ev.regression_details.get('metrics')}")
+        for f in ev.findings:
+            console.print(f"  [yellow]{f['cause']}[/yellow] ({f['count']}): {f['action']}")
+        regressed = ev.regression
+    if fail_on_regression and regressed:
+        raise typer.Exit(code=2)
+
+
+@eval_app.command("list")
+def eval_list(domain: str | None = typer.Argument(None), limit: int = 10) -> None:
+    """Show recent evaluation runs and their headline metrics."""
+    from sqlalchemy import select
+
+    from .db import session_scope
+    from .models import EvaluationRun
+
+    with session_scope() as session:
+        stmt = select(EvaluationRun).order_by(EvaluationRun.started_at.desc()).limit(limit)
+        if domain:
+            stmt = stmt.where(EvaluationRun.domain_id == domain)
+        table = Table("id", "domain", "dataset", "status", "accuracy", "citations", "halluc.", "regression", "when")
+        for ev in session.execute(stmt).scalars():
+            m = ev.metrics or {}
+            fmt = lambda v: "—" if v is None else f"{v:.0%}"  # noqa: E731
+            table.add_row(
+                str(ev.id)[:8],
+                ev.domain_id,
+                ev.dataset_version,
+                ev.status,
+                fmt(m.get("accuracy")),
+                fmt(m.get("citation_correctness")),
+                fmt(m.get("hallucination_rate")),
+                "[red]yes[/red]" if ev.regression else "no",
+                ev.started_at.strftime("%Y-%m-%d %H:%M"),
+            )
+        console.print(table)
 
 
 # ----------------------------------------------------------------------------- serve / worker / search

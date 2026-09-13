@@ -107,6 +107,11 @@ class EvalQuestion(BaseModel):
     difficulty: str = "medium"
     risk_class: str = "default"
     topic: str = ""
+    # evaluation semantics (req. 15)
+    expect_abstain: bool = False  # the correct behaviour is to say the knowledge base does not cover it
+    expected_version: str = ""  # a product version the answer must mention
+    must_not_contain: list[str] = Field(default_factory=list)
+    negative: bool = False  # asks about a limitation / what does not work
 
 
 # ----------------------------------------------------------------------------- validators / skills
@@ -210,6 +215,14 @@ class DomainPlugin:
             return []
         data = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
         return [EvalQuestion.model_validate(q) for q in data.get("questions", [])]
+
+    def evaluation_version(self) -> str:
+        """Version of the golden dataset; results are always compared within one dataset version."""
+        f = self.path / "evaluation.yaml"
+        if not f.exists():
+            return ""
+        data = yaml.safe_load(f.read_text(encoding="utf-8")) or {}
+        return str(data.get("version", "0"))
 
     def validators(self) -> list[Validator]:
         return []

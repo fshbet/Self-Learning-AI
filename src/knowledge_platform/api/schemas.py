@@ -313,6 +313,58 @@ class JobOut(ORM):
     finished_at: datetime | None
 
 
+# ----------------------------------------------------------------------------- evaluation
+
+
+class EvaluationResultOut(ORM):
+    id: uuid.UUID
+    question_id: str
+    question: str
+    expected_answer: str
+    answer: str
+    retrieved: list[Any]
+    citations: list[Any]
+    checks: dict[str, Any]
+    judge: dict[str, Any]
+    passed: bool
+    failure_causes: list[Any]
+    latency_ms: int
+
+
+class EvaluationRunOut(ORM):
+    id: uuid.UUID
+    domain_id: str
+    dataset_version: str
+    status: str
+    config: dict[str, Any]
+    metrics: dict[str, Any]
+    baseline_run_id: uuid.UUID | None
+    regression: bool
+    regression_details: dict[str, Any]
+    findings: list[Any]
+    triggered_by: str
+    error: str | None
+    started_at: datetime
+    finished_at: datetime | None
+
+
+class EvaluationRunDetail(EvaluationRunOut):
+    results: list[EvaluationResultOut]
+
+
+class EvaluationCreate(BaseModel):
+    domain: str
+    question_ids: list[str] | None = None
+    wait: bool = False  # run inline instead of queueing (CLI / tests)
+
+
+class EvaluationCompare(BaseModel):
+    a: EvaluationRunOut
+    b: EvaluationRunOut
+    metric_deltas: dict[str, Any]
+    question_changes: list[dict[str, Any]]
+
+
 # ----------------------------------------------------------------------------- stats
 
 
@@ -329,6 +381,7 @@ class StatsOut(BaseModel):
     llm: dict[str, Any]
     topics: list[dict[str, Any]]
     recent_runs: list[RunOut]
+    evaluation: dict[str, Any] | None = None  # latest run: metrics, regression, when
 
 
 class HealthOut(BaseModel):
