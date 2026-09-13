@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
+from ..adapters import get_search
 from ..core.knowledge_entry import DuplicateKnowledge, KnowledgeEntry, create_knowledge
-from ..core.orchestration.jobs import enqueue_revalidations
+from ..core.orchestration.jobs import enqueue_falsifications, enqueue_revalidations
 from ..core.orchestration.queue import enqueue
 from ..core.pipeline import rescore
 from ..core.plugins.registry import get_registry
@@ -188,6 +189,42 @@ def delete_relation(item_id: uuid.UUID, relation_id: uuid.UUID, db: Session = De
         raise HTTPException(404, "relation not found")
     db.delete(rel)
     db.commit()
+
+
+@router.post("/knowledge/falsify-sample")
+def falsify_sample(domain: str, limit: int = Query(5, ge=1, le=50), db: Session = Depends(get_db)) -> dict[str, int]:
+    """Queue active falsification for a sample of live items (needs a search provider)."""
+    if get_search() is None:
+        raise HTTPException(
+            409, "no search provider configured (start SearXNG: docker compose --profile discovery up -d)"
+        )
+    n = enqueue_falsifications(db, domain, limit=limit)
+    db.commit()
+    return {"queued": n}
+
+
+@router.post("/knowledge/{item_id}/falsify")
+def falsify(item_id: uuid.UUID, db: Session = Depends(get_db)) -> dict[str, str]:
+    """Try to disprove one item with the open web; counter-evidence flags it for review (never rewrites)."""
+    item = db.get(KnowledgeItem, item_id)
+    if item is None:
+        raise HTTPException(404, "knowledge item not found")
+    if get_search() is None:
+        raise HTTPException(
+            409, "no search provider configured (start SearXNG: docker compose --profile discovery up -d)"
+        )
+    job = enqueue(
+        db,
+        "falsify_item",
+        {"item_id": str(item.id)},
+        idempotency_key=f"falsify:{item.id}",
+        priority=130,
+        max_attempts=1,
+    )
+    db.commit()
+    if job is None:
+        raise HTTPException(409, "a falsification for this item is already queued")
+    return {"job_id": str(job.id)}
 
 
 @router.post("/knowledge/{item_id}/revalidate")

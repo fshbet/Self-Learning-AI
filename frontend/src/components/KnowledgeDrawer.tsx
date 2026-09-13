@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, ExternalLink, FlaskConical, GitBranch, History, Quote, RefreshCw, ShieldAlert, XCircle } from "lucide-react";
+import { CheckCircle2, ExternalLink, FlaskConical, GitBranch, Globe, History, Quote, RefreshCw, ShieldAlert, XCircle } from "lucide-react";
 import { useState } from "react";
 import { api, type Evidence } from "../lib/api";
 import { fmtDate, hostOf, timeAgo } from "../lib/format";
 import { Confidence, Drawer, ErrorBox, KV, Loading, OriginChip, PolarityChip, ProvenanceChip, StatusChip, TypeChip, useToast } from "./ui";
 
 export function EvidenceCard({ e }: { e: Evidence }) {
-  const icon = e.evidence_type === "validator" ? <FlaskConical size={14} /> : e.evidence_type === "human" ? <CheckCircle2 size={14} /> : <Quote size={14} />;
-  const passed = e.evidence_type === "validator" ? Boolean(e.details?.passed) : e.verified;
+  const icon = e.evidence_type === "validator" ? <FlaskConical size={14} /> : e.evidence_type === "human" ? <CheckCircle2 size={14} /> : e.evidence_type === "falsification" ? <Globe size={14} /> : <Quote size={14} />;
+  const passed = e.evidence_type === "validator" ? Boolean(e.details?.passed) : e.evidence_type === "falsification" ? e.relation !== "contradicts" : e.verified;
   return (
     <div className="rounded-xl border border-line p-3 text-sm">
       <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -24,7 +24,9 @@ export function EvidenceCard({ e }: { e: Evidence }) {
             ? passed ? "passed" : "failed"
             : e.evidence_type === "human"
               ? e.details?.provided ? "provided" : "approved"
-              : passed ? "verbatim" : "not found"}
+              : e.evidence_type === "falsification"
+                ? e.relation === "contradicts" ? "counter-evidence" : "web support (unverified)"
+                : passed ? "verbatim" : "not found"}
         </span>
       </div>
       <blockquote className="border-l-2 border-accent-400 pl-3 italic whitespace-pre-wrap">{e.excerpt}</blockquote>
@@ -56,6 +58,11 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
   const revalidate = useMutation({
     mutationFn: () => api.revalidate(id!),
     onSuccess: () => toast("ok", "Revalidation queued"),
+    onError: (e) => toast("err", (e as Error).message),
+  });
+  const falsify = useMutation({
+    mutationFn: () => api.falsify(id!),
+    onSuccess: () => toast("ok", "Falsification queued — counter-evidence will flag this item for review"),
     onError: (e) => toast("err", (e as Error).message),
   });
   const removeRelation = useMutation({
@@ -234,6 +241,9 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
                   Reopen
                 </button>
               )}
+              <button className="btn btn-sm" disabled={falsify.isPending} title="Search the web for counter-evidence (needs SearXNG). Never edits the item: a contradiction only flags it for review." onClick={() => falsify.mutate()}>
+                <Globe size={14} /> Try to falsify
+              </button>
             </div>
           </section>
 

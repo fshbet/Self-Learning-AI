@@ -57,6 +57,11 @@ page budget and let the scheduler grow the repository over time.
 
 Frontend development with hot reload: `cd frontend && npm run dev` (proxies `/api` to port 8010).
 
+**Start at logon (optional):** `uv run kp autostart install` registers a Windows Task Scheduler task (systemd user
+unit on Linux, launchd agent on macOS) that starts the Postgres container if Docker is available and then `kp serve`
+with its embedded worker and scheduler — so the platform keeps re-checking sources, evaluating and exporting without
+an open terminal. `kp autostart status` / `kp autostart uninstall`; logs in `data/logs/kp-serve.log`.
+
 ## Choosing models (local or API)
 
 **Settings** in the UI lets you pick the provider per role — *triage*, *extraction*, *reasoning & answers* — and the
@@ -189,6 +194,16 @@ overdue sources, next evaluation, next snapshot). Dead-letter jobs are retried f
 
 The runner never edits knowledge; its findings tell you what to crawl, review or tune (req. 16 of the V2 plan).
 
+## Active falsification (optional)
+
+Beyond waiting for a source to change, the platform can *try to disprove* what it believes. `Try to falsify` on an
+item (drawer), `Try to falsify 5` on the Review page, `POST /api/knowledge/{id}/falsify` or `kp falsify powerbi
+--limit 5` search the web (SearXNG: `docker compose --profile discovery up -d`) for the statement and its negation,
+fetch the top public pages (SSRF-guarded), and ask the judge model whether a passage **contradicts** the statement.
+A contradiction is stored as unverified `falsification` evidence with the quote and URL and flags the item
+`needs_revalidation` for a reviewer — the platform never rewrites knowledge on the strength of an unregistered web page.
+Supporting passages are kept as unverified web support and do not raise the score.
+
 ## Adding your own URLs and keywords (no files needed)
 
 On the **Sources** page of the UI:
@@ -232,6 +247,8 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 | `kp eval run <domain> [--fail-on-regression]` / `kp eval list` | golden-set evaluation, regression detection |
 | `kp export snapshot <domain> [--out file.zip]` / `kp export delta <domain> [--base id]` / `kp export list` / `kp export verify <id>` | Canonical Knowledge Snapshots (full and delta) |
 | `kp ops [domain]` | queue health, dead letters, model latency, storage, schedule |
+| `kp falsify <domain> [--limit 5] [--item id]` | active falsification with the open web (needs SearXNG) |
+| `kp autostart install/status/uninstall` | start the platform at logon (Task Scheduler / systemd / launchd) |
 | `kp serve` | API + UI + embedded worker + scheduler |
 | `kp worker` | standalone worker (set `KP_EMBEDDED_WORKER=false` for the API) |
 | `kp search <domain> "query"` / `kp ask <domain> "question"` | retrieval from the terminal |

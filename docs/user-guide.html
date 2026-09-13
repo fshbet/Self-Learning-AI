@@ -195,6 +195,12 @@ Choose <strong>Keep A</strong>, <strong>Keep B</strong>, <strong>Both valid</str
 <strong>Reject both</strong>. Your decision is recorded on both items.</p>
 <p>Inside any item's drawer you can also <strong>Approve</strong> (raises it to level 5 and records you as evidence), <strong>Reject</strong>
 (retires this version), <strong>Mark stale</strong>, or <strong>Reopen</strong>. Add a short reason — it goes into the audit trail.</p>
+<p><strong>Needs revalidation</strong> lists items whose dependencies changed; <strong>Revalidate all</strong> re-checks them.
+<strong>Try to falsify</strong> (on an item, or <em>Try to falsify 5</em> here) actively searches the web for counter-evidence when the
+discovery search service is running. A contradiction never edits the item — it is attached as unverified web evidence with the quote
+and link, and the item appears in this list for you to decide.</p>
+<p>The platform can keep doing all of this without a terminal: run <code>uv run kp autostart install</code> once and the API, worker
+and scheduler start at logon (see the README).</p>
 
 <h2 id="ask">Asking questions</h2>
 <p>On <strong>Search &amp; Ask</strong>, type a question and press <kbd>Enter</kbd>. The answer cites items as <code>[1]</code>, <code>[2]</code>…;

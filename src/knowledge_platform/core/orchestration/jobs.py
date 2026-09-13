@@ -293,6 +293,51 @@ def enqueue_revalidations(session: Session, domain_id: str | None = None) -> int
     return count
 
 
+@handler("falsify_item")
+def falsify_item_job(session: Session, job: Job) -> dict[str, Any]:
+    """Optional active falsification: look for counter-evidence on the web; flag, never rewrite (V2 §P7)."""
+    from ..verification.falsify import falsify_item
+
+    item = session.get(KnowledgeItem, uuid.UUID(job.payload["item_id"]))
+    if item is None:
+        return {"skipped": "item missing"}
+    plugin = get_registry().get(item.domain_id)
+    out = falsify_item(session, plugin, item, max_pages=int(job.payload.get("max_pages", 4)))
+    out.pop("hits", None)
+    return out
+
+
+def enqueue_falsifications(session: Session, domain_id: str, *, limit: int = 5, triggered_by: str = "api") -> int:
+    """Queue falsification for the live items least recently checked (or never)."""
+    items = (
+        session.execute(
+            select(KnowledgeItem)
+            .where(KnowledgeItem.domain_id == domain_id, KnowledgeItem.status.in_(["SUPPORTED", "VERIFIED"]))
+            .order_by(KnowledgeItem.last_verified_at.asc().nulls_first())
+            .limit(limit * 3)
+        )
+        .scalars()
+        .all()
+    )
+    items.sort(key=lambda k: (k.details or {}).get("last_falsified_at") or "")
+    run = start_run(session, domain_id=domain_id, kind="falsify", triggered_by=triggered_by)
+    count = 0
+    for item in items[:limit]:
+        if enqueue(
+            session,
+            "falsify_item",
+            {"item_id": str(item.id)},
+            run_id=run.id,
+            idempotency_key=f"falsify:{item.id}",
+            priority=130,
+            max_attempts=1,
+        ):
+            count += 1
+    run.stats = {"items_enqueued": count}
+    session.flush()
+    return count
+
+
 @handler("snapshot")
 def snapshot_job(session: Session, job: Job) -> dict[str, Any]:
     """Build a Canonical Knowledge Snapshot (full) for a domain (req. 3–6)."""

@@ -10,6 +10,7 @@ import typer
 import uvicorn
 from rich.console import Console
 from rich.table import Table
+from sqlalchemy import select
 
 from . import __version__
 from .config import get_settings
@@ -381,6 +382,76 @@ def export_verify(snapshot_id: str) -> None:
 
 
 # ----------------------------------------------------------------------------- serve / worker / search
+
+
+@app.command()
+def falsify(domain: str, limit: int = 5, item: str | None = None) -> None:
+    """Active falsification: search the web for counter-evidence to live items (needs SearXNG); flags, never edits."""
+    from .core.plugins.registry import get_registry
+    from .core.verification.falsify import falsify_item
+    from .db import session_scope
+    from .models import KnowledgeItem
+
+    plugin = get_registry().get(domain)
+    with session_scope() as session:
+        if item:
+            items = [session.get(KnowledgeItem, item)]
+        else:
+            items = (
+                session.execute(
+                    select(KnowledgeItem)
+                    .where(KnowledgeItem.domain_id == domain, KnowledgeItem.status.in_(["SUPPORTED", "VERIFIED"]))
+                    .order_by(KnowledgeItem.last_verified_at.asc().nulls_first())
+                    .limit(limit)
+                )
+                .scalars()
+                .all()
+            )
+        table = Table("item", "pages", "contradictions", "supporting", "flagged", title="Falsification")
+        for k in items:
+            if k is None:
+                continue
+            out = falsify_item(session, plugin, k)
+            if "skipped" in out:
+                console.print(f"[yellow]{out['skipped']}[/yellow]")
+                return
+            table.add_row(
+                k.statement[:70],
+                str(out["pages_checked"]),
+                str(out["contradictions"]),
+                str(out["supporting"]),
+                "yes" if k.needs_revalidation else "no",
+            )
+            for h in out["hits"]:
+                if h["verdict"] == "contradicts":
+                    console.print(f"  [red]counter-evidence[/red] {h['url']}: {h['rationale'][:160]}")
+        console.print(table)
+
+
+autostart_app = typer.Typer(help="Start the platform automatically at logon (Windows Task Scheduler, systemd, launchd)")
+app.add_typer(autostart_app, name="autostart")
+
+
+@autostart_app.command("install")
+def autostart_install(name: str = "KnowledgePlatform") -> None:
+    """Register the API (with its embedded worker and scheduler) to start at logon."""
+    from .core.autostart import install
+
+    console.print(install(name))
+
+
+@autostart_app.command("uninstall")
+def autostart_uninstall(name: str = "KnowledgePlatform") -> None:
+    from .core.autostart import uninstall
+
+    console.print(uninstall(name))
+
+
+@autostart_app.command("status")
+def autostart_status(name: str = "KnowledgePlatform") -> None:
+    from .core.autostart import status
+
+    console.print(status(name))
 
 
 @app.command()

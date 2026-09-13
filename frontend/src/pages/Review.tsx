@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { GitBranch, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { GitBranch, Globe, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import KnowledgeDrawer from "../components/KnowledgeDrawer";
 import { Card, Confidence, Empty, ErrorBox, Loading, PageHeader, StatusChip, useToast } from "../components/ui";
@@ -46,6 +46,11 @@ export default function Review() {
       toast("ok", `${r.queued} revalidation job(s) queued`);
       qc.invalidateQueries({ queryKey: ["knowledge"] });
     },
+    onError: (e) => toast("err", (e as Error).message),
+  });
+  const falsifySample = useMutation({
+    mutationFn: () => api.falsifySample(domain, 5),
+    onSuccess: (r) => toast("ok", `${r.queued} falsification job(s) queued — contradictions appear here as "needs revalidation"`),
     onError: (e) => toast("err", (e as Error).message),
   });
   const resolve = useMutation({
@@ -116,9 +121,14 @@ export default function Review() {
           </span>
         }
         actions={
-          <button className="btn btn-sm" disabled={revalidateAll.isPending || !(reval.data?.total ?? 0)} onClick={() => revalidateAll.mutate()}>
-            <RefreshCw size={12} /> Revalidate all
-          </button>
+          <div className="flex gap-2">
+            <button className="btn btn-sm" disabled={falsifySample.isPending} title="Actively look for counter-evidence on the web for 5 live items (needs SearXNG)" onClick={() => falsifySample.mutate()}>
+              <Globe size={12} /> Try to falsify 5
+            </button>
+            <button className="btn btn-sm" disabled={revalidateAll.isPending || !(reval.data?.total ?? 0)} onClick={() => revalidateAll.mutate()}>
+              <RefreshCw size={12} /> Revalidate all
+            </button>
+          </div>
         }
         className="mb-4"
       >

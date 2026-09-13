@@ -471,6 +471,8 @@ export const api = {
   deleteRelation: (id: string, relationId: string) =>
     fetch(`/api/knowledge/${id}/relations/${relationId}`, { method: "DELETE" }).then((r) => { if (!r.ok) throw new ApiError(r.status, r.statusText); }),
   revalidate: (id: string) => request<{ job_id: string }>(`/knowledge/${id}/revalidate`, { method: "POST" }),
+  falsify: (id: string) => request<{ job_id: string }>(`/knowledge/${id}/falsify`, { method: "POST" }),
+  falsifySample: (domain: string, limit = 5) => request<{ queued: number }>(`/knowledge/falsify-sample${qs({ domain, limit })}`, { method: "POST" }),
   revalidateAll: (domain?: string) => request<{ queued: number }>(`/knowledge/revalidate-all${qs({ domain })}`, { method: "POST" }),
   createKnowledge: (body: KnowledgeCreate) =>
     request<KnowledgeDetail>("/knowledge", { method: "POST", body: JSON.stringify(body) }),
