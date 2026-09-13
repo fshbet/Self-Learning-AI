@@ -21,6 +21,7 @@
   <a href="#review">Reviewing &amp; conflicts</a>
   <a href="#ask">Asking questions</a>
   <a href="#eval">Self-evaluation</a>
+  <a href="#models">Choosing models</a>
   <a href="#fresh">Keeping knowledge fresh</a>
   <a href="#cli">Command line</a>
   <a href="#trouble">Troubleshooting</a>
@@ -92,6 +93,7 @@ its own schedule.</div>
   <div class="card"><h4>Pipeline</h4>Runs and their jobs (crawl, extract, discover). Failed jobs show the error and can be
   retried.</div>
   <div class="card"><h4>Domains</h4>The installed topic plugins and their taxonomy, and the recipe for adding a new one.</div>
+  <div class="card"><h4>Settings</h4>Which models do the work — local Ollama or an API provider — per role, with live model lists and tests.</div>
 </div>
 
 <h2 id="urls">Add your own URLs</h2>
@@ -196,6 +198,21 @@ A question passes only when both agree.</p>
   <li>Runs also start automatically after a pipeline run that produced knowledge, and once a day while the app is running.</li>
 </ul>
 <div class="note">Low scores early on are normal and honest: most questions abstain until their sources have been crawled. Watch the trend, not the first number.</div>
+
+<h2 id="models">Choosing models (local or API)</h2>
+<p>Open <strong>Settings</strong>. The platform uses a model for three roles — <em>triage</em> (cheap filtering), <em>extraction</em>
+(reads every section) and <em>reasoning &amp; answers</em> (contradiction checks, answers, the evaluation judge) — plus an
+<em>embedding</em> model for search. Each can be local or remote:</p>
+<ol class="steps">
+  <li>Pick a provider card: <strong>Ollama (local)</strong>, <strong>OpenAI-compatible API</strong> (OpenAI, Gemini, Groq, OpenRouter, Mistral,
+  LM Studio…) or <strong>Anthropic API</strong>. For API providers paste the key; it is stored masked on this machine only.</li>
+  <li>Press <strong>Load models</strong> — the list comes live from the provider (for Ollama: what is installed on your PC).</li>
+  <li>Choose a model per role and press the <strong>tick</strong> to test it: the platform sends a tiny structured request and reports the
+  latency. A model that is too large for your GPU shows up here as very slow.</li>
+  <li><strong>Save</strong>. New jobs use the new models immediately; the sidebar shows the active extraction model.</li>
+</ol>
+<div class="note warn">Changing the <strong>embedding</strong> model makes existing items invisible to search until you press <strong>Re-embed now</strong>
+(vectors from different models are never mixed). The page shows how many items need it.</div>
 
 <h2 id="fresh">Keeping knowledge fresh</h2>
 <ul>

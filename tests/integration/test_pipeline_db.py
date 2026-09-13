@@ -148,6 +148,7 @@ def fake_providers(monkeypatch):
     monkeypatch.setattr("knowledge_platform.core.llm_service.get_llm", lambda: llm)
     monkeypatch.setattr("knowledge_platform.core.retrieval.embeddings.get_embedder", lambda: emb)
     monkeypatch.setattr("knowledge_platform.core.retrieval.search.get_embedder", lambda: emb)
+    monkeypatch.setattr("knowledge_platform.core.evaluation.runner.get_embedder", lambda: emb)
     yield llm
 
 

@@ -318,8 +318,10 @@ def run_evaluation(
             session.commit()  # each result is visible while the run progresses
         ev.metrics = compute_metrics(ev.results, questions)
         ev.baseline_run_id = baseline.id if baseline else None
+        from ..runtime_config import eval_config
+
         ev.regression, ev.regression_details = detect_regression(
-            ev.metrics, baseline.metrics if baseline else None, settings.eval_regression_threshold
+            ev.metrics, baseline.metrics if baseline else None, eval_config()["regression_threshold"]
         )
         ev.findings = build_findings(ev.results)
         ev.status = RunStatus.DONE

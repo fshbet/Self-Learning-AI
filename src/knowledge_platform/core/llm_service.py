@@ -14,7 +14,6 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from ..adapters import get_llm
-from ..config import get_settings
 from ..models import LLMCall
 
 log = logging.getLogger(__name__)
@@ -25,13 +24,9 @@ class LLMOutputError(RuntimeError):
 
 
 def model_for(purpose: str) -> str:
-    s = get_settings()
-    return {
-        "triage": s.llm_model_triage,
-        "extract": s.llm_model_extract,
-        "reason": s.llm_model_reason,
-        "answer": s.llm_model_reason,
-    }.get(purpose, s.llm_model_reason)
+    from .runtime_config import effective_config
+
+    return effective_config().model_for("reason" if purpose == "answer" else purpose)
 
 
 def _record(session: Session | None, **kwargs: Any) -> None:

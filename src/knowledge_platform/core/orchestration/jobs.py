@@ -13,7 +13,6 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ...adapters import get_search
-from ...config import get_settings
 from ...models import (
     Document,
     DomainKeyword,
@@ -32,6 +31,7 @@ from ..collection.normalize import canonicalize_url
 from ..evaluation.runner import run_evaluation
 from ..pipeline import ingest_document
 from ..plugins.registry import get_registry
+from ..runtime_config import eval_config
 from .queue import enqueue
 
 log = logging.getLogger(__name__)
@@ -141,7 +141,7 @@ def finalize_run_if_complete(session: Session, run_id: uuid.UUID) -> bool:
         run.kind in ("pipeline", "scheduled", "extract")
         and run.status == RunStatus.DONE
         and run.domain_id
-        and get_settings().eval_after_pipeline
+        and eval_config()["after_pipeline"]
         and totals.get("extract_document", {}).get("items_created", 0)
     ):
         enqueue_evaluation(session, run.domain_id, triggered_by=f"after-run:{run.id}")
@@ -232,6 +232,51 @@ def evaluate_job(session: Session, job: Job) -> dict[str, Any]:
     return out
 
 
+@handler("reembed")
+def reembed_job(session: Session, job: Job) -> dict[str, Any]:
+    """Re-embed live items with the active embedding model; adjusts the vector column when the dimension changed."""
+    from sqlalchemy import text
+
+    from ...adapters import get_embedder
+    from ..retrieval.embeddings import embed_items
+
+    embedder = get_embedder()
+    current_dim = session.execute(
+        text(
+            "SELECT atttypmod FROM pg_attribute WHERE attrelid = 'knowledge_items'::regclass AND attname = 'embedding'"
+        )
+    ).scalar_one()
+    changed_dim = False
+    if current_dim != embedder.dimension:
+        # pgvector stores the dimension in atttypmod; changing it means every stored vector is invalid.
+        session.execute(text("DROP INDEX IF EXISTS ix_ki_embedding_hnsw"))
+        session.execute(text("UPDATE knowledge_items SET embedding = NULL, embedding_model = NULL"))
+        session.execute(
+            text(f"ALTER TABLE knowledge_items ALTER COLUMN embedding TYPE vector({int(embedder.dimension)})")
+        )
+        session.execute(
+            text("CREATE INDEX ix_ki_embedding_hnsw ON knowledge_items USING hnsw (embedding vector_cosine_ops)")
+        )
+        session.commit()
+        changed_dim = True
+
+    stmt = select(KnowledgeItem).where(
+        KnowledgeItem.status != "REJECTED",
+        (KnowledgeItem.embedding_model.is_(None)) | (KnowledgeItem.embedding_model != embedder.identity),
+    )
+    if job.payload.get("domain_id"):
+        stmt = stmt.where(KnowledgeItem.domain_id == job.payload["domain_id"])
+    total = 0
+    while True:
+        batch = session.execute(stmt.limit(200)).scalars().all()
+        if not batch:
+            break
+        embed_items(session, batch)
+        session.commit()
+        total += len(batch)
+    return {"reembedded": total, "identity": embedder.identity, "dimension_changed": changed_dim}
+
+
 @handler("discover")
 def discover_job(session: Session, job: Job) -> dict[str, Any]:
     """Web discovery (§9): run the domain's discovery queries and register candidate sources."""
@@ -291,7 +336,7 @@ def discover_job(session: Session, job: Job) -> dict[str, Any]:
 
 def schedule_due_evaluations(session: Session) -> int:
     """Periodic evaluation per domain that has knowledge (req. 37)."""
-    hours = get_settings().eval_interval_hours
+    hours = eval_config()["interval_hours"]
     if hours <= 0:
         return 0
     cutoff = utcnow() - timedelta(hours=hours)

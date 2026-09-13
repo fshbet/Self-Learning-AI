@@ -104,6 +104,7 @@ def find_near(
             KnowledgeItem.domain_id == domain_id,
             KnowledgeItem.id != item.id,
             KnowledgeItem.embedding.is_not(None),
+            KnowledgeItem.embedding_model == item.embedding_model,
             KnowledgeItem.status.in_(_LIVE),
             func.lower(KnowledgeItem.subject) == (item.subject or "").strip().lower(),
         )

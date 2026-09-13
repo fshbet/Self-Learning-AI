@@ -36,9 +36,14 @@ class Settings(BaseSettings):
     s3_secret_key: str | None = None
     s3_region: str = "auto"
 
-    # LLM
-    llm_provider: Literal["ollama"] = "ollama"
+    # LLM (env defaults; the Settings page stores overrides in the database)
+    llm_provider: Literal["ollama", "openai", "anthropic"] = "ollama"
     ollama_base_url: str = "http://localhost:11434"
+    openai_base_url: str = "https://api.openai.com/v1"
+    openai_api_key: str | None = None
+    anthropic_base_url: str = "https://api.anthropic.com"
+    anthropic_api_key: str | None = None
+    settings_allow_keys: bool = True  # allow API keys to be stored (masked) in the local settings table
     llm_model_triage: str = "qwen3:8b"
     llm_model_extract: str = "qwen3:8b"
     llm_model_reason: str = "qwen3:8b"
@@ -46,7 +51,7 @@ class Settings(BaseSettings):
     llm_num_ctx: int = 8192
 
     # Embeddings
-    embedding_provider: Literal["ollama"] = "ollama"
+    embedding_provider: Literal["ollama", "openai"] = "ollama"
     embedding_model: str = "nomic-embed-text"
     embedding_dimension: int = 768
 

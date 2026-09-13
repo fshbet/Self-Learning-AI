@@ -19,6 +19,7 @@ from ..config import get_settings
 from ..core.evaluation.runner import latest_evaluation
 from ..core.orchestration.worker import Worker
 from ..core.plugins.registry import get_registry
+from ..core.runtime_config import effective_config
 from ..db import get_db, get_engine
 from ..models import Conflict, Document, ItemStatus, Job, KnowledgeItem, LLMCall, Run, Source
 from .routes_documents import router as documents_router
@@ -27,6 +28,7 @@ from .routes_eval import router as eval_router
 from .routes_knowledge import router as knowledge_router
 from .routes_runs import _run_out
 from .routes_runs import router as runs_router
+from .routes_settings import router as settings_router
 from .schemas import HealthOut, StatsOut
 
 log = logging.getLogger(__name__)
@@ -61,13 +63,12 @@ app = FastAPI(
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-for r in (domains_router, documents_router, knowledge_router, runs_router, eval_router):
+for r in (domains_router, documents_router, knowledge_router, runs_router, eval_router, settings_router):
     app.include_router(r, prefix="/api")
 
 
 @app.get("/api/health", response_model=HealthOut, tags=["system"])
 def health() -> HealthOut:
-    s = get_settings()
     reg = get_registry()
     try:
         with get_engine().connect() as conn:
@@ -75,20 +76,25 @@ def health() -> HealthOut:
         db_ok = True
     except Exception:
         db_ok = False
-    llm = get_llm()
-    models = llm.available_models()
+    cfg = effective_config()
+    try:
+        llm = get_llm()
+        models = llm.available_models()
+        llm_name = llm.name
+    except Exception:  # misconfigured provider must not break /health
+        models, llm_name = [], cfg.llm.provider
+    try:
+        embedding = get_embedder().identity
+    except Exception:
+        embedding = f"{cfg.embedding.provider if cfg.embedding else '?'}:{cfg.embedding_model}"
     search = get_search()
     return HealthOut(
         ok=db_ok,
         database=db_ok,
-        llm_provider=llm.name,
-        llm_models_configured={
-            "triage": s.llm_model_triage,
-            "extract": s.llm_model_extract,
-            "reason": s.llm_model_reason,
-        },
+        llm_provider=llm_name,
+        llm_models_configured=dict(cfg.models),
         llm_models_available=models,
-        embedding=get_embedder().identity,
+        embedding=embedding,
         object_store=get_object_store().name,
         search=(search.name if search and search.healthy() else None),
         domains=[p.id for p in reg.all()],

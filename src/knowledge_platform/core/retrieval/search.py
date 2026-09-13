@@ -23,7 +23,7 @@ WITH vec AS (
     SELECT id, row_number() OVER (ORDER BY embedding <=> CAST(:vec AS vector)) AS r,
            1 - (embedding <=> CAST(:vec AS vector)) AS sim
     FROM knowledge_items
-    WHERE domain_id = :domain AND embedding IS NOT NULL AND status = ANY(:statuses)
+    WHERE domain_id = :domain AND embedding IS NOT NULL AND embedding_model = :emb AND status = ANY(:statuses)
     ORDER BY embedding <=> CAST(:vec AS vector)
     LIMIT :pool
 ),
@@ -64,11 +64,13 @@ def hybrid_search(
     query = query.strip()
     if not query:
         return []
-    vec = get_embedder().embed_one(query)
+    embedder = get_embedder()
+    vec = embedder.embed_one(query)
     rows = session.execute(
         text(_SQL),
         {
             "vec": str(vec),
+            "emb": embedder.identity,
             "domain": domain_id,
             "statuses": statuses or [s.value for s in _SERVABLE],
             "q": query,

@@ -19,8 +19,8 @@ Sources ─▶ Discovery ─▶ Collection ─▶ Extraction ─▶ Quality ─�
 | Concern | Default (local) | Swap later via |
 |---|---|---|
 | Database + vectors + queue + full-text | PostgreSQL 17 + pgvector (Docker) | `KP_DATABASE_URL` |
-| LLM (extraction, answers) | Ollama · `qwen3:8b` | `KP_LLM_*` |
-| Embeddings | Ollama · `nomic-embed-text` (768-d) | `KP_EMBEDDING_*` |
+| LLM (extraction, answers) | Ollama · `qwen3:8b` | **Settings page** (Ollama / OpenAI-compatible / Anthropic, live model list) or `KP_LLM_*` |
+| Embeddings | Ollama · `nomic-embed-text` (768-d) | Settings page (Ollama / OpenAI-compatible) or `KP_EMBEDDING_*`; switching triggers re-embedding |
 | Raw evidence store | local filesystem `data/raw` | `KP_OBJECT_STORE=s3` (MinIO / R2 / S3) |
 | Web search (discovery) | SearXNG (Docker, optional) | `KP_SEARCH_PROVIDER` |
 | API | FastAPI (`/api`, docs at `/api/docs`) | — |
@@ -56,6 +56,21 @@ Extraction is the slow stage — roughly 20–30 s per page section on an RTX 30
 page budget and let the scheduler grow the repository over time.
 
 Frontend development with hot reload: `cd frontend && npm run dev` (proxies `/api` to port 8010).
+
+## Choosing models (local or API)
+
+**Settings** in the UI lets you pick the provider per role — *triage*, *extraction*, *reasoning & answers* — and the
+embedding model:
+
+* **Ollama (local)** — lists the models installed on this machine.
+* **OpenAI-compatible API** — OpenAI, Gemini's OpenAI endpoint, Groq, OpenRouter, Mistral, LM Studio, vLLM… (base URL + key).
+* **Anthropic API** — Claude models via the Messages API (structured output through tool use).
+
+*Load models* queries the provider's model list; *Test* sends a one-line structured-output prompt and reports latency.
+Choices are stored in the local `settings` table and override `.env`; API keys are masked in every response and never
+logged (`KP_SETTINGS_ALLOW_KEYS=false` forces env-only keys). Changing the embedding model marks existing vectors as not
+searchable until **Re-embed** runs (a dimension change rebuilds the vector column and index). Every call is metered
+regardless of provider, so cost per knowledge item stays visible.
 
 ## Self-evaluation and regression protection
 

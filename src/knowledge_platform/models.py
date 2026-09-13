@@ -369,6 +369,16 @@ class LLMCall(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
 
 
+class Setting(Base):
+    """Runtime overrides made in the UI (model providers, schedules). Layered over environment settings."""
+
+    __tablename__ = "settings"
+
+    key: Mapped[str] = mapped_column(String(80), primary_key=True)
+    value: Mapped[Any] = mapped_column(JSON)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
 # --------------------------------------------------------------------------- evaluation (§34/§35, req. 15/38)
 
 

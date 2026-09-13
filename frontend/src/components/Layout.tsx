@@ -11,6 +11,7 @@ import {
   Lightbulb,
   Moon,
   Search,
+  Settings as SettingsIcon,
   ShieldCheck,
   Sun,
   Workflow,
@@ -31,6 +32,7 @@ const NAV = [
   { to: "/documents", label: "Documents", icon: FileText },
   { to: "/pipeline", label: "Pipeline", icon: Workflow },
   { to: "/domains", label: "Domains", icon: Boxes },
+  { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 function useTheme() {

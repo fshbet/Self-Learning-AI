@@ -262,6 +262,32 @@ export type EvaluationRun = {
 
 export type EvaluationRunDetail = EvaluationRun & { results: EvaluationResult[] };
 
+export type ProviderInfo = {
+  label: string;
+  kind: "local" | "api";
+  needs_key: boolean;
+  default_base_url: string;
+  supports_embeddings: boolean;
+  json_mode: string;
+  hint?: string;
+};
+
+export type SettingsView = {
+  effective: {
+    llm: { provider: string; base_url: string; api_key: string | null; has_key: boolean };
+    models: Record<string, string>;
+    embedding: { provider: string; base_url: string; api_key: string | null; has_key: boolean } | null;
+    embedding_model: string;
+    embedding_dimension: number;
+    source: Record<string, string>;
+  };
+  overrides: Record<string, unknown>;
+  providers: Record<string, ProviderInfo>;
+  keys: string[];
+  evaluation: { after_pipeline: boolean; interval_hours: number; regression_threshold: number };
+  embeddings: { active_identity: string; by_model: Record<string, number>; needs_reembed: number };
+};
+
 export type Stats = {
   domain: string | null;
   sources: Record<string, number>;
@@ -388,6 +414,16 @@ export const api = {
   jobs: (params: { run?: string; status?: string; type?: string; page?: number; page_size?: number }) =>
     request<Page<Job>>(`/jobs${qs(params)}`),
   retryJob: (id: string) => request<Job>(`/jobs/${id}/retry`, { method: "POST" }),
+  settings: () => request<SettingsView>("/settings"),
+  updateSettings: (values: Record<string, unknown>) =>
+    request<SettingsView>("/settings", { method: "PUT", body: JSON.stringify({ values }) }),
+  probeProvider: (body: { provider: string; base_url?: string; api_key?: string }) =>
+    request<{ ok: boolean; models: string[]; error?: string }>("/settings/probe", { method: "POST", body: JSON.stringify(body) }),
+  testChat: (body: { provider: string; base_url?: string; api_key?: string }, model: string) =>
+    request<{ ok: boolean; error?: string; latency_ms?: number }>(`/settings/test-chat${qs({ model })}`, { method: "POST", body: JSON.stringify(body) }),
+  testEmbedding: (body: { provider: string; base_url?: string; api_key?: string; model: string }) =>
+    request<{ ok: boolean; error?: string; dimension?: number }>("/settings/test-embedding", { method: "POST", body: JSON.stringify(body) }),
+  reembed: (domain?: string) => request<{ run_id: string }>(`/settings/reembed${qs({ domain })}`, { method: "POST" }),
   evaluations: (domain?: string, limit = 30) => request<EvaluationRun[]>(`/evaluations${qs({ domain, limit })}`),
   evaluation: (id: string) => request<EvaluationRunDetail>(`/evaluations/${id}`),
   createEvaluation: (domain: string, question_ids?: string[]) =>
