@@ -72,6 +72,32 @@ logged (`KP_SETTINGS_ALLOW_KEYS=false` forces env-only keys). Changing the embed
 searchable until **Re-embed** runs (a dimension change rebuilds the vector column and index). Every call is metered
 regardless of provider, so cost per knowledge item stays visible.
 
+## Canonical Knowledge Snapshots (export)
+
+**Snapshots** in the UI (or `kp export snapshot powerbi --out powerbi.zip`) builds a reproducible, versioned export
+of a domain's curated knowledge. The snapshot is *not* the source of truth — every record cites evidence that points
+back to the original source — it is the canonical representation of what the platform currently believes.
+
+```
+powerbi-knowledge-v5/
+├── manifest.json        identity, counts, generation (extractor/judge/render/scoring versions, models, embedding),
+│                        per-file SHA-256, integrity hash, export-gate results
+├── knowledge.jsonl      canonical knowledge records (origin, provenance, polarity, lifecycle, evidence ids, dependencies)
+├── evidence.jsonl       source, document, version, hash, section, verbatim excerpt, retrieval time
+├── sources.jsonl · relationships.jsonl · examples.jsonl · negative.jsonl · glossary.json · conflicts.json · changelog.jsonl
+├── ai/knowledge.jsonl   AI Knowledge Source: one self-contained text record per item with citations (index this)
+├── ai/knowledge.md      the same knowledge grouped by taxonomy (long-context ingestion / reading)
+├── knowledge.html · README.md
+└── ext/                 optional plugin-provided files (DomainPlugin.export_extensions)
+```
+
+Before anything is written an **export gate** runs: schema validation of every record, provenance (every current
+DIRECT item has verified evidence; DERIVED items have a `derived_from` chain), consistency (no dangling references),
+then integrity hashing. Canonical serialisation (sorted keys, ordered records, UTC timestamps, no volatile fields, no
+identity in rendered files) makes unchanged knowledge hash identically across builds; `Verify integrity` recomputes
+every hash. Included: VERIFIED, SUPPORTED, CONFLICTED, STALE (flagged) and SUPERSEDED (`historical: true`).
+Delta snapshots (changes between two versions) arrive with P4.
+
 ## Self-evaluation and regression protection
 
 Every domain plugin ships a golden question set (`evaluation.yaml`). The runner answers each question from the current
@@ -125,6 +151,7 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 | `kp run extract <domain>` | extract documents that were fetched but not extracted |
 | `kp run discover <domain>` | web discovery → candidate sources (needs SearXNG: `docker compose --profile discovery up -d`) |
 | `kp eval run <domain> [--fail-on-regression]` / `kp eval list` | golden-set evaluation, regression detection |
+| `kp export snapshot <domain> [--out file.zip]` / `kp export list` / `kp export verify <id>` | Canonical Knowledge Snapshots |
 | `kp serve` | API + UI + embedded worker + scheduler |
 | `kp worker` | standalone worker (set `KP_EMBEDDED_WORKER=false` for the API) |
 | `kp search <domain> "query"` / `kp ask <domain> "question"` | retrieval from the terminal |
@@ -168,6 +195,7 @@ src/knowledge_platform/
     versioning/  lifecycle (status machine, verification levels)
     retrieval/   embeddings · hybrid search (RRF) · grounded answers
     evaluation/  checks · runner (golden set, judge, metrics, regression, findings)
+    export/      schema · canonical serialisation · snapshot builder + gate · renderers (AI + human)
     orchestration/ queue · jobs · worker · scheduler
     pipeline.py  document → knowledge stage
   api/           FastAPI routes + schemas

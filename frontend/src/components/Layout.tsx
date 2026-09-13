@@ -1,6 +1,7 @@
 import clsx from "clsx";
 import {
   Activity,
+  Archive,
   BookOpen,
   Boxes,
   Database,
@@ -31,6 +32,7 @@ const NAV = [
   { to: "/sources", label: "Sources", icon: Database },
   { to: "/documents", label: "Documents", icon: FileText },
   { to: "/pipeline", label: "Pipeline", icon: Workflow },
+  { to: "/snapshots", label: "Snapshots", icon: Archive },
   { to: "/domains", label: "Domains", icon: Boxes },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];

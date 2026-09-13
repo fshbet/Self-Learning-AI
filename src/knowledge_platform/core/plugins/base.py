@@ -230,6 +230,14 @@ class DomainPlugin:
     def skills(self) -> list[Skill]:
         return []
 
+    def export_extensions(self, ctx: dict[str, Any]) -> dict[str, bytes | str]:
+        """Extra files for the Canonical Knowledge Snapshot (req. 26), placed under ``ext/``.
+
+        ``ctx`` carries ``snapshot_id``, ``version`` and the gathered ``data`` (canonical records). The core
+        writes and hashes whatever is returned; the plugin never touches storage itself.
+        """
+        return {}
+
     # convenience ------------------------------------------------------------
     def summary(self) -> dict[str, Any]:
         return {

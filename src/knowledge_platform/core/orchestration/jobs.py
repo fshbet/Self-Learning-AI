@@ -232,6 +232,22 @@ def evaluate_job(session: Session, job: Job) -> dict[str, Any]:
     return out
 
 
+@handler("snapshot")
+def snapshot_job(session: Session, job: Job) -> dict[str, Any]:
+    """Build a Canonical Knowledge Snapshot (full) for a domain (req. 3–6)."""
+    from ..export.snapshot import build_snapshot
+
+    plugin = get_registry().get(job.payload["domain_id"])
+    snap = build_snapshot(session, plugin, created_by=job.payload.get("created_by", "worker"))
+    out: dict[str, Any] = {"snapshot_id": str(snap.id), "version": snap.version, "status": snap.status}
+    if snap.status == "ready":
+        out.update({k: v for k, v in (snap.manifest.get("counts") or {}).items() if isinstance(v, int)})
+        out["size_bytes"] = snap.size_bytes
+    if snap.error:
+        out["error"] = snap.error
+    return out
+
+
 @handler("reembed")
 def reembed_job(session: Session, job: Job) -> dict[str, Any]:
     """Re-embed live items with the active embedding model; adjusts the vector column when the dimension changed."""

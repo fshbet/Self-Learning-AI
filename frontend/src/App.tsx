@@ -10,6 +10,7 @@ import Pipeline from "./pages/Pipeline";
 import Review from "./pages/Review";
 import SearchAsk from "./pages/SearchAsk";
 import Settings from "./pages/Settings";
+import Snapshots from "./pages/Snapshots";
 import Sources from "./pages/Sources";
 
 export default function App() {
@@ -27,6 +28,7 @@ export default function App() {
           <Route path="pipeline" element={<Pipeline />} />
           <Route path="domains" element={<Domains />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="snapshots" element={<Snapshots />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

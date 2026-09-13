@@ -29,6 +29,7 @@ from .routes_knowledge import router as knowledge_router
 from .routes_runs import _run_out
 from .routes_runs import router as runs_router
 from .routes_settings import router as settings_router
+from .routes_snapshots import router as snapshots_router
 from .schemas import HealthOut, StatsOut
 
 log = logging.getLogger(__name__)
@@ -63,7 +64,15 @@ app = FastAPI(
 )
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-for r in (domains_router, documents_router, knowledge_router, runs_router, eval_router, settings_router):
+for r in (
+    domains_router,
+    documents_router,
+    knowledge_router,
+    runs_router,
+    eval_router,
+    settings_router,
+    snapshots_router,
+):
     app.include_router(r, prefix="/api")
 
 

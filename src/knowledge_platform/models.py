@@ -429,3 +429,28 @@ class EvaluationResult(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     evaluation_run: Mapped[EvaluationRun] = relationship(back_populates="results")
+
+
+# --------------------------------------------------------------------------- canonical knowledge snapshots (req. 3–6)
+
+
+class Snapshot(Base):
+    """A Canonical Knowledge Snapshot: reproducible, versioned export of a domain's curated knowledge."""
+
+    __tablename__ = "snapshots"
+    __table_args__ = (UniqueConstraint("domain_id", "version", name="uq_snapshot_domain_version"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=new_id)
+    domain_id: Mapped[str] = mapped_column(ForeignKey("domains.id", ondelete="CASCADE"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(10), default="full")  # full | delta
+    base_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("snapshots.id", ondelete="SET NULL"))
+    manifest: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    integrity_hash: Mapped[str | None] = mapped_column(String(80))
+    object_prefix: Mapped[str | None] = mapped_column(Text)
+    size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str] = mapped_column(String(20), default="building")  # building | ready | failed
+    error: Mapped[str | None] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(String(120), default="api")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

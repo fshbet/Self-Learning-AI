@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Boxes, FlaskConical, FolderPlus, RefreshCw, Sparkles } from "lucide-react";
+import { AlertTriangle, Boxes, FlaskConical, FolderPlus, Package, RefreshCw, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Card, ErrorBox, KV, Loading, PageHeader, useToast } from "../components/ui";
 import { api } from "../lib/api";
 import { useDomain } from "../lib/domain";
@@ -7,6 +8,7 @@ import { timeAgo } from "../lib/format";
 
 export default function Domains() {
   const { setDomain, domain } = useDomain();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const toast = useToast();
   const list = useQuery({ queryKey: ["domains"], queryFn: api.domains });
@@ -57,6 +59,9 @@ export default function Domains() {
                 <div className="flex gap-1">
                   <button className="btn btn-sm" onClick={() => setDomain(d.id)}>Use</button>
                   <button className="btn btn-sm" disabled={sync.isPending} onClick={() => sync.mutate(d.id)}>Sync sources</button>
+                  <button className="btn btn-sm btn-primary" title="Canonical Knowledge Snapshot" onClick={() => { setDomain(d.id); navigate("/snapshots"); }}>
+                    <Package size={12} /> Export knowledge
+                  </button>
                 </div>
               ) : null
             }

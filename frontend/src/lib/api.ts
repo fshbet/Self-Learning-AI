@@ -288,6 +288,23 @@ export type SettingsView = {
   embeddings: { active_identity: string; by_model: Record<string, number>; needs_reembed: number };
 };
 
+export type Snapshot = {
+  id: string;
+  domain_id: string;
+  version: number;
+  kind: string;
+  base_snapshot_id: string | null;
+  manifest: Record<string, unknown> & { counts?: Record<string, number>; files?: Record<string, { sha256: string; bytes: number; records?: number | null }> };
+  integrity_hash: string | null;
+  object_prefix: string | null;
+  size_bytes: number;
+  status: string;
+  error: string | null;
+  created_by: string;
+  created_at: string;
+  finished_at: string | null;
+};
+
 export type Stats = {
   domain: string | null;
   sources: Record<string, number>;
@@ -414,6 +431,11 @@ export const api = {
   jobs: (params: { run?: string; status?: string; type?: string; page?: number; page_size?: number }) =>
     request<Page<Job>>(`/jobs${qs(params)}`),
   retryJob: (id: string) => request<Job>(`/jobs/${id}/retry`, { method: "POST" }),
+  snapshots: (domain?: string) => request<Snapshot[]>(`/snapshots${qs({ domain })}`),
+  createSnapshot: (domain: string, kind = "full") =>
+    request<Snapshot>("/snapshots", { method: "POST", body: JSON.stringify({ domain, kind }) }),
+  verifySnapshot: (id: string) =>
+    request<{ ok: boolean; mismatched: string[]; recomputed: string; expected: string }>(`/snapshots/${id}/verify`, { method: "POST" }),
   settings: () => request<SettingsView>("/settings"),
   updateSettings: (values: Record<string, unknown>) =>
     request<SettingsView>("/settings", { method: "PUT", body: JSON.stringify({ values }) }),

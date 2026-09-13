@@ -258,3 +258,54 @@ def test_evaluation_runner_records_metrics_and_regression(plugin, fake_providers
         assert ev2.regression is False
         assert "accuracy" in ev2.regression_details["metrics"]
         assert s.get(EvaluationRun, first_id).metrics["accuracy"] == ev2.metrics["accuracy"]
+
+
+def test_snapshot_is_reproducible_verifiable_and_gated(plugin, fake_providers):
+    """Runs after the pipeline test: builds two full snapshots of unchanged knowledge."""
+    import io
+    import json
+    import zipfile
+
+    from knowledge_platform.core.export.snapshot import build_snapshot, read_file, verify_snapshot, zip_snapshot
+
+    with session_scope() as s:
+        a = build_snapshot(s, plugin, created_by="test")
+        assert a.status == "ready", a.error
+        b = build_snapshot(s, plugin, created_by="test")
+        assert b.status == "ready" and b.version == a.version + 1
+        assert a.integrity_hash == b.integrity_hash  # identical knowledge → identical bytes → identical hash
+        m = a.manifest
+        assert m["schema_version"] == "1.0" and m["counts"]["knowledge"] >= 1 and m["gate"]["provenance_ok"]
+        assert set(m["files"]) >= {
+            "knowledge.jsonl",
+            "evidence.jsonl",
+            "sources.jsonl",
+            "relationships.jsonl",
+            "examples.jsonl",
+            "negative.jsonl",
+            "glossary.json",
+            "conflicts.json",
+            "changelog.jsonl",
+            "ai/knowledge.jsonl",
+            "ai/knowledge.md",
+            "knowledge.html",
+            "README.md",
+        }
+        assert m["generation"]["extractor_version"] and m["generation"]["embedding"]
+        # records carry provenance and citations
+        first = json.loads(read_file(a, "knowledge.jsonl").decode().splitlines()[0])
+        assert first["origin"] == "DIRECT" and first["provenance"] == "OFFICIAL" and first["evidence_ids"]
+        ai_first = json.loads(read_file(a, "ai/knowledge.jsonl").decode().splitlines()[0])
+        assert ai_first["citations"] and ai_first["citations"][0]["url"].startswith("https://fixture.test")
+        assert "CALCULATE" in read_file(a, "ai/knowledge.md").decode()
+        # conflicts from the earlier test are exported, with both sides retained
+        conflicts = json.loads(read_file(a, "conflicts.json").decode())
+        assert conflicts and conflicts[0]["status"] == "OPEN"
+        # integrity verification and zip packaging
+        v = verify_snapshot(a)
+        assert v["ok"], v
+        with zipfile.ZipFile(io.BytesIO(zip_snapshot(a))) as zf:
+            names = zf.namelist()
+            assert any(n.endswith("/manifest.json") for n in names) and any(
+                n.endswith("/ai/knowledge.jsonl") for n in names
+            )

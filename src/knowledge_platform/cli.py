@@ -19,10 +19,12 @@ domains_app = typer.Typer(help="Domain plugins", no_args_is_help=True)
 db_app = typer.Typer(help="Database", no_args_is_help=True)
 run_app = typer.Typer(help="Pipeline runs", no_args_is_help=True)
 eval_app = typer.Typer(help="Golden-set evaluation", no_args_is_help=True)
+export_app = typer.Typer(help="Canonical Knowledge Snapshots", no_args_is_help=True)
 app.add_typer(domains_app, name="domains")
 app.add_typer(db_app, name="db")
 app.add_typer(run_app, name="run")
 app.add_typer(eval_app, name="eval")
+app.add_typer(export_app, name="export")
 console = Console()
 
 
@@ -277,6 +279,76 @@ def eval_list(domain: str | None = typer.Argument(None), limit: int = 10) -> Non
                 ev.started_at.strftime("%Y-%m-%d %H:%M"),
             )
         console.print(table)
+
+
+# ----------------------------------------------------------------------------- export
+
+
+@export_app.command("snapshot")
+def export_snapshot(
+    domain: str,
+    out: Path | None = typer.Option(None, help="write a zip of the snapshot to this path"),
+) -> None:
+    """Build a full Canonical Knowledge Snapshot for a domain."""
+    from .core.export.snapshot import build_snapshot, zip_snapshot
+    from .core.plugins.registry import get_registry
+    from .db import session_scope
+
+    with session_scope() as session:
+        snap = build_snapshot(session, get_registry().get(domain), created_by="cli")
+        session.flush()
+        console.print(f"snapshot [bold]{snap.id}[/bold] v{snap.version} {snap.status}")
+        if snap.status != "ready":
+            console.print(f"[red]{snap.error}[/red]")
+            raise typer.Exit(code=1)
+        console.print(f"integrity {snap.integrity_hash} · {snap.size_bytes:,} bytes · {snap.object_prefix}")
+        console.print_json(data=snap.manifest.get("counts", {}))
+        if out:
+            out.write_bytes(zip_snapshot(snap))
+            console.print(f"[green]written {out}[/green]")
+
+
+@export_app.command("list")
+def export_list(domain: str | None = typer.Argument(None)) -> None:
+    from sqlalchemy import select
+
+    from .db import session_scope
+    from .models import Snapshot
+
+    with session_scope() as session:
+        stmt = select(Snapshot).order_by(Snapshot.created_at.desc()).limit(20)
+        if domain:
+            stmt = stmt.where(Snapshot.domain_id == domain)
+        table = Table("id", "domain", "version", "kind", "status", "items", "bytes", "integrity", "created")
+        for s in session.execute(stmt).scalars():
+            table.add_row(
+                str(s.id)[:8],
+                s.domain_id,
+                str(s.version),
+                s.kind,
+                s.status,
+                str((s.manifest or {}).get("counts", {}).get("knowledge", "—")),
+                f"{s.size_bytes:,}",
+                (s.integrity_hash or "—")[:20],
+                s.created_at.strftime("%Y-%m-%d %H:%M"),
+            )
+        console.print(table)
+
+
+@export_app.command("verify")
+def export_verify(snapshot_id: str) -> None:
+    """Recompute file hashes and the integrity hash of a stored snapshot."""
+    import uuid as _uuid
+
+    from .core.export.snapshot import verify_snapshot
+    from .db import session_scope
+    from .models import Snapshot
+
+    with session_scope() as session:
+        snap = session.get(Snapshot, _uuid.UUID(snapshot_id))
+        if snap is None:
+            raise typer.BadParameter("snapshot not found")
+        console.print_json(data=verify_snapshot(snap))
 
 
 # ----------------------------------------------------------------------------- serve / worker / search
