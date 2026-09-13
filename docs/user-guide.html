@@ -240,6 +240,10 @@ everything the platform currently believes about a topic — for another AI syst
   <li><strong>Download zip</strong> for the whole package, or open individual files. For an AI system, start with
   <code>ai/knowledge.jsonl</code> (one record per fact with text and citations) or <code>ai/knowledge.md</code>.</li>
   <li><strong>Verify integrity</strong> recomputes every file hash; the manifest's integrity hash identifies the snapshot.</li>
+  <li><strong>Export delta</strong> (once a full snapshot exists) builds a fresh full snapshot and compares it with the base you
+  pick in the dropdown. The delta version lists what was added, modified (with the changed fields), superseded, removed or
+  re-scored, plus conflicts opened/resolved since the base. Ship the delta to a consumer that already holds the base instead of
+  the whole package; the README inside explains how to apply it.</li>
 </ol>
 <div class="note">The snapshot is <em>not</em> the source of truth — the original documentation is. Every record carries citations
 back to it, plus status and verification level, so a consumer can decide how much to trust each fact. Unchanged knowledge always

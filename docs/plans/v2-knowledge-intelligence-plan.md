@@ -43,7 +43,7 @@ Legend: ✅ complete · 🟡 partial / needs modification · ❌ missing · ⚪ 
 | *1* | Core ↔ plugin separation, domain-agnostic core | ✅ | Plugin contract + registry; contract tests; core has no Power BI code |
 | *2* | Preserve existing functionality | ✅ | All changes below are additive; migrations 0003+ only add columns/tables |
 | *3–5* | Canonical Knowledge Snapshot with manifest, integrity hash | ❌ | No export of any kind |
-| *6* | Full and delta exports | ❌ | — |
+| *6* | Full and delta exports | ✅ (P1/P4) | full snapshots + delta diff engine, UI base selector, CLI |
 | *7* | Knowledge item model: provenance, versions, dependencies | 🟡 | Has: version, previous/superseded ids, product_version, valid_until, first_discovered, last_verified, extraction metadata, quality factors. Missing: **origin**, **provenance level**, **effective_date**, **dependencies** |
 | *8* | Knowledge origin DIRECT/DERIVED/SYNTHESIZED/EXPERIMENTALLY_VALIDATED | ❌ | Everything is implicitly DIRECT; extractor rejects quote-less items (see decision D1) |
 | *9* | Provenance levels OFFICIAL/EXTERNAL/COMMUNITY/USER/ORGANIZATION/DERIVED | 🟡 | Sources carry `origin` (plugin/user/discovered) and `authority`; items do not carry a provenance level; no way to enter USER/ORGANIZATION knowledge |

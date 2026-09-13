@@ -480,8 +480,8 @@ export const api = {
     request<Page<Job>>(`/jobs${qs(params)}`),
   retryJob: (id: string) => request<Job>(`/jobs/${id}/retry`, { method: "POST" }),
   snapshots: (domain?: string) => request<Snapshot[]>(`/snapshots${qs({ domain })}`),
-  createSnapshot: (domain: string, kind = "full") =>
-    request<Snapshot>("/snapshots", { method: "POST", body: JSON.stringify({ domain, kind }) }),
+  createSnapshot: (domain: string, kind: "full" | "delta" = "full", base_snapshot_id?: string) =>
+    request<Snapshot>("/snapshots", { method: "POST", body: JSON.stringify({ domain, kind, base_snapshot_id }) }),
   verifySnapshot: (id: string) =>
     request<{ ok: boolean; mismatched: string[]; recomputed: string; expected: string }>(`/snapshots/${id}/verify`, { method: "POST" }),
   settings: () => request<SettingsView>("/settings"),

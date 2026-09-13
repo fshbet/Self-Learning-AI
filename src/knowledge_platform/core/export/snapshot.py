@@ -584,10 +584,10 @@ def zip_snapshot(snap: Snapshot) -> bytes:
     return buf.getvalue()
 
 
-def latest_ready(session: Session, domain_id: str) -> Snapshot | None:
+def latest_ready(session: Session, domain_id: str, kind: str = "full") -> Snapshot | None:
     return session.execute(
         select(Snapshot)
-        .where(Snapshot.domain_id == domain_id, Snapshot.status == "ready")
+        .where(Snapshot.domain_id == domain_id, Snapshot.status == "ready", Snapshot.kind == kind)
         .order_by(Snapshot.version.desc())
         .limit(1)
     ).scalar_one_or_none()

@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from ..core.export.delta import build_delta_snapshot
 from ..core.export.snapshot import build_snapshot, read_file, verify_snapshot, zip_snapshot
 from ..core.orchestration.jobs import start_run
 from ..core.orchestration.queue import enqueue
@@ -62,7 +63,15 @@ def create_snapshot(body: SnapshotCreate, db: Session = Depends(get_db)) -> Snap
     if body.domain not in reg:
         raise HTTPException(404, f"unknown domain {body.domain}")
     if body.kind == "delta":
-        raise HTTPException(501, "delta snapshots arrive with P4")
+        try:
+            snap = build_delta_snapshot(
+                db, reg.get(body.domain), base_snapshot_id=body.base_snapshot_id, created_by="api"
+            )
+        except ValueError as exc:
+            db.rollback()
+            raise HTTPException(422, str(exc)) from exc
+        db.commit()
+        return SnapshotOut.model_validate(snap)
     if body.wait:
         snap = build_snapshot(db, reg.get(body.domain), created_by="api")
         db.commit()

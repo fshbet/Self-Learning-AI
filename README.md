@@ -96,7 +96,25 @@ DIRECT item has verified evidence; DERIVED items have a `derived_from` chain), c
 then integrity hashing. Canonical serialisation (sorted keys, ordered records, UTC timestamps, no volatile fields, no
 identity in rendered files) makes unchanged knowledge hash identically across builds; `Verify integrity` recomputes
 every hash. Included: VERIFIED, SUPPORTED, CONFLICTED, STALE (flagged) and SUPERSEDED (`historical: true`).
-Delta snapshots (changes between two versions) arrive with P4.
+
+**Delta snapshots** (`Export delta` in the UI, `kp export delta powerbi [--base <id>]`) describe what changed between
+two full snapshots. A fresh full snapshot is built as the head, then diffed record-by-record against the base using
+the stored canonical files, so a delta is reproducible and never depends on live database state:
+
+```
+powerbi-knowledge-v7/            kind: delta · base v5 → head v6 (ids and integrity hashes in the manifest)
+├── delta.json                   added / modified (+ changed_fields) / superseded / removed / status_changes /
+│                                rescored_only, plus relationship, source, evidence, example, negative and conflict diffs
+├── knowledge.jsonl              full head records of added, modified and superseded items
+├── removed.jsonl                base records that dropped out (rejected or excluded)
+├── evidence.jsonl · relationships.jsonl · sources.jsonl · examples.jsonl · negative.jsonl   changed records only
+├── conflicts.json · changelog.jsonl   conflicts opened/resolved and transitions since the base
+└── ai/knowledge.jsonl · README.md     AI Knowledge Source for the changed items; how to apply the delta
+```
+
+Apply a delta on top of its base by upserting the records it carries, dropping the `removed` ids and treating
+`superseded`/`status_changes` as lifecycle updates. Volatile fields (`confidence`, `last_verified_at`, …) do not
+count as modifications; items whose only change is a rescore are listed under `rescored_only`.
 
 ## Knowledge origin, provenance and polarity
 
@@ -177,7 +195,7 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 | `kp run extract <domain>` | extract documents that were fetched but not extracted |
 | `kp run discover <domain>` | web discovery → candidate sources (needs SearXNG: `docker compose --profile discovery up -d`) |
 | `kp eval run <domain> [--fail-on-regression]` / `kp eval list` | golden-set evaluation, regression detection |
-| `kp export snapshot <domain> [--out file.zip]` / `kp export list` / `kp export verify <id>` | Canonical Knowledge Snapshots |
+| `kp export snapshot <domain> [--out file.zip]` / `kp export delta <domain> [--base id]` / `kp export list` / `kp export verify <id>` | Canonical Knowledge Snapshots (full and delta) |
 | `kp serve` | API + UI + embedded worker + scheduler |
 | `kp worker` | standalone worker (set `KP_EMBEDDED_WORKER=false` for the API) |
 | `kp search <domain> "query"` / `kp ask <domain> "question"` | retrieval from the terminal |

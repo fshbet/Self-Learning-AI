@@ -308,6 +308,35 @@ def export_snapshot(
             console.print(f"[green]written {out}[/green]")
 
 
+@export_app.command("delta")
+def export_delta(
+    domain: str,
+    base: str | None = typer.Option(None, help="base snapshot id (default: latest ready full snapshot)"),
+    out: Path | None = typer.Option(None, help="write a zip of the delta to this path"),
+) -> None:
+    """Build a fresh full snapshot and a delta against a base snapshot."""
+    import uuid as _uuid
+
+    from .core.export.delta import build_delta_snapshot
+    from .core.export.snapshot import zip_snapshot
+    from .core.plugins.registry import get_registry
+    from .db import session_scope
+
+    with session_scope() as session:
+        snap = build_delta_snapshot(
+            session, get_registry().get(domain), base_snapshot_id=_uuid.UUID(base) if base else None, created_by="cli"
+        )
+        session.flush()
+        console.print(f"snapshot [bold]{snap.id}[/bold] v{snap.version} {snap.kind} {snap.status}")
+        if snap.status != "ready":
+            console.print(f"[red]{snap.error}[/red]")
+            raise typer.Exit(code=1)
+        console.print_json(data=snap.manifest.get("counts", {}))
+        if out:
+            out.write_bytes(zip_snapshot(snap))
+            console.print(f"[green]written {out}[/green]")
+
+
 @export_app.command("list")
 def export_list(domain: str | None = typer.Argument(None)) -> None:
     from sqlalchemy import select

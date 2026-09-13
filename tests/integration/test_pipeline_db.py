@@ -309,3 +309,77 @@ def test_snapshot_is_reproducible_verifiable_and_gated(plugin, fake_providers):
             assert any(n.endswith("/manifest.json") for n in names) and any(
                 n.endswith("/ai/knowledge.jsonl") for n in names
             )
+
+
+def test_delta_snapshot_between_two_full_snapshots(plugin, fake_providers):
+    """Runs after the snapshot test: change knowledge, build a delta, check it describes exactly the change."""
+    import json
+
+    from knowledge_platform.core.export.delta import build_delta_snapshot
+    from knowledge_platform.core.export.snapshot import latest_ready, read_file, verify_snapshot
+    from knowledge_platform.core.knowledge_entry import KnowledgeEntry, create_knowledge
+    from knowledge_platform.core.versioning.lifecycle import transition
+
+    with session_scope() as s:
+        base = latest_ready(s, plugin.id)
+        assert base is not None and base.kind == "full"
+        base_id, base_version = base.id, base.version
+        # one exported item is rejected (drops out of the snapshot), one human-authored item is added
+        exported = (
+            s.execute(
+                select(KnowledgeItem).where(
+                    KnowledgeItem.domain_id == plugin.id,
+                    KnowledgeItem.status.in_(
+                        [ItemStatus.SUPPORTED, ItemStatus.VERIFIED, ItemStatus.CONFLICTED, ItemStatus.STALE]
+                    ),
+                )
+            )
+            .scalars()
+            .first()
+        )
+        assert exported is not None
+        removed_id = str(exported.id)
+        transition(s, exported, ItemStatus.REJECTED, actor="test", reason="delta test")
+        added = create_knowledge(
+            s,
+            plugin,
+            KnowledgeEntry(
+                statement="DELTA-WIDGET reports the snapshot delta as a fixture statement.",
+                subject="DELTA-WIDGET",
+                predicate="reports",
+                object="snapshot delta",
+                knowledge_type="fact",
+                provenance="ORGANIZATION",
+                provided_by="qa",
+                authority=90,
+                evidence_text="internal delta fixture",
+            ),
+        )
+        added_id = str(added.id)
+
+    with session_scope() as s:
+        delta = build_delta_snapshot(s, plugin, base_snapshot_id=base_id, created_by="test")
+        assert delta.status == "ready", delta.error
+        assert delta.kind == "delta" and delta.base_snapshot_id == base_id
+        m = delta.manifest
+        assert m["base_version"] == base_version and m["head_version"] == delta.version - 1
+        d = json.loads(read_file(delta, "delta.json").decode())
+        assert d["knowledge"]["added"] == [added_id]
+        assert d["knowledge"]["removed"] == [removed_id] and d["changelog_entries"] >= 1
+        assert m["counts"]["knowledge_added"] == 1 and m["counts"]["knowledge_removed"] == 1
+        # delta files carry the full head records of changed items and the AI Knowledge Source for them
+        recs = {json.loads(line)["id"] for line in read_file(delta, "knowledge.jsonl").decode().splitlines() if line}
+        assert added_id in recs and removed_id not in recs
+        gone = {json.loads(line)["id"] for line in read_file(delta, "removed.jsonl").decode().splitlines() if line}
+        assert gone == {removed_id}
+        ai = {json.loads(line)["id"] for line in read_file(delta, "ai/knowledge.jsonl").decode().splitlines() if line}
+        assert added_id in ai
+        assert f"v{base_version} to v{delta.version - 1}" in read_file(delta, "README.md").decode()
+        assert verify_snapshot(delta)["ok"]
+        # the delta is derived only from stored files: rebuilding it between the same pair is byte-identical
+        again = build_delta_snapshot(
+            s, plugin, base_snapshot_id=base_id, head_snapshot_id=uuid.UUID(m["head_snapshot_id"]), created_by="test"
+        )
+        assert again.integrity_hash == delta.integrity_hash
+    with session_scope() as s:
+        s.execute(delete(KnowledgeItem).where(KnowledgeItem.id == uuid.UUID(added_id)))
