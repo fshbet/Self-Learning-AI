@@ -8,6 +8,17 @@ export function timeAgo(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString();
 }
 
+/** "in 3h" / "in 2d" for a future instant; falls back to timeAgo when the instant has passed. */
+export function timeUntil(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const diff = (new Date(iso).getTime() - Date.now()) / 1000;
+  if (diff <= 0) return `overdue (${timeAgo(iso)})`;
+  if (diff < 60) return "in under a minute";
+  if (diff < 3600) return `in ${Math.ceil(diff / 60)}m`;
+  if (diff < 86400) return `in ${Math.ceil(diff / 3600)}h`;
+  return `in ${Math.ceil(diff / 86400)}d`;
+}
+
 export function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString();

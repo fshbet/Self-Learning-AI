@@ -22,6 +22,7 @@ from ...models import (
     KnowledgeItem,
     Run,
     RunStatus,
+    Snapshot,
     Source,
     SourceStatus,
     utcnow,
@@ -31,7 +32,7 @@ from ..collection.normalize import canonicalize_url
 from ..evaluation.runner import run_evaluation
 from ..pipeline import ingest_document
 from ..plugins.registry import get_registry
-from ..runtime_config import eval_config
+from ..runtime_config import eval_config, snapshot_config
 from .queue import enqueue
 
 log = logging.getLogger(__name__)
@@ -145,6 +146,14 @@ def finalize_run_if_complete(session: Session, run_id: uuid.UUID) -> bool:
         and totals.get("extract_document", {}).get("items_created", 0)
     ):
         enqueue_evaluation(session, run.domain_id, triggered_by=f"after-run:{run.id}")
+    if (
+        run.kind in ("pipeline", "scheduled", "extract")
+        and run.status == RunStatus.DONE
+        and run.domain_id
+        and snapshot_config()["after_pipeline"]
+        and totals.get("extract_document", {}).get("items_created", 0)
+    ):
+        enqueue_snapshot(session, run.domain_id, triggered_by=f"after-run:{run.id}")
     return True
 
 
@@ -420,6 +429,48 @@ def schedule_due_evaluations(session: Session) -> int:
         if last is None or last <= cutoff:
             _, job = enqueue_evaluation(session, domain_id, triggered_by="scheduler")
             if job:
+                count += 1
+    return count
+
+
+def enqueue_snapshot(session: Session, domain_id: str, *, triggered_by: str = "api") -> Job | None:
+    run = start_run(session, domain_id=domain_id, kind="snapshot", triggered_by=triggered_by)
+    job = enqueue(
+        session,
+        "snapshot",
+        {"domain_id": domain_id, "created_by": triggered_by},
+        run_id=run.id,
+        idempotency_key=f"snapshot:{domain_id}",
+        priority=110,
+        max_attempts=1,
+    )
+    if job is None:
+        run.status = RunStatus.FAILED
+        run.stats = {"note": "a snapshot for this domain is already queued or running"}
+        run.finished_at = utcnow()
+        session.flush()
+    return job
+
+
+def schedule_due_snapshots(session: Session) -> int:
+    """Periodic full snapshot per domain with live knowledge (export scheduling, V2 §P7)."""
+    hours = snapshot_config()["interval_hours"]
+    if hours <= 0:
+        return 0
+    cutoff = utcnow() - timedelta(hours=hours)
+    count = 0
+    for domain_id in session.execute(
+        select(KnowledgeItem.domain_id).where(KnowledgeItem.status.in_(["SUPPORTED", "VERIFIED"])).distinct()
+    ).scalars():
+        if domain_id not in get_registry():
+            continue
+        last = session.execute(
+            select(func.max(Snapshot.created_at)).where(
+                Snapshot.domain_id == domain_id, Snapshot.kind == "full", Snapshot.status == "ready"
+            )
+        ).scalar_one()
+        if last is None or last <= cutoff:
+            if enqueue_snapshot(session, domain_id, triggered_by="scheduler"):
                 count += 1
     return count
 

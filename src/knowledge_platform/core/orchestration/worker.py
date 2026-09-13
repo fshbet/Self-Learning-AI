@@ -16,6 +16,7 @@ from .jobs import (
     HANDLERS,
     finalize_run_if_complete,
     schedule_due_evaluations,
+    schedule_due_snapshots,
     schedule_due_sources,
     schedule_revalidations,
 )
@@ -88,6 +89,9 @@ class Worker:
                 r = schedule_revalidations(session)
                 if r:
                     log.info("scheduler enqueued %d revalidations", r)
+                k = schedule_due_snapshots(session)
+                if k:
+                    log.info("scheduler enqueued %d snapshots", k)
 
     # ------------------------------------------------------------------ loop
     def run_forever(self) -> None:

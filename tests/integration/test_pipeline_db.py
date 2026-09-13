@@ -25,7 +25,7 @@ from knowledge_platform.core.pipeline import ingest_document
 from knowledge_platform.core.plugins.registry import load_plugin_dir
 from knowledge_platform.core.retrieval.search import hybrid_search
 from knowledge_platform.db import session_scope
-from knowledge_platform.models import Conflict, Document, Domain, Evidence, ItemStatus, KnowledgeItem, Source
+from knowledge_platform.models import Conflict, Document, Domain, Evidence, ItemStatus, KnowledgeItem, LLMCall, Source
 
 pytestmark = requires_db
 
@@ -173,6 +173,7 @@ def cleanup():
     yield
     with session_scope() as s:  # DB-level ON DELETE CASCADE removes sources, documents, items, evidence
         s.execute(delete(Domain).where(Domain.id == DOMAIN_ID))
+        s.execute(delete(LLMCall).where(LLMCall.provider == "fake"))  # accounting rows from the fake provider
     # raw documents and snapshot files written to the local object store
     import shutil
 

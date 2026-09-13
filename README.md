@@ -172,6 +172,21 @@ previous run on the same dataset version, and a drop in accuracy or citation cor
 * Automatic: after every pipeline run that produced knowledge (`KP_EVAL_AFTER_PIPELINE`) and every
   `KP_EVAL_INTERVAL_HOURS` (default 24) while serving.
 
+## Operations: scheduling and observability
+
+The embedded scheduler (every `KP_SCHEDULER_INTERVAL_SECONDS`, default 600) re-crawls each source when **its own**
+interval is due, runs the golden set on the evaluation interval, revalidates flagged items and — when enabled in
+**Settings → Export schedule** (`KP_SNAPSHOT_INTERVAL_HOURS`, `KP_SNAPSHOT_AFTER_PIPELINE`) — exports a full
+Canonical Knowledge Snapshot periodically or after every pipeline run that added knowledge.
+
+Operational metrics come from the tables the platform already keeps (jobs, runs, model calls, documents,
+snapshots): `GET /api/stats` carries an `ops` block, the dashboard's **Operations** card shows it and `kp ops
+[domain]` prints it — queue depth and age, jobs awaiting retry, **dead-letter** count by job type, jobs that needed
+retries, per-job-type durations (24h), model calls with average and **p95 latency** per purpose and failures (24h),
+storage (documents, bytes, mirrors, evidence, embedded items, snapshots) and the schedule (next source check,
+overdue sources, next evaluation, next snapshot). Dead-letter jobs are retried from the Pipeline page or
+`POST /api/jobs/{id}/retry`.
+
 The runner never edits knowledge; its findings tell you what to crawl, review or tune (req. 16 of the V2 plan).
 
 ## Adding your own URLs and keywords (no files needed)
@@ -216,6 +231,7 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 | `kp run discover <domain>` | web discovery → candidate sources (needs SearXNG: `docker compose --profile discovery up -d`) |
 | `kp eval run <domain> [--fail-on-regression]` / `kp eval list` | golden-set evaluation, regression detection |
 | `kp export snapshot <domain> [--out file.zip]` / `kp export delta <domain> [--base id]` / `kp export list` / `kp export verify <id>` | Canonical Knowledge Snapshots (full and delta) |
+| `kp ops [domain]` | queue health, dead letters, model latency, storage, schedule |
 | `kp serve` | API + UI + embedded worker + scheduler |
 | `kp worker` | standalone worker (set `KP_EMBEDDED_WORKER=false` for the API) |
 | `kp search <domain> "query"` / `kp ask <domain> "question"` | retrieval from the terminal |

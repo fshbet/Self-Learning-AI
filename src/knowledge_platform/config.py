@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     eval_interval_hours: int = 24  # periodic evaluation while serving (0 disables)
     eval_regression_threshold: float = 0.05  # accuracy / citation drop that flags a regression
     eval_retrieval_k: int = 8
+    snapshot_interval_hours: int = 0  # periodic full Canonical Knowledge Snapshot per domain (0 = off)
+    snapshot_after_pipeline: bool = False  # export a snapshot after every pipeline run that added knowledge
     log_level: str = "INFO"
 
     # Derived helpers -----------------------------------------------------

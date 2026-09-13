@@ -38,6 +38,8 @@ def test_overrides_layer_over_env_and_keys_are_masked():
                 "llm.model.extract": "qwen3:14b",
                 "llm.api_key": "sk-secret-value-12345",
                 "eval.interval_hours": 6,
+                "snapshot.interval_hours": 12,
+                "snapshot.after_pipeline": True,
             }
         },
     )
@@ -47,6 +49,11 @@ def test_overrides_layer_over_env_and_keys_are_masked():
     assert eff["llm"]["has_key"] is True and "secret" not in eff["llm"]["api_key"]
     assert r.json()["overrides"]["llm.api_key"] == "•••"
     assert r.json()["evaluation"]["interval_hours"] == 6
+    assert r.json()["snapshot"] == {"interval_hours": 12, "after_pipeline": True}
+    # the operational view reflects the schedule
+    ops = client.get("/api/stats").json()["ops"]
+    assert ops["schedule"]["snapshot_interval_hours"] == 12 and "queue" in ops and "models" in ops
+    assert {"queued", "running", "dead_letter", "jobs_retried"} <= set(ops["queue"])
     # the resolved model used by the pipeline follows the override
     assert runtime_config.effective_config().model_for("extract") == "qwen3:14b"
 

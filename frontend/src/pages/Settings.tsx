@@ -191,6 +191,8 @@ export default function Settings() {
       "eval.after_pipeline": q.data.evaluation.after_pipeline,
       "eval.interval_hours": q.data.evaluation.interval_hours,
       "eval.regression_threshold": q.data.evaluation.regression_threshold,
+      "snapshot.interval_hours": q.data.snapshot.interval_hours,
+      "snapshot.after_pipeline": q.data.snapshot.after_pipeline,
     };
     setForm(initial);
     setLoaded(initial);
@@ -332,6 +334,20 @@ export default function Settings() {
               Regression threshold (accuracy / citation drop)
               <input className="input w-full mt-1" type="number" min={0} max={1} step={0.01} value={Number(form["eval.regression_threshold"] ?? 0.05)} onChange={(e) => set("eval.regression_threshold", Number(e.target.value))} />
             </label>
+          </div>
+        </Card>
+
+        <Card title="Export schedule">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <label className="text-sm flex items-center gap-2">
+              <input type="checkbox" checked={Boolean(form["snapshot.after_pipeline"])} onChange={(e) => set("snapshot.after_pipeline", e.target.checked)} />
+              Export a full snapshot after each pipeline run that adds knowledge
+            </label>
+            <label className="text-xs muted">
+              Periodic full snapshot (hours, 0 = off)
+              <input className="input w-full mt-1" type="number" min={0} value={Number(form["snapshot.interval_hours"] ?? 0)} onChange={(e) => set("snapshot.interval_hours", Number(e.target.value))} />
+            </label>
+            <p className="muted text-xs self-end">Unchanged knowledge exports to identical bytes, so a scheduled snapshot with nothing new simply repeats the previous integrity hash. Deltas are built on demand from the Snapshots page.</p>
           </div>
         </Card>
 

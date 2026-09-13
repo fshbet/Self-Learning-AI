@@ -63,19 +63,19 @@ Legend: ✅ complete · 🟡 partial / needs modification · ❌ missing · ⚪ 
 | *23* | Media handling | ⚪ | No media collected at all (compliant with "do not store everything"); OCR/transcripts not implemented — recommend defer |
 | *24* | Hot/cold storage | ✅ | Postgres (hot) + object store (raw HTML/PDF) |
 | *25* | Delta processing | ✅ (P7) | ETag/Last-Modified/doc hash + section-level chunk hashes (`documents.chunk_hashes`): unchanged sections skip the model |
-| *26* | Plugin export contract | ❌ | Contract lacks export hooks |
+| *26* | Plugin export contract | ✅ (P1) | `DomainPlugin.export_extensions()` → `ext/` files in the snapshot |
 | *27* | AI Knowledge Source export | ✅ (P1/P5) | `ai/knowledge.jsonl` self-contained records + usage hints, `ai/index.json`, `ai/knowledge.md`, README consumption guide |
 | *28* | Human-readable export | ✅ (P1) | `ai/knowledge.md` + `knowledge.html` + README (PDF not provided, per D8) |
-| *30* | Versioning of everything | 🟡 | Versioned: plugin, schema (alembic), extractor/prompt, chunker, scoring rule, embedding identity, item, document. Missing: **snapshot**, **validator version on item** (stored in evidence details only), relationships |
-| *31* | Freshness/staleness | 🟡 | Source-change staleness ✓; **time-based** and **dependency-based** staleness missing |
+| *30* | Versioning of everything | ✅ (P1–P3) | plugin, schema, extractor/prompt, chunker, scoring rule, render, embedding identity, item, document, **snapshot**, **validator versions on item**, relationships |
+| *31* | Freshness/staleness | ✅ (P2/P3) | source-change staleness, time-based freshness factor in `score@2.0`, dependency-based revalidation |
 | *32–33* | Power BI plugin; future domains | ✅ | Taxonomy covers all listed areas; core untouched by domain |
-| *35* | Security | 🟡 | Content-as-data prompting ✓, static validators only ✓, no secrets in repo ✓. Missing: **SSRF guard** on user URLs (private/loopback IPs), API keys handling (new, see D8) |
-| *36* | Observability | 🟡 | Stats API + dashboard (counts, LLM tokens, jobs, runs). Missing: evaluation scores, regression rate, storage growth, latency, retry counts |
-| *37* | Scheduler | 🟡 | Periodic re-check ✓. Missing: eval scheduling, export scheduling, per-source interval UI, auto-start |
-| *38* | Regression protection | ❌ | Depends on P0 |
-| *39* | Quality gates | 🟡 | Knowledge gate ✓ (evidence→validation→contradiction→verification). Export gate ❌ |
+| *35* | Security | ✅ (P0b/P7) | content-as-data prompting, static validators only, **SSRF guard** on every outbound fetch, API keys masked and opt-in in DB |
+| *36* | Observability | ✅ (P0/P7) | evaluation scores + regression on dashboard; `ops` block: queue depth/age, retries, dead letters, per-job durations, model p95 latency, storage, schedule; `kp ops` |
+| *37* | Scheduler | ✅ (P0/P7) | per-source interval (UI-editable), eval scheduling, snapshot scheduling (interval / after pipeline), revalidation; auto-start: `kp autostart` |
+| *38* | Regression protection | ✅ (P0) | run-over-run comparison on same dataset version, threshold, dashboard banner, `--fail-on-regression` |
+| *39* | Quality gates | ✅ (P0/P1) | knowledge gate + export gate (schema → provenance → consistency → integrity) |
 | *40–41* | Terminology / architecture | ✅ | Will be reflected in docs and export README |
-| **User** | Local/API model selection in UI with model listing | ❌ | Only Ollama adapter; models set via env |
+| **User** | Local/API model selection in UI with model listing | ✅ (P0b) | Settings page: provider, base URL, key, model lists via probe, per-purpose models, re-embed |
 
 ---
 

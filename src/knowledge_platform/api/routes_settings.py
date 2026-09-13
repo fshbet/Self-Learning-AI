@@ -20,6 +20,7 @@ from ..core.runtime_config import (
     eval_config,
     get_overrides,
     set_overrides,
+    snapshot_config,
 )
 from ..db import get_db
 from ..models import ItemStatus, KnowledgeItem
@@ -80,6 +81,7 @@ def get_settings_view(db: Session = Depends(get_db)) -> dict[str, Any]:
         "providers": PROVIDERS,
         "keys": list(SETTING_KEYS),
         "evaluation": eval_config(),
+        "snapshot": snapshot_config(),
         "embeddings": _embedding_stats(db),
     }
 

@@ -429,6 +429,7 @@ class StatsOut(BaseModel):
     topics: list[dict[str, Any]]
     recent_runs: list[RunOut]
     evaluation: dict[str, Any] | None = None  # latest run: metrics, regression, when
+    ops: dict[str, Any] = Field(default_factory=dict)  # queue health, model latency, storage, schedule
 
 
 class HealthOut(BaseModel):

@@ -384,6 +384,51 @@ def export_verify(snapshot_id: str) -> None:
 
 
 @app.command()
+def ops(domain: str | None = typer.Argument(None)) -> None:
+    """Operational metrics: queue health, dead letters, model latency, storage, schedule."""
+    from .core.observability import ops_metrics
+    from .db import session_scope
+
+    with session_scope() as session:
+        m = ops_metrics(session, domain)
+    q, models, st, sched = m["queue"], m["models"], m["storage"], m["schedule"]
+    table = Table("area", "metric", "value", title=f"Operations{' · ' + domain if domain else ''}")
+    table.add_row("queue", "queued / running", f"{q['queued']} / {q['running']}")
+    table.add_row("queue", "retrying / dead-letter", f"{q['failed_awaiting_retry']} / {q['dead_letter']}")
+    table.add_row("queue", "jobs that needed retries", str(q["jobs_retried"]))
+    for t, d in q["job_duration_24h"].items():
+        table.add_row("jobs 24h", t, f"{d['count']} × avg {d['avg_ms'] / 1000:.1f}s (max {d['max_ms'] / 1000:.1f}s)")
+    for p, v in models["by_purpose"].items():
+        table.add_row(
+            "models 24h", p, f"{v['calls']} calls · avg {v['avg_ms']} ms · p95 {v['p95_ms']} ms · {v['failed']} failed"
+        )
+    table.add_row(
+        "storage",
+        "documents",
+        f"{st['documents']} ({st['document_bytes'] / 1e6:.1f} MB, {st['mirror_documents']} mirrors)",
+    )
+    table.add_row("storage", "snapshots", f"{st['snapshots']} ({st['snapshot_bytes'] / 1e6:.1f} MB)")
+    table.add_row("storage", "evidence / embedded items", f"{st['evidence_records']} / {st['items_embedded']}")
+    table.add_row(
+        "schedule", "next source check", f"{sched['next_source_check'] or '—'} ({sched['sources_overdue']} overdue)"
+    )
+    table.add_row(
+        "schedule",
+        "evaluation",
+        f"every {sched['evaluation_interval_hours']}h · next {sched['next_evaluation'] or '—'}",
+    )
+    table.add_row(
+        "schedule", "snapshot", f"every {sched['snapshot_interval_hours']}h · next {sched['next_snapshot'] or '—'}"
+    )
+    console.print(table)
+    if q["dead_letter"]:
+        console.print(
+            f"[red]{q['dead_letter']} dead-letter job(s): {q['dead_by_type']} — "
+            "inspect on the Pipeline page or retry via POST /api/jobs/{id}/retry[/red]"
+        )
+
+
+@app.command()
 def worker() -> None:
     """Run a standalone worker (use when KP_EMBEDDED_WORKER=false)."""
     from .core.orchestration.worker import Worker

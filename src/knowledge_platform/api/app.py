@@ -17,6 +17,7 @@ from .. import __version__
 from ..adapters import get_embedder, get_llm, get_object_store, get_search
 from ..config import get_settings
 from ..core.evaluation.runner import latest_evaluation
+from ..core.observability import ops_metrics
 from ..core.orchestration.worker import Worker
 from ..core.plugins.registry import get_registry
 from ..core.runtime_config import effective_config
@@ -186,6 +187,7 @@ def stats(domain: str | None = None, db: Session = Depends(get_db)) -> StatsOut:
         topics=topics,
         recent_runs=_run_out(db, db.execute(runs_stmt).scalars().all()),
         evaluation=evaluation,
+        ops=ops_metrics(db, domain),
     )
 
 

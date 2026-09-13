@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, RefreshCw } from "lucide-react";
+import { Activity, Play, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { useDomain } from "../lib/domain";
-import { duration, fmtNum, pct, timeAgo } from "../lib/format";
+import { duration, fmtNum, pct, timeAgo, timeUntil } from "../lib/format";
 import { Card, Empty, ErrorBox, Loading, PageHeader, Stat, StatusChip, useToast } from "../components/ui";
 
 const ORDER = ["VERIFIED", "SUPPORTED", "CANDIDATE", "CONFLICTED", "STALE", "EXTRACTED", "SUPERSEDED", "REJECTED"];
@@ -124,6 +124,68 @@ export default function Dashboard() {
               ))}
             </div>
           )}
+        </Card>
+
+        <Card
+          title={
+            <span className="flex items-center gap-2">
+              <Activity size={14} /> Operations
+            </span>
+          }
+          className="lg:col-span-3"
+          actions={<Link to="/pipeline" className="text-xs text-accent-600 hover:underline">Jobs →</Link>}
+        >
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <div className="muted text-[11px] uppercase tracking-wider font-semibold mb-1">Queue</div>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                <span>{fmtNum(s.ops.queue.queued)} queued</span>
+                <span>{fmtNum(s.ops.queue.running)} running</span>
+                <span className={s.ops.queue.failed_awaiting_retry ? "text-amber-600" : ""}>{fmtNum(s.ops.queue.failed_awaiting_retry)} retrying</span>
+                <span className={s.ops.queue.dead_letter ? "text-rose-600" : ""}>{fmtNum(s.ops.queue.dead_letter)} dead-letter</span>
+              </div>
+              <div className="muted text-xs mt-1">
+                {fmtNum(s.ops.queue.jobs_retried)} jobs needed retries
+                {s.ops.queue.oldest_queued_age_seconds > 0 ? ` · oldest waiting ${Math.round(s.ops.queue.oldest_queued_age_seconds / 60)} min` : ""}
+              </div>
+              <div className="muted text-xs mt-1">
+                {Object.entries(s.ops.queue.job_duration_24h).map(([t, d]) => `${t} ${Math.round(d.avg_ms / 1000)}s avg`).join(" · ") || "no jobs in the last 24h"}
+              </div>
+            </div>
+            <div>
+              <div className="muted text-[11px] uppercase tracking-wider font-semibold mb-1">Models (24h)</div>
+              <div>{fmtNum(s.ops.models.calls)} calls{s.ops.models.failed ? <span className="text-rose-600"> · {s.ops.models.failed} failed</span> : ""}</div>
+              <div className="muted text-xs mt-1 space-y-0.5">
+                {Object.entries(s.ops.models.by_purpose).map(([p, m]) => (
+                  <div key={p}>{p}: avg {m.avg_ms} ms · p95 {m.p95_ms} ms</div>
+                ))}
+                {Object.keys(s.ops.models.by_purpose).length === 0 && <div>no model calls yet</div>}
+              </div>
+            </div>
+            <div>
+              <div className="muted text-[11px] uppercase tracking-wider font-semibold mb-1">Storage</div>
+              <div>{fmtNum(s.ops.storage.documents)} documents · {(s.ops.storage.document_bytes / 1_000_000).toFixed(1)} MB</div>
+              <div className="muted text-xs mt-1">
+                {fmtNum(s.ops.storage.evidence_records)} evidence · {fmtNum(s.ops.storage.items_embedded)} embedded
+                {s.ops.storage.mirror_documents ? ` · ${s.ops.storage.mirror_documents} mirrors` : ""}
+              </div>
+              <div className="muted text-xs mt-1">{fmtNum(s.ops.storage.snapshots)} snapshots · {(s.ops.storage.snapshot_bytes / 1_000_000).toFixed(1)} MB</div>
+            </div>
+            <div>
+              <div className="muted text-[11px] uppercase tracking-wider font-semibold mb-1">Schedule</div>
+              <div className={s.ops.schedule.sources_overdue ? "text-amber-600" : ""}>
+                {s.ops.schedule.next_source_check ? `next source check ${timeUntil(s.ops.schedule.next_source_check)}` : "no source crawled yet"}
+                {s.ops.schedule.sources_overdue ? ` · ${s.ops.schedule.sources_overdue} overdue` : ""}
+              </div>
+              <div className="muted text-xs mt-1">
+                evaluation {s.ops.schedule.evaluation_interval_hours > 0 ? `every ${s.ops.schedule.evaluation_interval_hours}h${s.ops.schedule.next_evaluation ? ` · next ${timeUntil(s.ops.schedule.next_evaluation)}` : ""}` : "manual"}
+              </div>
+              <div className="muted text-xs mt-1">
+                snapshot {s.ops.schedule.snapshot_interval_hours > 0 ? `every ${s.ops.schedule.snapshot_interval_hours}h${s.ops.schedule.next_snapshot ? ` · next ${timeUntil(s.ops.schedule.next_snapshot)}` : ""}` : "manual"}
+                {s.ops.schedule.last_snapshot ? ` · last ${timeAgo(s.ops.schedule.last_snapshot)}` : ""}
+              </div>
+            </div>
+          </div>
         </Card>
 
         <Card title="Recent runs" className="lg:col-span-3" actions={<Link to="/pipeline" className="text-xs text-accent-600 hover:underline">Pipeline →</Link>}>

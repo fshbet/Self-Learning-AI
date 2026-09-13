@@ -102,6 +102,8 @@ SETTING_KEYS = (
     "eval.after_pipeline",
     "eval.interval_hours",
     "eval.regression_threshold",
+    "snapshot.interval_hours",
+    "snapshot.after_pipeline",
 )
 
 _cache: dict[str, Any] = {"at": 0.0, "values": {}}
@@ -199,6 +201,15 @@ def eval_config() -> dict[str, Any]:
         "after_pipeline": bool(o.get("eval.after_pipeline", env.eval_after_pipeline)),
         "interval_hours": int(o.get("eval.interval_hours", env.eval_interval_hours)),
         "regression_threshold": float(o.get("eval.regression_threshold", env.eval_regression_threshold)),
+    }
+
+
+def snapshot_config() -> dict[str, Any]:
+    env = get_settings()
+    o = _load_overrides()
+    return {
+        "interval_hours": int(o.get("snapshot.interval_hours", env.snapshot_interval_hours)),
+        "after_pipeline": bool(o.get("snapshot.after_pipeline", env.snapshot_after_pipeline)),
     }
 
 

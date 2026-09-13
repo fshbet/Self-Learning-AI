@@ -322,6 +322,7 @@ export type SettingsView = {
   providers: Record<string, ProviderInfo>;
   keys: string[];
   evaluation: { after_pipeline: boolean; interval_hours: number; regression_threshold: number };
+  snapshot: { interval_hours: number; after_pipeline: boolean };
   embeddings: { active_identity: string; by_model: Record<string, number>; needs_reembed: number };
 };
 
@@ -364,6 +365,14 @@ export type Stats = {
     regression_details: Record<string, unknown>;
     dataset_version: string;
   } | null;
+  ops: Ops;
+};
+
+export type Ops = {
+  queue: { by_status: Record<string, number>; queued: number; running: number; failed_awaiting_retry: number; dead_letter: number; dead_by_type: Record<string, number>; jobs_retried: number; oldest_queued_age_seconds: number; job_duration_24h: Record<string, { avg_ms: number; max_ms: number; count: number }> };
+  models: { window_hours: number; by_purpose: Record<string, { calls: number; avg_ms: number; p95_ms: number; failed: number }>; calls: number; failed: number };
+  storage: { documents: number; document_bytes: number; mirror_documents: number; snapshots: number; snapshot_bytes: number; evidence_records: number; items_embedded: number };
+  schedule: { next_source_check: string | null; sources_overdue: number; evaluation_interval_hours: number; last_evaluation: string | null; next_evaluation: string | null; snapshot_interval_hours: number; last_snapshot: string | null; next_snapshot: string | null; last_run: { kind: string; status: string; started_at: string } | null };
 };
 
 export type Health = {
