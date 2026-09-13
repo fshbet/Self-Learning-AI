@@ -1,0 +1,7 @@
+version: 0.1.0
+questions:
+  - id: example-01
+    question: What is the example domain?
+    expected_answer: A template used to create new domains.
+    difficulty: easy
+    risk_class: default

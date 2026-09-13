@@ -1,0 +1,139 @@
+# Seed source catalog for the Power BI domain (§7, §8).
+# authority: 0-100 (official documentation ≈ 95, recognised expert sources ≈ 85, community ≈ 50)
+# permissions record what we believe the terms allow; verify before enabling "train"/"redistribute".
+sources:
+  - key: ms-learn-dax
+    name: Microsoft Learn — DAX reference
+    url: https://learn.microsoft.com/en-us/dax/dax-function-reference
+    publisher: Microsoft
+    source_type: web
+    authority: 95
+    license: CC BY 4.0 (Microsoft Learn docs)
+    permissions: {read: true, store: true, process: true, train: false, redistribute: false}
+    crawl_frequency_hours: 168
+    max_depth: 2
+    max_pages: 80
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/dax/"]
+    deny_patterns: ["\\?", "/dax/[a-z]{2}-[a-z]{2}/"]
+
+  - key: ms-learn-powerbi-modeling
+    name: Microsoft Learn — Power BI transform & model
+    url: https://learn.microsoft.com/en-us/power-bi/transform-model/
+    publisher: Microsoft
+    authority: 95
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 168
+    max_depth: 2
+    max_pages: 60
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/power-bi/transform-model/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-powerbi-guidance
+    name: Microsoft Learn — Power BI guidance
+    url: https://learn.microsoft.com/en-us/power-bi/guidance/
+    publisher: Microsoft
+    authority: 95
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 168
+    max_depth: 2
+    max_pages: 60
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/power-bi/guidance/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-powerquery-m
+    name: Microsoft Learn — Power Query M reference
+    url: https://learn.microsoft.com/en-us/powerquery-m/
+    publisher: Microsoft
+    authority: 95
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 336
+    max_depth: 2
+    max_pages: 60
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/powerquery-m/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-powerbi-connect-data
+    name: Microsoft Learn — Power BI connect data, refresh & gateways
+    url: https://learn.microsoft.com/en-us/power-bi/connect-data/
+    publisher: Microsoft
+    authority: 95
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 168
+    max_depth: 2
+    max_pages: 60
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/power-bi/connect-data/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-powerbi-admin
+    name: Microsoft Learn — Power BI administration
+    url: https://learn.microsoft.com/en-us/power-bi/admin/
+    publisher: Microsoft
+    authority: 95
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 168
+    max_depth: 2
+    max_pages: 40
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/power-bi/admin/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-powerbi-security
+    name: Microsoft Learn — Power BI security (RLS, OLS)
+    url: https://learn.microsoft.com/en-us/fabric/security/service-admin-row-level-security
+    publisher: Microsoft
+    authority: 95
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 168
+    max_depth: 1
+    max_pages: 25
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/fabric/security/", "learn\\.microsoft\\.com/en-us/power-bi/enterprise/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-powerbi-rest
+    name: Microsoft Learn — Power BI REST API
+    url: https://learn.microsoft.com/en-us/rest/api/power-bi/
+    publisher: Microsoft
+    authority: 90
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 336
+    max_depth: 2
+    max_pages: 40
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/rest/api/power-bi/"]
+    deny_patterns: ["\\?"]
+
+  - key: dax-guide
+    name: DAX Guide (SQLBI)
+    url: https://dax.guide/
+    publisher: SQLBI
+    authority: 85
+    license: All rights reserved — read/process only
+    permissions: {read: true, store: true, process: true, train: false, redistribute: false}
+    crawl_frequency_hours: 336
+    max_depth: 1
+    max_pages: 60
+    deny_patterns: ["\\?", "/tag/", "/search"]
+
+  - key: sqlbi-articles
+    name: SQLBI articles
+    url: https://www.sqlbi.com/articles/
+    publisher: SQLBI
+    authority: 85
+    license: All rights reserved — read/process only
+    permissions: {read: true, store: true, process: true, train: false, redistribute: false}
+    crawl_frequency_hours: 168
+    max_depth: 1
+    max_pages: 30
+    allow_patterns: ["sqlbi\\.com/articles/"]
+    deny_patterns: ["\\?", "/page/"]
+
+  - key: powerbi-blog
+    name: Power BI Blog (Microsoft)
+    url: https://powerbi.microsoft.com/en-us/blog/
+    publisher: Microsoft
+    authority: 80
+    license: Microsoft terms — read/process only
+    permissions: {read: true, store: true, process: true, train: false, redistribute: false}
+    crawl_frequency_hours: 72
+    max_depth: 1
+    max_pages: 25
+    allow_patterns: ["powerbi\\.microsoft\\.com/en-us/blog/"]
+    deny_patterns: ["\\?", "/page/", "/category/", "/tag/"]

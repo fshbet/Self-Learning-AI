@@ -1,0 +1,150 @@
+# Power BI domain plugin — the first domain used to prove the platform.
+api_version: "1.0"
+id: powerbi
+name: Power BI
+version: 0.1.0
+language: en
+description: >
+  Microsoft Power BI: the DAX and Power Query (M) languages, data modeling, visualization,
+  the Power BI Service, administration, security, gateways and refresh, the REST API,
+  and Microsoft Fabric integration.
+
+knowledge_types: [fact, definition, procedure, example, best_practice, limitation, warning]
+
+taxonomy:
+  - name: DAX
+    description: Data Analysis Expressions — measures, calculated columns, tables
+    children:
+      - Functions
+      - Filter context
+      - Row context
+      - Context transition
+      - Time intelligence
+      - Variables
+      - Performance
+      - Calculation groups
+  - name: Power Query / M
+    children:
+      - M language
+      - Transformations
+      - Query folding
+      - Data sources
+      - Parameters
+  - name: Data Modeling
+    children:
+      - Star schema
+      - Relationships
+      - Cardinality
+      - Bidirectional filtering
+      - Date tables
+      - Storage modes
+      - Aggregations
+      - Composite models
+  - name: Visualization
+    children:
+      - Visuals
+      - Conditional formatting
+      - Report design
+      - Bookmarks
+      - Drillthrough
+      - Custom visuals
+  - name: Power BI Service
+    children:
+      - Workspaces
+      - Datasets and semantic models
+      - Dataflows
+      - Apps
+      - Sharing
+      - Deployment pipelines
+  - name: Administration
+    children:
+      - Tenant settings
+      - Capacities
+      - Licensing
+      - Monitoring
+      - Governance
+  - name: Security
+    children:
+      - Row-level security
+      - Object-level security
+      - Sensitivity labels
+      - Authentication
+  - name: Gateways and Refresh
+    children:
+      - On-premises data gateway
+      - Scheduled refresh
+      - Incremental refresh
+      - Troubleshooting refresh
+  - name: REST API
+    children:
+      - Authentication
+      - Datasets
+      - Reports
+      - Admin API
+      - Embedding
+  - name: Fabric integration
+    children:
+      - OneLake
+      - Direct Lake
+      - Lakehouse
+  - name: Troubleshooting
+    children:
+      - Performance
+      - Errors
+      - Connectivity
+
+terminology:
+  DAX: Data Analysis Expressions — the formula language for measures and calculated columns
+  M: The Power Query formula language
+  Power Query: The data-preparation engine and editor in Power BI
+  Semantic model: The current name for a Power BI dataset
+  Dataset: Former name of a semantic model
+  Measure: A DAX calculation evaluated in the filter context of a visual
+  Calculated column: A DAX expression evaluated row by row and stored in the model
+  Filter context: The set of filters applied to the model when a DAX expression is evaluated
+  Row context: The current row available when a DAX expression is evaluated row by row
+  Context transition: The conversion of row context into filter context, performed by CALCULATE
+  CALCULATE: The DAX function that evaluates an expression in a modified filter context
+  Star schema: A model design with fact tables related to dimension tables
+  Import mode: Storage mode where data is loaded into the in-memory VertiPaq engine
+  DirectQuery: Storage mode where queries are sent to the source at query time
+  Direct Lake: Fabric storage mode reading Delta tables from OneLake
+  Composite model: A model combining Import and DirectQuery tables
+  Row-level security: Restricting data rows per user via DAX filter rules
+  RLS: Row-level security
+  On-premises data gateway: Software that connects the Power BI Service to on-premises data
+  Incremental refresh: Refresh policy that loads only new or changed partitions
+  Query folding: Translating Power Query steps into a native source query
+  Workspace: A container in the Power BI Service for reports, semantic models and dataflows
+  Capacity: Dedicated compute resources (Premium, Fabric) for Power BI workloads
+  Fabric: Microsoft Fabric, the analytics platform that includes Power BI
+  OneLake: The unified data lake of Microsoft Fabric
+  VertiPaq: The in-memory columnar storage engine used by Import mode
+  Deployment pipeline: Tool for moving content between development, test and production workspaces
+
+risk_classes:
+  default:
+    description: Explanatory and conceptual questions
+    min_verification_level: 1
+  technical:
+    description: Syntax, behaviour and procedures that users will act on
+    min_verification_level: 2
+  security_admin:
+    description: Security, licensing, tenant administration
+    min_verification_level: 3
+
+extraction_hints: |
+  - Function reference pages: capture the function's purpose, syntax, parameters, return value and notable
+    remarks as separate items (subject = function name in upper case, e.g. "CALCULATE").
+  - Keep DAX and M code samples verbatim in `code`; do not reformat them.
+  - When a page states a limitation ("is not supported", "cannot", "maximum of"), use knowledge_type "limitation".
+  - When a page states a recommendation ("we recommend", "best practice", "avoid"), use "best_practice".
+  - Record the product surface when stated (Power BI Desktop, Power BI Service, Fabric) in product_version.
+
+discovery_queries:
+  - Power BI DAX documentation
+  - Power BI data modeling best practices
+  - Power Query M language reference
+  - Power BI row-level security guide
+  - Power BI incremental refresh configuration
+  - Power BI REST API reference

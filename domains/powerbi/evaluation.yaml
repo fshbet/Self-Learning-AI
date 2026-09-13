@@ -1,0 +1,66 @@
+# Golden evaluation set (§34). Versioned with the plugin. Extend as knowledge grows.
+version: 0.1.0
+questions:
+  - id: dax-calculate-01
+    question: What does the CALCULATE function do in DAX?
+    expected_answer: CALCULATE evaluates an expression in a modified filter context; filter arguments add to or replace the existing filters, and it performs context transition when a row context exists.
+    required_concepts: [filter context, context transition]
+    authoritative_sources: [https://learn.microsoft.com/en-us/dax/calculate-function-dax]
+    difficulty: easy
+    risk_class: default
+    topic: DAX/Filter context
+  - id: dax-divide-01
+    question: Why should DIVIDE be used instead of the / operator?
+    expected_answer: DIVIDE handles division by zero (and BLANK denominators) safely by returning BLANK or an alternate result instead of an error.
+    required_concepts: [division by zero, alternate result]
+    difficulty: easy
+    risk_class: technical
+    topic: DAX/Functions
+  - id: model-star-01
+    question: Why is a star schema recommended for Power BI models?
+    expected_answer: Star schemas separate facts from dimensions, produce simpler relationships and DAX, better performance, and avoid ambiguous filter paths.
+    required_concepts: [fact table, dimension table]
+    difficulty: medium
+    risk_class: default
+    topic: Data Modeling/Star schema
+  - id: model-bidi-01
+    question: What are the risks of bidirectional cross-filtering?
+    expected_answer: Ambiguous filter propagation paths, unexpected results and degraded performance; it should be used sparingly, e.g. for many-to-many via bridge tables.
+    required_concepts: [ambiguity, performance]
+    difficulty: medium
+    risk_class: technical
+    topic: Data Modeling/Bidirectional filtering
+  - id: refresh-incremental-01
+    question: What are the RangeStart and RangeEnd parameters used for?
+    expected_answer: They are reserved datetime Power Query parameters that define the refresh window and enable incremental refresh with query folding.
+    required_concepts: [RangeStart, RangeEnd, query folding]
+    difficulty: medium
+    risk_class: technical
+    topic: Gateways and Refresh/Incremental refresh
+  - id: security-rls-01
+    question: How does row-level security restrict data in Power BI?
+    expected_answer: RLS uses roles with DAX filter expressions on tables; users assigned to roles only see rows satisfying the filters, applied at query time in the Service.
+    required_concepts: [roles, DAX filter]
+    difficulty: medium
+    risk_class: security_admin
+    topic: Security/Row-level security
+  - id: m-folding-01
+    question: What is query folding in Power Query?
+    expected_answer: Query folding is the translation of Power Query transformation steps into a single native query executed by the data source.
+    required_concepts: [native query]
+    difficulty: easy
+    risk_class: default
+    topic: Power Query / M/Query folding
+  - id: gateway-01
+    question: When is an on-premises data gateway required?
+    expected_answer: When the Power BI Service must refresh or query data sources that are not reachable from the cloud, such as on-premises databases or files.
+    required_concepts: [on-premises]
+    difficulty: easy
+    risk_class: technical
+    topic: Gateways and Refresh/On-premises data gateway
+  - id: abstain-01
+    question: What is the maximum number of pages a Tableau workbook can contain?
+    expected_answer: (abstain) The Power BI domain has no knowledge about Tableau workbooks.
+    difficulty: easy
+    risk_class: default
+    topic: ""

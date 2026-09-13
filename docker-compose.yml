@@ -1,0 +1,56 @@
+name: knowledge-platform
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: kp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kp
+      POSTGRES_PASSWORD: kp
+      POSTGRES_DB: kp
+    ports:
+      - "5433:5432"
+    volumes:
+      - kp-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kp -d kp"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Optional: local meta-search for web discovery (no API keys).
+  # Start with:  docker compose --profile discovery up -d
+  searxng:
+    image: searxng/searxng:latest
+    container_name: kp-searxng
+    profiles: ["discovery"]
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SEARXNG_BASE_URL: http://localhost:8080/
+    volumes:
+      - ./infra/searxng:/etc/searxng:rw
+
+  # Optional: S3-compatible object storage. The default object store is the local
+  # filesystem (data/raw); enable this when you want to rehearse a cloud layout.
+  # Start with:  docker compose --profile s3 up -d
+  minio:
+    image: minio/minio:latest
+    container_name: kp-minio
+    profiles: ["s3"]
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: kp
+      MINIO_ROOT_PASSWORD: kp-secret-change-me
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - kp-minio:/data
+
+volumes:
+  kp-pgdata:
+  kp-minio:

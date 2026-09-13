@@ -1,0 +1,36 @@
+# Minimal reference domain used by contract tests and as the template for `kp domains new <slug>`.
+api_version: "1.0"
+id: example
+name: Example Domain
+version: 0.1.0
+language: en
+description: >
+  Replace this with a short description of the technology or subject area. The description is
+  given to the extraction model, so make it precise.
+
+knowledge_types: [fact, definition, procedure, example, best_practice, limitation]
+
+taxonomy:
+  - name: Concepts
+    children: [Terminology, Architecture]
+  - name: How-to
+    children: [Installation, Configuration]
+  - name: Reference
+    children: [Commands, Settings]
+
+terminology:
+  Example term: A canonical definition the extractor should use.
+
+risk_classes:
+  default:
+    description: Explanatory questions
+    min_verification_level: 1
+  technical:
+    description: Instructions users will act on
+    min_verification_level: 2
+
+extraction_hints: |
+  - Add domain-specific guidance for the extraction model here (what to capture, what to skip).
+
+discovery_queries:
+  - example documentation

@@ -1,0 +1,10 @@
+# SearXNG settings for local discovery. JSON output must be enabled for the platform's search adapter.
+use_default_settings: true
+server:
+  secret_key: "change-me-local-only"
+  limiter: false
+  image_proxy: false
+search:
+  safe_search: 0
+  autocomplete: ""
+  formats: [html, json]

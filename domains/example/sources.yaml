@@ -1,0 +1,14 @@
+# Seed sources for the example domain. Keep at least one enabled source with a narrow scope.
+sources:
+  - key: example-docs
+    name: Example documentation
+    url: https://example.com/
+    publisher: Example
+    source_type: web
+    authority: 90
+    license: unknown
+    permissions: {read: true, store: true, process: true, train: false, redistribute: false}
+    crawl_frequency_hours: 168
+    max_depth: 1
+    max_pages: 5
+    enabled: false
