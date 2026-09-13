@@ -354,3 +354,28 @@ Each step ends with: tests (unit + contract + integration), lint, typecheck, liv
 * **D10 — Auto-start.** `kp autostart install` creating a Windows Task Scheduler entry (at logon: `docker compose up -d postgres` then
   `kp serve`). Optional command, off by default. Confirm.
 * **D11 — Order.** P0 → P0b (model settings, your request) → P1 → P2 → P3 → P4 → P5 → P6 → P7, committing after each. Confirm or reorder.
+
+---
+
+## 15. Delivery status (2026-09-14)
+
+All priorities approved on 2026-09-13 are implemented, tested (73 tests: unit, contract, integration against PostgreSQL)
+and committed in order:
+
+| Priority | Commit | Delivered |
+|---|---|---|
+| P0 self-evaluation | earlier | evaluation runner, checks, judge, metrics, history, regression detection, findings, Evaluation page, scheduling |
+| P0b model settings | earlier | Settings page: local/API providers, model listing via probe, per-purpose models, masked keys, re-embed |
+| P1 canonical snapshot | earlier | export gate, canonical serialisation, manifest + integrity hash, verify, zip, Snapshots page, `kp export` |
+| P2 origin/provenance | earlier | origin/provenance/polarity/details, source classes, human knowledge entry, score@2.0 |
+| P3 dependency graph | earlier | relations, derived edges, propagation, revalidate job, Review "needs revalidation" |
+| P4 delta snapshots | `6bfffe8` | diff engine over stored files, `changed_fields`, delta files, base selector UI, `kp export delta` |
+| P5 AI knowledge source | `f59600f` | self-contained `text` with numbered sources, `usage` hint, human citations, `ai/index.json`, consumption guide |
+| P6 examples / negative | `af7678d` | `negative_coverage` metric + `limitation_not_surfaced` finding, answer-context labels, `anti_pattern`, entry fields |
+| P7a security & delta | `8fbd091` | SSRF guard (every hop), source independence (mirrors), section-level chunk hashes, Sources editor |
+| P7b ops | `d918b00` | `ops` metrics (queue, dead letters, p95 latency, storage, schedule), snapshot scheduling, `kp ops` |
+| P7c optional | `78d8eeb` | active falsification (flag-only), `kp autostart install` (Task Scheduler / systemd / launchd) |
+
+Deliberately not built (per decisions D9/D10 and the requirement analysis): media handling (images, video,
+OCR) and PDF export. `sources.reliability_history` remains unused — the per-source reliability signal is the
+evaluation history plus the conflict/stale record, which the dashboard already exposes.
