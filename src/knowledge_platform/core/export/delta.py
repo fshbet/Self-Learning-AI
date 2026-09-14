@@ -13,6 +13,13 @@ full snapshot, then diffs record by record:
     before, after}` restricted to the fields that differ, so a consumer knows *what* changed
     conflicts      opened / resolved
     changelog      transitions the base snapshot did not carry
+
+Reconstruction promise (delta@1.2): every record file of the delta carries the head version of *every* record
+whose stored form differs from the base — including records that changed only in volatile fields (scores,
+freshness stamps, a citation's document version) and are therefore *not* classified as modified in
+``delta.json``. Base records + delta records − ``removed`` ids therefore reproduce the head files record for
+record; ``delta.json`` keeps the semantic classification (added / modified / superseded / rescored_only /
+refreshed) so a consumer knows which of those changes carry meaning.
 """
 
 from __future__ import annotations
@@ -33,7 +40,7 @@ from .canonical import dumps_canonical, integrity_hash, iso, sha256_bytes
 from .schema import SCHEMA_VERSION
 from .snapshot import build_snapshot, latest_ready, read_file
 
-DELTA_VERSION = "delta@1.1"  # 1.1: modified records carry changed_fields + before/after (audit P0.4)
+DELTA_VERSION = "delta@1.2"  # 1.2: files ship every differing record (exact reconstruction); 1.1: changes[id]
 
 VOLATILE_KNOWLEDGE_FIELDS = ("quality_factors", "last_verified_at", "confidence")  # change without content change
 
@@ -73,7 +80,9 @@ def _diff(
     added = sorted(k for k in head if k not in base)
     removed = sorted(k for k in base if k not in head)
     modified = sorted(k for k in head if k in base and _rec_hash(head[k], ignore) != _rec_hash(base[k], ignore))
-    out: dict[str, Any] = {"added": added, "modified": modified, "removed": removed}
+    # differs only in the volatile fields: no semantic change, but the stored record is not the same
+    refreshed = sorted(k for k in head if k in base and k not in modified and _rec_hash(head[k]) != _rec_hash(base[k]))
+    out: dict[str, Any] = {"added": added, "modified": modified, "removed": removed, "refreshed": refreshed}
     if with_changes:
         changes: dict[str, dict[str, Any]] = {}
         for k in modified:
@@ -114,6 +123,7 @@ def compute_delta(base: Snapshot, head: Snapshot) -> dict[str, Any]:
         )
         for k in kdiff["modified"]
     }
+    ai_diff = _diff(_records(base, "ai/knowledge.jsonl"), _records(head, "ai/knowledge.jsonl"), with_changes=False)
     cb, ch = _json_list(base, "conflicts.json"), _json_list(head, "conflicts.json")
     opened = sorted(k for k in ch if k not in cb or (cb[k]["status"] != "OPEN" and ch[k]["status"] == "OPEN"))
     resolved = sorted(k for k in ch if k in cb and cb[k]["status"] == "OPEN" and ch[k]["status"] != "OPEN")
@@ -133,9 +143,12 @@ def compute_delta(base: Snapshot, head: Snapshot) -> dict[str, Any]:
             "superseded": superseded,
             "removed": kdiff["removed"],
             "rescored_only": rescored,
+            "refreshed": kdiff["refreshed"],  # volatile fields only (scores, freshness stamps); shipped, not "modified"
             "status_changes": status_changes,
             "changed_fields": changed_fields,
         },
+        # AI Knowledge Source records that differ (their citations follow evidence, so this is wider than knowledge)
+        "ai": {"added": ai_diff["added"], "modified": ai_diff["modified"], "removed": ai_diff["removed"]},
         "relationships": _diff(_records(base, "relationships.jsonl"), _records(head, "relationships.jsonl")),
         "sources": _diff(
             _records(base, "sources.jsonl"),
@@ -152,6 +165,7 @@ def compute_delta(base: Snapshot, head: Snapshot) -> dict[str, Any]:
         "_changelog": changelog,
         "_head_knowledge": kh,
         "_head_conflicts": ch,
+        "_base_conflicts": cb,
         "_base_knowledge": kb,
     }
 
@@ -164,6 +178,8 @@ def _counts(d: dict[str, Any]) -> dict[str, int]:
         "knowledge_superseded": len(k["superseded"]),
         "knowledge_removed": len(k["removed"]),
         "knowledge_rescored_only": len(k["rescored_only"]),
+        "knowledge_refreshed": len(k["refreshed"]),
+        "ai_records_changed": len(d["ai"]["added"]) + len(d["ai"]["modified"]),
         "status_changes": len(k["status_changes"]),
         "relationships_added": len(d["relationships"]["added"]),
         "relationships_modified": len(d["relationships"]["modified"]),
@@ -191,14 +207,15 @@ def _readme(plugin: DomainPlugin, d: dict[str, Any], counts: dict[str, int]) -> 
         f"Base integrity `{b['integrity_hash']}` · head integrity `{h['integrity_hash']}`.",
         "",
         "Apply on top of the base snapshot: upsert the records in `knowledge.jsonl`, `evidence.jsonl`,",
-        "`relationships.jsonl`, `sources.jsonl`, `examples.jsonl`, `negative.jsonl` (each carries the head",
-        "version of every added *and modified* record); drop the ids listed under `removed` in `delta.json`;",
-        "treat `superseded` and `status_changes` as lifecycle updates. For every modified evidence, relationship,",
-        "source, example or negative record `delta.json` lists `changes[id]` = the changed fields with their",
-        "before/after values (for example evidence whose `verified` flag flipped after a page changed);",
-        "modified knowledge items list their `changed_fields`. Items under `rescored_only` changed only in",
-        "confidence / quality factors: take those values from the head snapshot, this delta does not ship them.",
-        "`ai/knowledge.jsonl` carries the AI Knowledge Source records for added and modified items only.",
+        "`relationships.jsonl`, `sources.jsonl`, `examples.jsonl`, `negative.jsonl`, `ai/knowledge.jsonl` and",
+        "`conflicts.json` (each carries the head version of *every* record whose stored form differs from the",
+        "base, volatile fields included); drop the ids listed under `removed` in `delta.json`; append",
+        "`changelog.jsonl`. The result equals the head snapshot's files record for record (delta@1.2).",
+        "`delta.json` classifies the changes: `added`, `modified` (content changed; knowledge items list their",
+        "`changed_fields`, other records `changes[id]` = changed fields with before/after values, for example",
+        "evidence whose `verified` flag flipped after a page changed), `superseded` (replaced by a new version),",
+        "`removed`, `status_changes`, and `rescored_only` / `refreshed` (only scores, freshness stamps or",
+        "citation versions moved — shipped for exactness, not a change of meaning).",
         "",
         "| Change | Count |",
         "|---|---|",
@@ -254,43 +271,36 @@ def build_delta_snapshot(
     try:
         d = compute_delta(base, head)
         counts = _counts(d)
-        kh, ch = d.pop("_head_knowledge"), d.pop("_head_conflicts")
+        kh, ch, cb = d.pop("_head_knowledge"), d.pop("_head_conflicts"), d.pop("_base_conflicts")
         changelog = d.pop("_changelog")
         d.pop("_base_knowledge")
         changed_ids = set(d["knowledge"]["added"]) | set(d["knowledge"]["modified"]) | set(d["knowledge"]["superseded"])
+        shipped_ids = changed_ids | set(d["knowledge"]["refreshed"])  # exact reconstruction needs the volatile ones too
         head_evidence = _records(head, "evidence.jsonl")
         head_ai = _records(head, "ai/knowledge.jsonl")
+
+        def _ship(section: str) -> set[str]:
+            return set(d[section]["added"]) | set(d[section]["modified"]) | set(d[section].get("refreshed", []))
+
         files: dict[str, bytes] = {
             "delta.json": dumps_canonical(d).encode("utf-8"),
-            "knowledge.jsonl": _jsonl(kh[k] for k in sorted(changed_ids)),
+            "knowledge.jsonl": _jsonl(kh[k] for k in sorted(shipped_ids)),
             "removed.jsonl": _jsonl(
                 {"id": k, "last_status": d["knowledge"]["removed"] and _records(base, "knowledge.jsonl")[k]["status"]}
                 for k in d["knowledge"]["removed"]
             ),
-            "evidence.jsonl": _jsonl(
-                head_evidence[k] for k in sorted(set(d["evidence"]["added"]) | set(d["evidence"]["modified"]))
-            ),
+            "evidence.jsonl": _jsonl(head_evidence[k] for k in sorted(_ship("evidence"))),
             "relationships.jsonl": _jsonl(
-                _records(head, "relationships.jsonl")[k]
-                for k in sorted(set(d["relationships"]["added"]) | set(d["relationships"]["modified"]))
+                _records(head, "relationships.jsonl")[k] for k in sorted(_ship("relationships"))
             ),
-            "sources.jsonl": _jsonl(
-                _records(head, "sources.jsonl")[k]
-                for k in sorted(set(d["sources"]["added"]) | set(d["sources"]["modified"]))
-            ),
-            "examples.jsonl": _jsonl(
-                _records(head, "examples.jsonl")[k]
-                for k in sorted(set(d["examples"]["added"]) | set(d["examples"]["modified"]))
-            ),
-            "negative.jsonl": _jsonl(
-                _records(head, "negative.jsonl")[k]
-                for k in sorted(set(d["negative"]["added"]) | set(d["negative"]["modified"]))
-            ),
+            "sources.jsonl": _jsonl(_records(head, "sources.jsonl")[k] for k in sorted(_ship("sources"))),
+            "examples.jsonl": _jsonl(_records(head, "examples.jsonl")[k] for k in sorted(_ship("examples"))),
+            "negative.jsonl": _jsonl(_records(head, "negative.jsonl")[k] for k in sorted(_ship("negative"))),
             "conflicts.json": dumps_canonical(
-                [ch[k] for k in sorted(set(d["conflicts"]["opened"]) | set(d["conflicts"]["resolved"]))]
+                [ch[k] for k in sorted(k for k in ch if k not in cb or ch[k] != cb[k])]
             ).encode("utf-8"),
             "changelog.jsonl": _jsonl(changelog),
-            "ai/knowledge.jsonl": _jsonl(head_ai[k] for k in sorted(changed_ids) if k in head_ai),
+            "ai/knowledge.jsonl": _jsonl(head_ai[k] for k in sorted(_ship("ai"))),
             "README.md": _readme(plugin, d, counts).encode("utf-8"),
         }
         store = get_object_store()

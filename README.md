@@ -135,18 +135,21 @@ powerbi-knowledge-v7/            kind: delta · base v5 → head v6 (ids and int
 │                                rescored_only for knowledge; added / modified / removed for relationships, sources,
 │                                evidence, examples, negatives — every modified one with changes[id] = changed_fields
 │                                + before/after (e.g. an evidence `verified` flag flipping after a page changed)
-├── knowledge.jsonl              full head records of added, modified and superseded items
+├── knowledge.jsonl              head records of every item whose stored record differs (added, modified, superseded,
+│                                and `refreshed` = only scores / freshness stamps moved)
 ├── removed.jsonl                ids (and last status) of base items that dropped out (rejected or excluded)
-├── evidence.jsonl · relationships.jsonl · sources.jsonl · examples.jsonl · negative.jsonl   head records of added + modified
-├── conflicts.json · changelog.jsonl   conflicts opened/resolved and transitions since the base
-└── ai/knowledge.jsonl · README.md     AI Knowledge Source for the changed items; how to apply the delta
+├── evidence.jsonl · relationships.jsonl · sources.jsonl · examples.jsonl · negative.jsonl   head records of every
+│                                record that differs from the base
+├── conflicts.json · changelog.jsonl   conflicts that changed (opened/resolved) and transitions since the base
+└── ai/knowledge.jsonl · README.md     every AI Knowledge Source record that differs; how to apply the delta
 ```
 
-Apply a delta on top of its base by upserting the records it carries, dropping the `removed` ids and treating
-`superseded`/`status_changes` as lifecycle updates; base + delta reproduces the head's evidence, relationship, source,
-example and negative files exactly. Volatile fields (`confidence`, `quality_factors`, `last_verified_at`) do not count
-as modifications; items whose only change is a rescore are listed under `rescored_only` and their scores must be taken
-from the head snapshot.
+**Reconstruction promise (delta@1.2).** Base records + the delta's records − the `removed` ids reproduce the head
+snapshot's files *record for record* — the delta ships every record whose stored form differs, volatile fields
+included (a rescore, a freshness stamp, a citation's document version). `delta.json` keeps the meaning apart from the
+bytes: `added`, `modified` (+ `changed_fields` / `changes[id]` with before/after), `superseded`, `removed`,
+`status_changes`, and `rescored_only` / `refreshed` for records that moved without changing meaning.
+`tests/integration/test_incremental_updates.py` proves the promise across two consecutive deltas.
 
 ## Knowledge origin, provenance and polarity
 
