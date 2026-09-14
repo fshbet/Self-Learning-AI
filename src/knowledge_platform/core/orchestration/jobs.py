@@ -294,13 +294,41 @@ def revalidate_item_job(session: Session, job: Job) -> dict[str, Any]:
     }
 
 
-def enqueue_revalidations(session: Session, domain_id: str | None = None) -> int:
-    """Queue revalidate_item jobs for every flagged item (called by the API and the scheduler)."""
+def _revalidation_is_pointless(session: Session, item: KnowledgeItem) -> bool:
+    """True when the last revalidation of ``item`` ended with unresolved dependencies and none of its dependencies
+    has changed since: running it again would produce the same answer (found by the P2.0 long run, where four
+    dependents of a CONFLICTED item were revalidated every scheduler tick for hours). Only a *change* in a
+    dependency — a status transition, a review decision, new evidence — makes a new revalidation worthwhile."""
+    from ..versioning.dependencies import dependencies_of
+
+    last = session.execute(
+        select(Job)
+        .where(
+            Job.type == "revalidate_item",
+            Job.status == JobStatus.DONE,
+            Job.payload["item_id"].as_string() == str(item.id),
+        )
+        .order_by(Job.finished_at.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+    if last is None or last.finished_at is None or not (last.result or {}).get("unresolved_dependencies"):
+        return False
+    if item.updated_at and item.updated_at > last.finished_at:
+        return False  # the item itself changed (new evidence, flag re-set with a new reason, ...)
+    return not any(k.updated_at and k.updated_at > last.finished_at for _, k in dependencies_of(session, item.id))
+
+
+def enqueue_revalidations(session: Session, domain_id: str | None = None, *, force: bool = False) -> int:
+    """Queue revalidate_item jobs for flagged items (called by the API and the scheduler). Items whose previous
+    revalidation was blocked by dependencies that have not changed since are skipped unless ``force`` (the API's
+    explicit "revalidate now") — the scheduler never churns on a wait that only a reviewer can end."""
     stmt = select(KnowledgeItem).where(KnowledgeItem.needs_revalidation.is_(True))
     if domain_id:
         stmt = stmt.where(KnowledgeItem.domain_id == domain_id)
     count = 0
     for it in session.execute(stmt).scalars():
+        if not force and _revalidation_is_pointless(session, it):
+            continue
         if enqueue(
             session,
             "revalidate_item",

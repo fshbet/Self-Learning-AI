@@ -222,7 +222,10 @@ limitations depend on the definitions/facts about the same subject — and can b
 direct or **transitive** (A → B → C → D; diamonds and cycles are safe, expansion is deterministic, the reason records
 the root and the number of hops) — is flagged `needs_revalidation`; the `revalidate_item` job re-runs validators, scoring and conflict
 detection and clears the flag only when all dependencies are live again. Flagged items appear on the Review page
-("Needs revalidation") and are re-queued by the scheduler; snapshots export the edges as `relationships.jsonl`.
+("Needs revalidation") and are re-queued by the scheduler — but only when the item or one of its dependencies has
+changed since the last revalidation; a wait that only a reviewer can end (a CONFLICTED dependency, say) is not
+re-checked every tick. "Revalidate all" on the Review page forces a pass. Snapshots export the edges as
+`relationships.jsonl`.
 
 ### Supersede-by-new-version
 

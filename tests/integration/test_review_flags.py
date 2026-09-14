@@ -193,3 +193,41 @@ def test_review_actions_resolve_and_flag_helpers_validate():
     with session_scope() as s:
         it = s.execute(select(KnowledgeItem).where(KnowledgeItem.id == item_id)).scalar_one()
         assert it.status == "VERIFIED" and len(it.details["review_log"]) == 2
+
+
+def test_scheduler_does_not_churn_on_revalidations_a_reviewer_must_unblock(monkeypatch):
+    """P2.0 long run: dependents of a CONFLICTED item were revalidated every scheduler tick for hours with the
+    same 'unresolved dependencies' result. A repeat is only queued when the item or a dependency changed since
+    the last revalidation — or when a person asks explicitly."""
+    from knowledge_platform.core.versioning.dependencies import add_relation
+    from knowledge_platform.core.versioning.lifecycle import transition
+    from knowledge_platform.models import ItemStatus, utcnow
+
+    monkeypatch.setattr("knowledge_platform.core.verification.conflicts.judge", lambda *a, **k: ("compatible", "", ""))
+    plugin = get_registry().get(DOMAIN)
+    with session_scope() as s:
+        base = create_knowledge(s, plugin, _entry("definition", "WIDGET has a 12 V supply.", "12 V supply"))
+        dep = create_knowledge(s, plugin, _entry("procedure", "WIDGET has a start sequence.", "start sequence"))
+        add_relation(s, dep, base, "depends_on", origin="user")
+        transition(s, base, ItemStatus.CONFLICTED, reason="another source disagrees", actor="test", force=True)
+        assert dep.needs_revalidation
+        base_id, dep_id = base.id, dep.id
+    with session_scope() as s:
+        assert enqueue_revalidations(s, DOMAIN) == 1  # first time: worth a look
+        job = s.execute(select(Job).where(Job.type == "revalidate_item", Job.status == "QUEUED")).scalars().one()
+        job.status, job.finished_at = "RUNNING", None
+        job.result = revalidate_item_job(s, job)
+        job.status, job.finished_at, job.idempotency_key = "DONE", utcnow(), None
+        assert job.result["unresolved_dependencies"] == 1
+        s.flush()
+        assert s.get(KnowledgeItem, dep_id).needs_revalidation
+        # nothing changed: the scheduler queues nothing again ...
+        assert enqueue_revalidations(s, DOMAIN) == 0
+        # ... but a person can still force it
+        assert enqueue_revalidations(s, DOMAIN, force=True) == 1
+        s.execute(delete(Job).where(Job.type == "revalidate_item", Job.status == "QUEUED"))
+        # the dependency changed (the conflict was settled): revalidation is worthwhile again
+        base = s.get(KnowledgeItem, base_id)
+        transition(s, base, ItemStatus.VERIFIED, reason="reviewer settled the conflict", actor="human:bob")
+        s.flush()
+        assert enqueue_revalidations(s, DOMAIN) == 1

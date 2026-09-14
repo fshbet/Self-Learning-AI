@@ -253,7 +253,7 @@ def revalidate(item_id: uuid.UUID, db: Session = Depends(get_db)) -> dict[str, s
 
 @router.post("/knowledge/revalidate-all")
 def revalidate_all(domain: str | None = None, db: Session = Depends(get_db)) -> dict[str, int]:
-    n = enqueue_revalidations(db, domain)
+    n = enqueue_revalidations(db, domain, force=True)
     db.commit()
     return {"queued": n}
 
