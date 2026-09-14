@@ -140,14 +140,14 @@ def extract_from_text(
         "chunks_unchanged": 0,
         "raw_items": 0,
         "unverified_dropped": 0,
+        "chunks_failed": 0,
         "chunk_hashes": [],
     }
 
     for chunk in chunks:
         digest = chunk_hash(chunk)
-        stats["chunk_hashes"].append(
-            {"index": chunk.index, "heading": chunk.title[:200], "sha256": digest, "prompt": PROMPT_VERSION}
-        )
+        entry = {"index": chunk.index, "heading": chunk.title[:200], "sha256": digest, "prompt": PROMPT_VERSION}
+        stats["chunk_hashes"].append(entry)
         if looks_like_boilerplate(chunk):
             stats["chunks_skipped"] += 1
             continue
@@ -158,7 +158,11 @@ def extract_from_text(
         try:
             data = call_json(purpose="extract", system=system, user=user, schema=schema, session=session, run_id=run_id)
         except Exception as exc:
+            # a section the model could not process (timeout, malformed output) is *not* extracted: its hash is
+            # marked failed so the next pass sends it again instead of treating it as unchanged (silent loss)
             log.warning("extraction failed for chunk %d of %s: %s", chunk.index, url, exc)
+            entry["failed"] = str(exc)[:200]
+            stats["chunks_failed"] += 1
             continue
         for raw in data.get("items", []) or []:
             stats["raw_items"] += 1

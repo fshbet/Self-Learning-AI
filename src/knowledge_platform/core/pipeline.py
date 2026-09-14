@@ -411,7 +411,11 @@ def ingest_document(
 
     # section-level delta (req. 25): chunks whose text and prompt version are unchanged since the last extraction
     # are not sent to the model again — their items already exist and keep their (re-verified) evidence.
-    previous = {h["sha256"] for h in (doc.chunk_hashes or []) if h.get("prompt") == PROMPT_VERSION and h.get("sha256")}
+    previous = {
+        h["sha256"]
+        for h in (doc.chunk_hashes or [])
+        if h.get("prompt") == PROMPT_VERSION and h.get("sha256") and not h.get("failed")
+    }
     extracted, ext_stats = extract_from_text(
         plugin,
         text=doc.text,
@@ -518,8 +522,15 @@ def ingest_document(
     for item in touched.values():
         rescore(session, item, plugin)
 
-    doc.status = DocumentStatus.EXTRACTED
-    doc.extracted_at = utcnow()
-    doc.error = None
+    failed = int(ext_stats.get("chunks_failed") or 0)
+    if failed:
+        # partial extraction: what succeeded is kept, the document is not marked done, and the failed sections are
+        # what the next extraction pass (retry job or next crawl) sends to the model
+        doc.status = DocumentStatus.FETCHED
+        doc.error = f"extraction incomplete: {failed} section(s) failed"
+    else:
+        doc.status = DocumentStatus.EXTRACTED
+        doc.extracted_at = utcnow()
+        doc.error = None
     session.flush()
     return stats

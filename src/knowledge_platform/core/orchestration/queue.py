@@ -25,8 +25,10 @@ def enqueue(
     idempotency_key: str | None = None,
     priority: int = 100,
     max_attempts: int = 3,
+    delay_seconds: float = 0.0,
 ) -> Job | None:
-    """Insert a job; returns None when an identical idempotency key is already queued/running."""
+    """Insert a job (runnable after ``delay_seconds``); returns None when an identical idempotency key is already
+    queued/running."""
     if idempotency_key:
         existing = session.execute(select(Job).where(Job.idempotency_key == idempotency_key)).scalar_one_or_none()
         if existing is not None:
@@ -46,7 +48,7 @@ def enqueue(
             priority=priority,
             max_attempts=max_attempts,
             status=JobStatus.QUEUED,
-            run_at=utcnow(),
+            run_at=utcnow() + timedelta(seconds=delay_seconds) if delay_seconds else utcnow(),
         )
         .on_conflict_do_nothing(index_elements=["idempotency_key"])
         .returning(Job.id)

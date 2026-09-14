@@ -395,6 +395,9 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 * **Change detection** — content hashes + ETag/If-Modified-Since; when a page changes, items whose quotes vanished become `STALE`.
   **Section-level delta**: every chunk's hash (heading path + text, plus the extractor prompt version) is stored on the
   document; on re-extraction only changed sections go to the model — unchanged sections keep their items and evidence.
+  A section the model could not process (timeout, malformed output) is recorded as **failed**, never as extracted: the
+  document stays partially extracted (`FETCHED` + error), a delayed retry sends only that section (three attempts with
+  backoff), and the next crawl re-enqueues it — no section is silently lost.
 * **Source independence** — a copy is not a second confirmation. A document is linked to the earliest copy
   (`documents.canonical_document_id`) when its normalized text is identical, when its loose fingerprint (letters and
   digits only) matches, or when the page declares a known document as its `rel=canonical`; a source can be declared a

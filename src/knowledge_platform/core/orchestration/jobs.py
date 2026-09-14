@@ -204,6 +204,10 @@ def crawl_source_job(session: Session, job: Job) -> dict[str, Any]:
     return out
 
 
+PARTIAL_EXTRACTION_RETRIES = 3
+PARTIAL_EXTRACTION_BACKOFF_SECONDS = 120
+
+
 @handler("extract_document")
 def extract_document_job(session: Session, job: Job) -> dict[str, Any]:
     doc = session.get(Document, uuid.UUID(job.payload["document_id"]))
@@ -214,6 +218,24 @@ def extract_document_job(session: Session, job: Job) -> dict[str, Any]:
     out = stats.as_dict()
     ext = out.pop("extraction", {})
     out.update({f"extraction_{k}": v for k, v in ext.items()})
+    failed = int(ext.get("chunks_failed") or 0)
+    if failed:
+        # sections the model could not process: keep what succeeded, retry only the failed sections after a
+        # backoff (their hashes are marked failed, so the retry sends nothing else). Bounded; after that the
+        # document stays partially extracted (status FETCHED + error) and the next crawl re-enqueues it.
+        attempt = int(job.payload.get("partial_attempt", 0)) + 1
+        out["partial_attempt"] = attempt
+        if attempt <= PARTIAL_EXTRACTION_RETRIES:
+            retry = enqueue(
+                session,
+                "extract_document",
+                {**job.payload, "partial_attempt": attempt},
+                run_id=job.run_id,
+                idempotency_key=f"extract:{doc.id}:partial{attempt}",
+                priority=int(job.priority or 100) + 5,
+                delay_seconds=PARTIAL_EXTRACTION_BACKOFF_SECONDS * (2 ** (attempt - 1)),
+            )
+            out["retry_enqueued"] = retry is not None
     return out
 
 
