@@ -22,6 +22,8 @@ class NormalizedDoc:
     published_at: str | None
     content_hash: str
     links: list[str] = field(default_factory=list)
+    text_fingerprint: str = ""  # letters/digits only, lower-case: survives punctuation/whitespace/case edits
+    canonical_url: str | None = None  # <link rel=canonical> / og:url when the page declares one
 
 
 def canonicalize_url(url: str, base: str | None = None) -> str:
@@ -51,6 +53,29 @@ def normalize_text(text: str) -> str:
 
 def content_hash(text: str) -> str:
     return "sha256:" + hashlib.sha256(normalize_text(text).encode("utf-8")).hexdigest()
+
+
+_ALNUM = re.compile(r"[^0-9a-z]+")
+
+
+def text_fingerprint(text: str) -> str:
+    """Loose identity of a text: lower-case letters and digits only (audit P1.9). Two pages that differ only
+    in punctuation, whitespace, casing or markdown decoration share a fingerprint."""
+    return "sha256:" + hashlib.sha256(_ALNUM.sub("", (text or "").lower()).encode("utf-8")).hexdigest()
+
+
+def _canonical_link(raw: bytes, base_url: str) -> str | None:
+    """The page's own canonical URL (rel=canonical, then og:url), absolute and canonicalised."""
+    try:
+        tree = lxml_html.fromstring(raw)
+    except Exception:
+        return None
+    for xpath in ("//link[@rel='canonical']/@href", "//meta[@property='og:url']/@content"):
+        for value in tree.xpath(xpath):
+            u = canonicalize_url(str(value), base_url)
+            if u:
+                return u
+    return None
 
 
 def _extract_links(raw: bytes, base_url: str) -> list[str]:
@@ -92,6 +117,8 @@ def normalize_html(raw: bytes, url: str) -> NormalizedDoc:
         published_at=meta.date if meta and meta.date else None,
         content_hash=content_hash(text),
         links=_extract_links(raw, url),
+        text_fingerprint=text_fingerprint(text),
+        canonical_url=_canonical_link(raw, url),
     )
 
 
@@ -123,6 +150,7 @@ def normalize_pdf(raw: bytes, url: str) -> NormalizedDoc:
         published_at=None,
         content_hash=content_hash(text),
         links=[],
+        text_fingerprint=text_fingerprint(text),
     )
 
 

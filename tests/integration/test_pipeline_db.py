@@ -275,7 +275,13 @@ def test_crawl_extract_dedup_stale_and_search(plugin, fake_providers):
 def test_mirror_source_is_not_an_independent_confirmation(plugin, fake_providers):
     """The same page served by a second source is linked as a mirror and does not raise the source count."""
     _mock_site(2)
-    page = (FIXTURES / "page_v2.html").read_text()
+    # the copy is not byte-identical: casing and punctuation differ, and it declares the original as canonical
+    page = (
+        (FIXTURES / "page_v2.html")
+        .read_text()
+        .replace("<head>", '<head><link rel="canonical" href="https://fixture.test/docs/calculate">', 1)
+        .replace("CONFLICT:", "conflict -")
+    )
     respx.get("https://mirror.test/robots.txt").mock(return_value=httpx.Response(200, text="User-agent: *\nAllow: /\n"))
     respx.get("https://mirror.test/docs/").mock(
         return_value=httpx.Response(200, text=page, headers={"Content-Type": "text/html"})
@@ -308,6 +314,9 @@ def test_mirror_source_is_not_an_independent_confirmation(plugin, fake_providers
             select(Document).where(Document.domain_id == DOMAIN_ID, Document.url.like("%/calculate"))
         ).scalar_one()
         assert doc.canonical_document_id == original.id and doc.meta["mirror_of"] == original.url
+        assert doc.content_hash != original.content_hash  # not an exact copy ...
+        assert doc.meta["mirror_reason"] in ("same text fingerprint", "declared canonical url")
+        assert doc.canonical_url == "https://fixture.test/docs/calculate"
         # extraction from the mirror attaches evidence, but the item still has one *independent* source
         result = ingest_document(s, doc, plugin)
         assert result.items_merged + result.items_near_duplicate + result.items_created >= 1
@@ -326,8 +335,57 @@ def test_mirror_source_is_not_an_independent_confirmation(plugin, fake_providers
         sources = {e.source_id for e in item.evidence if e.evidence_type == "extraction" and e.verified}
         assert len(sources) == 2
         assert item.quality_factors["source_agreement"] == 1 / 3  # one independent source, not two
+
+        # a third source republishing the primary (declared mirror_of) contributes the same verbatim excerpt from a
+        # page of its own: neither the declaration nor the copied words make it an independent confirmation
+        from knowledge_platform.core.pipeline import independent_source_ids, rescore
+
+        primary_src = s.execute(select(Source).where(Source.domain_id == DOMAIN_ID, Source.key == "fx")).scalar_one()
+        syndicated = Source(
+            domain_id=DOMAIN_ID,
+            key="syndicated",
+            origin="user",
+            name="Syndicated",
+            url="https://syn.test/",
+            publisher="syn",
+            source_type="docs",
+            authority=70,
+            access_type="public",
+            license="unknown",
+            permissions={},
+            crawl_frequency_hours=24,
+            max_depth=0,
+            max_pages=5,
+            status="ACTIVE",
+            enabled=True,
+            mirror_of_source_id=primary_src.id,
+        )
+        s.add(syndicated)
+        s.flush()
+        first_quote = next(e for e in item.evidence if e.evidence_type == "extraction" and e.verified)
+        item.evidence.append(
+            Evidence(
+                knowledge_item_id=item.id,
+                source_id=syndicated.id,
+                evidence_type="extraction",
+                excerpt=first_quote.excerpt,
+                verified=True,
+                url="https://syn.test/copy",
+            )
+        )
+        s.flush()
+        raw = {e.source_id for e in item.evidence if e.evidence_type == "extraction" and e.verified}
+        assert len(raw) == 3 and len(independent_source_ids(s, item, raw)) == 1
+        # even without the declaration, a source that only repeats another source's words is not independent
+        syndicated.mirror_of_source_id = None
+        s.flush()
+        assert len(independent_source_ids(s, item, raw)) == 1
+        rescore(s, item, plugin)
+        assert item.quality_factors["source_agreement"] == 1 / 3
         # leave the fixture domain as it was for the snapshot tests that follow
         s.execute(delete(Evidence).where(Evidence.document_id == doc.id))
+        s.execute(delete(Evidence).where(Evidence.source_id == syndicated.id))
+        s.delete(syndicated)
         s.delete(mirror)
 
 

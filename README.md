@@ -345,9 +345,12 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 * **Change detection** — content hashes + ETag/If-Modified-Since; when a page changes, items whose quotes vanished become `STALE`.
   **Section-level delta**: every chunk's hash (heading path + text, plus the extractor prompt version) is stored on the
   document; on re-extraction only changed sections go to the model — unchanged sections keep their items and evidence.
-* **Source independence** — the same text fetched from a second source (a mirror, a syndicated copy) is linked to the
-  earliest copy (`documents.canonical_document_id`) and counts **once** in confidence scoring; only genuinely independent
-  sources raise the agreement factor.
+* **Source independence** — a copy is not a second confirmation. A document is linked to the earliest copy
+  (`documents.canonical_document_id`) when its normalized text is identical, when its loose fingerprint (letters and
+  digits only) matches, or when the page declares a known document as its `rel=canonical`; a source can be declared a
+  republisher of another (`mirror_of` in `sources.yaml`, `mirror_of_source_id` in the Sources API); and a source that
+  only repeats verbatim excerpts another source already supplied is not counted either. Only genuinely independent
+  sources raise the agreement factor. Not attempted (by decision): fuzzy similarity of substantially edited copies.
 * **SSRF guard** — every outbound fetch (plugin sources, user URLs, discovered pages and every redirect hop) must resolve
   to a public address; loopback, RFC 1918, link-local, CGNAT, multicast, reserved ranges and internal hostnames are
   refused, as are non-http(s) schemes and URLs carrying credentials (`KP_FETCH_ALLOW_PRIVATE=true` for intranet crawls).

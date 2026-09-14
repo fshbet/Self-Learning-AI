@@ -85,27 +85,62 @@ def _evidence_summary(session: Session, item: KnowledgeItem) -> tuple[int, int, 
     return len(distinct_keys), max(authorities, default=0), validator_passed, human_approved, validator_results
 
 
+def _primary_source(session: Session, source_id: uuid.UUID, cache: dict[uuid.UUID, uuid.UUID]) -> uuid.UUID:
+    """Follow declared mirror_of chains to the primary source (cycle-safe)."""
+    seen: list[uuid.UUID] = []
+    current = source_id
+    while current not in cache and current not in seen:
+        seen.append(current)
+        parent = session.execute(select(Source.mirror_of_source_id).where(Source.id == current)).scalar_one_or_none()
+        if not parent:
+            break
+        current = parent
+    root = cache.get(current, current)
+    for s in seen:
+        cache[s] = root
+    return root
+
+
 def independent_source_ids(session: Session, item: KnowledgeItem, source_ids: set[uuid.UUID]) -> set[uuid.UUID]:
-    """Collapse sources whose documents mirror another source's document: a copy is not an independent
-    confirmation (source independence). The mirror's evidence counts for the canonical document's source."""
-    doc_ids = {e.document_id for e in item.evidence if e.document_id and e.evidence_type == "extraction" and e.verified}
-    if not doc_ids:
+    """Sources that independently confirm the item (audit P1.9). A copy is not a second confirmation:
+
+    * a document that mirrors another document (same text / fingerprint / declared canonical URL) counts for the
+      canonical document's source;
+    * a source declared as ``mirror_of`` another source counts as that primary (chains followed);
+    * a source that only contributes verbatim excerpts another source already contributed (syndicated fragments)
+      is not independent either.
+    """
+    evidence = [e for e in item.evidence if e.evidence_type == "extraction" and e.verified and e.source_id]
+    if not evidence:
         return source_ids
-    mirrors = session.execute(
-        select(Document.source_id, Document.canonical_document_id).where(
-            Document.id.in_(doc_ids), Document.canonical_document_id.is_not(None)
-        )
-    ).all()
-    if not mirrors:
-        return source_ids
-    canonical_sources = dict(
-        session.execute(select(Document.id, Document.source_id).where(Document.id.in_([c for _, c in mirrors]))).all()
-    )
-    out = set(source_ids)
-    for src_id, canonical_id in mirrors:
-        out.discard(src_id)
-        out.add(canonical_sources.get(canonical_id, src_id))
-    return out
+    doc_ids = {e.document_id for e in evidence if e.document_id}
+    canonical_of: dict[uuid.UUID, uuid.UUID] = {}
+    if doc_ids:
+        mirrors = session.execute(
+            select(Document.id, Document.canonical_document_id).where(
+                Document.id.in_(doc_ids), Document.canonical_document_id.is_not(None)
+            )
+        ).all()
+        if mirrors:
+            canonical_sources = dict(
+                session.execute(
+                    select(Document.id, Document.source_id).where(Document.id.in_([c for _, c in mirrors]))
+                ).all()
+            )
+            canonical_of = {d: canonical_sources[c] for d, c in mirrors if c in canonical_sources}
+    cache: dict[uuid.UUID, uuid.UUID] = {}
+    seen_excerpts: dict[str, uuid.UUID] = {}
+    out: set[uuid.UUID] = set()
+    # oldest evidence first: the source that stated it first owns the excerpt
+    for e in sorted(evidence, key=lambda x: (x.retrieved_at or x.created_at or utcnow(), str(x.id))):
+        src = canonical_of.get(e.document_id, e.source_id) if e.document_id else e.source_id
+        src = _primary_source(session, src, cache)
+        key = " ".join((e.excerpt or "").lower().split())
+        owner = seen_excerpts.setdefault(key, src)
+        if owner != src:
+            continue  # the same words, said first by another source: not independent
+        out.add(src)
+    return out or source_ids
 
 
 def has_open_conflict(session: Session, item: KnowledgeItem) -> bool:

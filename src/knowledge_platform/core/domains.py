@@ -57,6 +57,15 @@ def sync_domain(session: Session, plugin: DomainPlugin) -> dict[str, int]:
         if src.status == SourceStatus.CANDIDATE:
             src.status = SourceStatus.ACTIVE
     session.flush()
+    # declared shared primaries (audit P1.9), resolved after every key exists
+    by_key = {s.key: s for s in session.execute(select(Source).where(Source.domain_id == plugin.id)).scalars()}
+    for spec in plugin.sources():
+        src = by_key.get(spec.key)
+        if src is None:
+            continue
+        primary = by_key.get(spec.mirror_of) if spec.mirror_of else None
+        src.mirror_of_source_id = primary.id if primary and primary.id != src.id else None
+    session.flush()
     reclassified = _rederive_provenance(session, plugin.id, class_changed) if class_changed else 0
     return {"sources_created": created, "sources_updated": updated, "items_reclassified": reclassified}
 

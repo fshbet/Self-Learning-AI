@@ -171,6 +171,9 @@ class Source(Base):
     reliability_score: Mapped[float] = mapped_column(Float, default=1.0)
     robots_info: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     notes: Mapped[str] = mapped_column(Text, default="")
+    # declared shared primary (audit P1.9): this source republishes another one; its documents count as the
+    # primary's for independence
+    mirror_of_source_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("sources.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     domain: Mapped[Domain] = relationship(back_populates="sources")
@@ -191,6 +194,9 @@ class Document(Base):
     title: Mapped[str] = mapped_column(Text, default="")
     content_hash: Mapped[str] = mapped_column(String(80))  # sha256 of normalized text
     content_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # last content change
+    # source independence (audit P1.9): loose fingerprint (letters/digits only) and the page's declared canonical
+    text_fingerprint: Mapped[str | None] = mapped_column(String(80))
+    canonical_url: Mapped[str | None] = mapped_column(Text)
     previous_content_hash: Mapped[str | None] = mapped_column(String(80))
     raw_object_key: Mapped[str] = mapped_column(Text)  # object store key of raw bytes
     text: Mapped[str] = mapped_column(Text, default="")  # normalized markdown-ish text

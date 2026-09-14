@@ -167,6 +167,7 @@ class SourceSpec(BaseModel):
     deny_patterns: list[str] = Field(default_factory=list)
     enabled: bool = True
     notes: str = ""
+    mirror_of: str = ""  # key of the source this one republishes (shared primary): counts once for independence
 
 
 class EvalQuestion(BaseModel):

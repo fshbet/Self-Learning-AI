@@ -59,6 +59,7 @@ class SourceOut(ORM):
     permissions: dict[str, Any]
     crawl_frequency_hours: int
     max_depth: int
+    mirror_of_source_id: uuid.UUID | None = None
     max_pages: int
     status: str
     enabled: bool
@@ -117,6 +118,7 @@ class SourcePatch(BaseModel):
     max_depth: int | None = Field(default=None, ge=0, le=6)
     max_pages: int | None = Field(default=None, ge=1, le=5000)
     notes: str | None = None
+    mirror_of_source_id: uuid.UUID | None = None  # declare a shared primary source (audit P1.9)
 
 
 # ----------------------------------------------------------------------------- documents

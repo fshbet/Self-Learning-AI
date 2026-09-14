@@ -45,3 +45,19 @@ sample_questions:                                                   # shown on t
 
 `role`: `foundation` | `dependent` | `example` | `neutral`; `polarity`: `positive` | `negative`. The declaration is
 exported in every snapshot's `glossary.json` (`knowledge_type_specs`), so consumers read the same semantics.
+
+## Sources that republish another source
+
+If a catalog source syndicates or mirrors another one, say so — its pages then count as the primary's for source
+independence instead of looking like a second confirmation:
+
+```yaml
+sources:
+  - key: vendor-docs
+    url: https://docs.vendor.example/
+    source_class: official
+  - key: vendor-docs-mirror
+    url: https://mirror.example/vendor-docs/
+    source_class: external
+    mirror_of: vendor-docs
+```

@@ -29,3 +29,18 @@ def test_normalize_html_extracts_main_content_and_links():
 
 def test_content_hash_ignores_layout_whitespace():
     assert content_hash("a  b\n\n\n\nc") == content_hash("a b\n\nc")
+
+
+def test_fingerprint_and_canonical_link():
+    from knowledge_platform.core.collection.normalize import normalize_html, text_fingerprint
+
+    assert text_fingerprint("Hello, World!  ") == text_fingerprint("hello world")
+    assert text_fingerprint("Hello World") != text_fingerprint("Hello Worlds")
+    raw = (
+        b"<html><head><title>T</title><link rel='canonical' href='https://primary.test/page/'></head>"
+        b"<body><article><p>" + b"Main content paragraph about widgets. " * 20 + b"</p></article></body></html>"
+    )
+    nd = normalize_html(raw, "https://mirror.test/copy")
+    assert nd.canonical_url == "https://primary.test/page/" and nd.text_fingerprint.startswith("sha256:")
+    plain = raw.replace(b"<link rel='canonical' href='https://primary.test/page/'>", b"")
+    assert normalize_html(plain, "https://x.test/").canonical_url is None

@@ -77,25 +77,37 @@ def _confirm(session: Session, doc: Document) -> int:
 
 
 def link_mirror(session: Session, doc: Document) -> Document | None:
-    """Source independence (req. 22/31): the same text fetched from a *different* source is a mirror, not a second
-    confirmation. The earliest copy is canonical; mirrors point at it and count once in confidence scoring."""
-    canonical = session.execute(
+    """Source independence (req. 22/31, audit P1.9): a copy fetched from a *different* source is a mirror, not a
+    second confirmation. Three signals, in order: identical normalized text; the same loose text fingerprint
+    (punctuation / whitespace / case edits); the page declaring another known document as its canonical URL.
+    The earliest copy is canonical; mirrors point at it and count once in confidence scoring."""
+    base = (
         select(Document)
         .where(
             Document.domain_id == doc.domain_id,
-            Document.content_hash == doc.content_hash,
             Document.id != doc.id,
             Document.canonical_document_id.is_(None),
         )
         .order_by(Document.fetched_at.asc(), Document.id.asc())
         .limit(1)
-    ).scalar_one_or_none()
+    )
+    signals = [("same content", Document.content_hash == doc.content_hash)]
+    if doc.text_fingerprint:
+        signals.append(("same text fingerprint", Document.text_fingerprint == doc.text_fingerprint))
+    if doc.canonical_url:
+        signals.append(("declared canonical url", Document.url == doc.canonical_url))
+    canonical, how = None, ""
+    for label, cond in signals:
+        canonical = session.execute(base.where(cond)).scalar_one_or_none()
+        if canonical is not None:
+            how = label
+            break
     if canonical is None or canonical.source_id == doc.source_id:
         doc.canonical_document_id = None
         return None
     doc.canonical_document_id = canonical.id
-    doc.meta = {**(doc.meta or {}), "mirror_of": canonical.url}
-    log.info("document %s mirrors %s (same content from another source)", doc.url, canonical.url)
+    doc.meta = {**(doc.meta or {}), "mirror_of": canonical.url, "mirror_reason": how}
+    log.info("document %s mirrors %s (%s, another source)", doc.url, canonical.url, how)
     return canonical
 
 
@@ -189,6 +201,8 @@ def crawl_source(
                         url=url,
                         title=nd.title,
                         content_hash=nd.content_hash,
+                        text_fingerprint=nd.text_fingerprint,
+                        canonical_url=nd.canonical_url,
                         raw_object_key=key,
                         text=nd.text,
                         language=nd.language[:12],
@@ -209,6 +223,8 @@ def crawl_source(
                 elif existing.content_hash != nd.content_hash:
                     existing.previous_content_hash = existing.content_hash
                     existing.content_hash = nd.content_hash
+                    existing.text_fingerprint = nd.text_fingerprint
+                    existing.canonical_url = nd.canonical_url
                     existing.raw_object_key = key
                     existing.text = nd.text
                     existing.title = nd.title or existing.title
