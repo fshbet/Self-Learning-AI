@@ -1,0 +1,9 @@
+sources:
+  - key: lab-docs
+    name: Robotics Lab internal docs
+    url: https://docs.roboticslab.test/manual/
+    publisher: Robotics Lab
+    authority: 90
+    source_class: organization
+    max_depth: 1
+    max_pages: 10

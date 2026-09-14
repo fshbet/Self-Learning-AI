@@ -1,0 +1,18 @@
+version: "1"
+questions:
+  - id: payload
+    question: What is the payload limit of ARM-7?
+    expected_answer: 5 kg at the flange
+    required_concepts: [5 kg]
+    topic: Arm/Payload
+    risk_class: default
+  - id: hazard-speed
+    question: Which hazard applies when ARM-7 moves at full speed?
+    expected_answer: ARM-7 at full speed can crush a hand; the guard must be closed.
+    required_concepts: [crush]
+    negative: true
+    topic: Safety/Hazards
+    risk_class: safety
+  - id: abstain
+    question: What is the boiling point of tungsten?
+    expect_abstain: true

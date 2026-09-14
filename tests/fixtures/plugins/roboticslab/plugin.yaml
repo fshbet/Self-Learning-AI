@@ -1,0 +1,31 @@
+# Synthetic second domain for the plugin-contract test (P2.10). No real robotics knowledge — every statement here
+# is invented so the test can prove the core operates on plugin declarations alone.
+api_version: "1.0"
+id: roboticslab
+name: Robotics Lab
+version: 0.1.0
+language: en
+description: "A fictional robot arm (ARM-7) and its lab: specifications, safety rules, hazards and demonstrations."
+knowledge_types:
+  - {name: spec, role: foundation, label: Specifications}
+  - {name: safety_rule, role: dependent, label: Safety rules}
+  - {name: hazard, role: dependent, polarity: negative, label: Hazards, prefix: Hazard}
+  - {name: demo, role: example, label: Demonstrations}
+  - note
+sample_questions:
+  - What is the payload limit of ARM-7?
+  - Which hazard applies when ARM-7 moves at full speed?
+taxonomy:
+  - name: Arm
+    children: [Payload, Motion]
+  - name: Safety
+    children: [Rules, Hazards]
+terminology:
+  Payload: The mass the arm can carry at the flange.
+risk_classes:
+  default: {description: General, min_verification_level: 1}
+  safety: {description: Safety-relevant, min_verification_level: 2}
+discovery:
+  queries: ["ARM-7 robot arm specification"]
+  prefer_hosts: ["docs.roboticslab.test"]
+  deny_hosts: ["spam.test"]
