@@ -51,6 +51,11 @@ def normalize_text(text: str) -> str:
     return text.strip()
 
 
+# the recipe behind document.content_hash, exported with every document record so a consumer knows what the hash is
+# a hash *of*: main-content extraction -> markdown-ish text -> normalize_text (whitespace collapsed) -> UTF-8 -> SHA-256
+NORMALIZER_VERSION = "html-main-text@1.0"
+
+
 def content_hash(text: str) -> str:
     return "sha256:" + hashlib.sha256(normalize_text(text).encode("utf-8")).hexdigest()
 

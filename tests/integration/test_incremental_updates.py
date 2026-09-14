@@ -358,6 +358,7 @@ RECORD_FILES = (
     "evidence.jsonl",
     "relationships.jsonl",
     "sources.jsonl",
+    "documents.jsonl",
     "examples.jsonl",
     "negative.jsonl",
     "ai/knowledge.jsonl",
@@ -404,6 +405,23 @@ def test_snapshot_n_plus_1_and_delta_reconstruction(plugin):
         assert kh[derived_id]["needs_revalidation"] is True and kh[gamma_id]["status"] == "STALE"
         # changelog carries the transitions of this update
         assert d["changelog_entries"] >= 1
+        # documents.jsonl (schema 1.5): evidence ↔ document integrity is checkable from the files alone
+        docs = _records(head, "documents.jsonl")
+        evs = _records(head, "evidence.jsonl")
+        guide_doc = next(r for r in docs.values() if r["url"] == "https://fixture.test/docs/guide")
+        assert guide_doc["version"] == 2 and guide_doc["previous_content_hash"] and guide_doc["raw_sha256"]
+        assert guide_doc["normalizer_version"] and guide_doc["source_id"] in _records(head, "sources.jsonl")
+        for e in evs.values():
+            if e["document_id"]:
+                doc_rec = docs[e["document_id"]]
+                assert e["document_hash"] in (doc_rec["content_hash"], doc_rec["previous_content_hash"]), e["id"]
+                assert (
+                    e["verified"] == (e["document_hash"] == doc_rec["content_hash"])
+                    or e["evidence_type"] != "extraction"
+                )
+        assert d["documents"]["modified"] == [guide_doc["id"]]
+        assert "content_hash" in d["documents"]["changes"][guide_doc["id"]]["changed_fields"]
+        assert "text" not in guide_doc
 
         # ---- the proof: State N + Delta = State N+1, record for record, for every file the delta covers
         removed = {
@@ -412,6 +430,7 @@ def test_snapshot_n_plus_1_and_delta_reconstruction(plugin):
             "evidence.jsonl": set(d["evidence"]["removed"]),
             "relationships.jsonl": set(d["relationships"]["removed"]),
             "sources.jsonl": set(d["sources"]["removed"]),
+            "documents.jsonl": set(d["documents"]["removed"]),
             "examples.jsonl": set(d["examples"]["removed"]),
             "negative.jsonl": set(d["negative"]["removed"]),
             "conflicts.json": set(),

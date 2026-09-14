@@ -7,6 +7,7 @@ full snapshot, then diffs record by record:
     knowledge      added / modified (+changed_fields) / superseded / removed(rejected or excluded) / status_changes
     relationships  added / modified / removed
     sources        added / modified / removed
+    documents      added / modified (+changed_fields, e.g. a new content_hash) / removed
     evidence       added / modified / removed      (e.g. `verified` flipping when a page changed)
     examples, negative  added / modified / removed
     every modified record (except knowledge, which ships whole) comes with `changes[id] = {changed_fields,
@@ -156,6 +157,9 @@ def compute_delta(base: Snapshot, head: Snapshot) -> dict[str, Any]:
             ignore=("last_checked_at", "document_count"),
         ),
         "evidence": _diff(_records(base, "evidence.jsonl"), _records(head, "evidence.jsonl")),
+        "documents": _diff(
+            _records(base, "documents.jsonl"), _records(head, "documents.jsonl"), ignore=("fetched_at",)
+        ),
         "examples": _diff(_records(base, "examples.jsonl"), _records(head, "examples.jsonl"), ignore=("confidence",)),
         "negative": _diff(
             _records(base, "negative.jsonl"), _records(head, "negative.jsonl"), ignore=VOLATILE_KNOWLEDGE_FIELDS
@@ -187,6 +191,9 @@ def _counts(d: dict[str, Any]) -> dict[str, int]:
         "sources_added": len(d["sources"]["added"]),
         "sources_modified": len(d["sources"]["modified"]),
         "sources_removed": len(d["sources"]["removed"]),
+        "documents_added": len(d["documents"]["added"]),
+        "documents_modified": len(d["documents"]["modified"]),
+        "documents_removed": len(d["documents"]["removed"]),
         "evidence_added": len(d["evidence"]["added"]),
         "evidence_modified": len(d["evidence"]["modified"]),
         "evidence_removed": len(d["evidence"]["removed"]),
@@ -207,7 +214,8 @@ def _readme(plugin: DomainPlugin, d: dict[str, Any], counts: dict[str, int]) -> 
         f"Base integrity `{b['integrity_hash']}` · head integrity `{h['integrity_hash']}`.",
         "",
         "Apply on top of the base snapshot: upsert the records in `knowledge.jsonl`, `evidence.jsonl`,",
-        "`relationships.jsonl`, `sources.jsonl`, `examples.jsonl`, `negative.jsonl`, `ai/knowledge.jsonl` and",
+        "`relationships.jsonl`, `sources.jsonl`, `documents.jsonl`, `examples.jsonl`, `negative.jsonl`,",
+        "`ai/knowledge.jsonl` and",
         "`conflicts.json` (each carries the head version of *every* record whose stored form differs from the",
         "base, volatile fields included); drop the ids listed under `removed` in `delta.json`; append",
         "`changelog.jsonl`. The result equals the head snapshot's files record for record (delta@1.2).",
@@ -294,6 +302,7 @@ def build_delta_snapshot(
                 _records(head, "relationships.jsonl")[k] for k in sorted(_ship("relationships"))
             ),
             "sources.jsonl": _jsonl(_records(head, "sources.jsonl")[k] for k in sorted(_ship("sources"))),
+            "documents.jsonl": _jsonl(_records(head, "documents.jsonl")[k] for k in sorted(_ship("documents"))),
             "examples.jsonl": _jsonl(_records(head, "examples.jsonl")[k] for k in sorted(_ship("examples"))),
             "negative.jsonl": _jsonl(_records(head, "negative.jsonl")[k] for k in sorted(_ship("negative"))),
             "conflicts.json": dumps_canonical(

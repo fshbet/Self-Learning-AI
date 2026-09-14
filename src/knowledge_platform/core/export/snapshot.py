@@ -31,6 +31,7 @@ from ...models import (
     StatusTransition,
     utcnow,
 )
+from ..collection.normalize import NORMALIZER_VERSION
 from ..extraction.chunker import CHUNKER_VERSION
 from ..extraction.prompts import JUDGE_VERSION, PROMPT_VERSION
 from ..plugins.base import DomainPlugin
@@ -45,6 +46,7 @@ from .schema import (
     AIKnowledgeRecord,
     ChangelogRecord,
     ConflictRecord,
+    DocumentRecord,
     EvidenceRecord,
     ExampleRecord,
     KnowledgeRecord,
@@ -89,6 +91,14 @@ def _relations_for(session: Session, domain_id: str) -> list[RelationshipRecord]
         )
         for r in rows
     ]
+
+
+def _raw_sha256(raw_object_key: str | None) -> str | None:
+    """The object store names raw fetches by the SHA-256 of their bytes: <domain>/<xx>/<sha256>.<ext>."""
+    if not raw_object_key:
+        return None
+    stem = raw_object_key.rsplit("/", 1)[-1].split(".", 1)[0]
+    return f"sha256:{stem}" if len(stem) == 64 else None
 
 
 def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
@@ -234,6 +244,33 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
                 )
             )
 
+    document_records = [
+        DocumentRecord(
+            id=str(d.id),
+            source_id=str(d.source_id),
+            url=d.url,
+            final_url=(d.meta or {}).get("final_url"),
+            canonical_url=d.canonical_url,
+            title=d.title or "",
+            language=d.language or "en",
+            version=int(d.version or 1),
+            content_hash=d.content_hash,
+            previous_content_hash=d.previous_content_hash,
+            text_fingerprint=d.text_fingerprint,
+            raw_sha256=_raw_sha256(d.raw_object_key),
+            normalizer_version=NORMALIZER_VERSION,
+            byte_size=int(d.byte_size or 0),
+            depth=int(d.depth or 0),
+            status=d.status,
+            fetched_at=iso(d.fetched_at),
+            content_changed_at=iso(d.content_changed_at),
+            published_at=d.published_at,
+            http_etag=d.http_etag,
+            http_last_modified=d.http_last_modified,
+            mirror_of_document_id=str(d.canonical_document_id) if d.canonical_document_id else None,
+        )
+        for d in sorted(documents.values(), key=lambda d: str(d.id))
+    ]
     source_records = [
         SourceRecord(
             id=str(s.id),
@@ -306,6 +343,7 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
         "knowledge": knowledge,
         "evidence": evidence,
         "sources": source_records,
+        "documents": document_records,
         "relationships": relations,
         "examples": examples,
         "negative": [k for k in knowledge if k.polarity == "negative" and not k.historical],
@@ -326,7 +364,8 @@ def run_gate(data: dict[str, Any]) -> dict[str, Any]:
     ev_ids = {e.id for e in evidence}
     item_ids = {k.id for k in knowledge}
     # schema validation: re-validate every record through pydantic
-    for name in ("knowledge", "evidence", "sources", "relationships", "examples", "conflicts", "changelog"):
+    families = ("knowledge", "evidence", "sources", "documents", "relationships", "examples", "conflicts", "changelog")
+    for name in families:
         for rec in data[name]:
             try:
                 type(rec).model_validate(rec.model_dump())
@@ -365,10 +404,19 @@ def run_gate(data: dict[str, Any]) -> dict[str, Any]:
         r.id for r in data["relationships"] if r.from_item_id not in item_ids or r.to_item_id not in item_ids
     ]
     dangling_conf = [c.id for c in data["conflicts"] if c.item_a_id not in item_ids or c.item_b_id not in item_ids]
+    # every evidence record's document must be described in documents.jsonl (schema 1.5: self-contained provenance)
+    doc_ids = {d.id for d in data["documents"]}
+    src_ids = {s.id for s in data["sources"]}
+    dangling_doc = [e.id for e in evidence if e.document_id and e.document_id not in doc_ids]
+    if dangling_doc:
+        reasons.append(f"consistency: {len(dangling_doc)} evidence records reference documents not exported")
+    dangling_doc_src = [d.id for d in data["documents"] if d.source_id not in src_ids]
+    if dangling_doc_src:
+        reasons.append(f"consistency: {len(dangling_doc_src)} documents reference sources not exported")
     report = {
         "schema_ok": not any(r.startswith("schema") for r in reasons),
         "provenance_ok": not any(r.startswith("provenance") for r in reasons),
-        "consistency_ok": not dangling_ev,
+        "consistency_ok": not dangling_ev and not dangling_doc and not dangling_doc_src,
         "items_without_verified_evidence": len(missing),
         "relationships_dangling": len(dangling_rel),  # informational: edges to items outside the snapshot are dropped
         "conflicts_referencing_excluded_items": len(dangling_conf),
@@ -488,6 +536,7 @@ def _render_files(snap: Snapshot, plugin: DomainPlugin, data: dict[str, Any], ga
         "knowledge.jsonl": jsonl(data["knowledge"]),
         "evidence.jsonl": jsonl(data["evidence"]),
         "sources.jsonl": jsonl(data["sources"]),
+        "documents.jsonl": jsonl(data["documents"]),
         "relationships.jsonl": jsonl(data["relationships"]),
         "examples.jsonl": jsonl(data["examples"]),
         "negative.jsonl": jsonl(data["negative"]),
@@ -541,6 +590,7 @@ def _counts(data: dict[str, Any]) -> tuple[dict[str, int], dict[str, int]]:
         "knowledge_current": sum(1 for k in knowledge if not k.historical),
         "evidence": len(data["evidence"]),
         "sources": len(data["sources"]),
+        "documents": len(data["documents"]),
         "relationships": len(data["relationships"]),
         "examples": len(data["examples"]),
         "negative": len(data["negative"]),
@@ -569,6 +619,7 @@ def _manifest(
         "knowledge.jsonl": counts["knowledge"],
         "evidence.jsonl": counts["evidence"],
         "sources.jsonl": counts["sources"],
+        "documents.jsonl": counts["documents"],
         "relationships.jsonl": counts["relationships"],
         "examples.jsonl": counts["examples"],
         "negative.jsonl": counts["negative"],

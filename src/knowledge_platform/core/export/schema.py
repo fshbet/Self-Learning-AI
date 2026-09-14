@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-SCHEMA_VERSION = "1.4"  # see docs/export-schema/CHANGELOG.md; minor = additive, major = breaking
+SCHEMA_VERSION = "1.5"  # see docs/export-schema/CHANGELOG.md; minor = additive, major = breaking
 
 Origin = Literal["DIRECT", "DERIVED", "SYNTHESIZED", "EXPERIMENTALLY_VALIDATED"]
 Provenance = Literal["OFFICIAL", "EXTERNAL", "COMMUNITY", "USER", "ORGANIZATION", "DERIVED"]
@@ -94,6 +94,40 @@ class EvidenceRecord(BaseModel):
     excerpt: str
     verified: bool
     details: dict[str, Any] = Field(default_factory=dict)
+
+
+class DocumentRecord(BaseModel):
+    """Document-level provenance and integrity metadata (schema 1.5) — never the document text.
+
+    Lets a consumer check, without the database, that every evidence record points at a known fetch of a known
+    source, that ``evidence.document_hash`` names the fetched version it was verified against (``content_hash`` now,
+    or ``previous_content_hash`` before the last change), and — if they fetch the page themselves — that the raw
+    bytes still hash to ``raw_sha256``. ``content_hash`` is computed by ``normalizer_version`` over the extracted
+    main text; the text itself is not exported because source terms may not allow redistribution.
+    """
+
+    id: str
+    source_id: str
+    url: str
+    final_url: str | None = None  # where the server actually served it from (redirects)
+    canonical_url: str | None = None  # the page's own rel=canonical / og:url, when declared
+    title: str = ""
+    language: str = "en"
+    version: int = 1  # incremented on every content change
+    content_hash: str  # of the normalized main text (see normalizer_version)
+    previous_content_hash: str | None = None
+    text_fingerprint: str | None = None  # loose fingerprint (letters/digits only) used for mirror detection
+    raw_sha256: str | None = None  # SHA-256 of the raw fetched bytes
+    normalizer_version: str
+    byte_size: int = 0
+    depth: int = 0
+    status: str = "FETCHED"
+    fetched_at: str | None = None
+    content_changed_at: str | None = None
+    published_at: str | None = None
+    http_etag: str | None = None
+    http_last_modified: str | None = None
+    mirror_of_document_id: str | None = None  # this fetch is a copy of an earlier document from another source
 
 
 class SourceRecord(BaseModel):
@@ -277,6 +311,7 @@ SCHEMA_FILES: dict[str, type[BaseModel]] = {
     "negative": KnowledgeRecord,  # negative.jsonl holds knowledge records with polarity = negative
     "evidence": EvidenceRecord,
     "sources": SourceRecord,
+    "documents": DocumentRecord,
     "relationships": RelationshipRecord,
     "examples": ExampleRecord,
     "conflicts": ConflictRecord,
@@ -291,6 +326,7 @@ SCHEMA_TARGETS: dict[str, tuple[str, str]] = {
     "negative": ("negative.jsonl", "jsonl"),
     "evidence": ("evidence.jsonl", "jsonl"),
     "sources": ("sources.jsonl", "jsonl"),
+    "documents": ("documents.jsonl", "jsonl"),
     "relationships": ("relationships.jsonl", "jsonl"),
     "examples": ("examples.jsonl", "jsonl"),
     "conflicts": ("conflicts.json", "json-array"),

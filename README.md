@@ -89,6 +89,8 @@ powerbi-knowledge-v5/
 │                        per-file SHA-256, integrity hash, export-gate results
 ├── knowledge.jsonl      canonical knowledge records (origin, provenance, polarity, lifecycle, evidence ids, dependencies)
 ├── evidence.jsonl       source, document, version, hash, section, verbatim excerpt, retrieval time
+├── documents.jsonl      every fetched document the evidence cites: url, version, content hash + hashing recipe,
+│                        raw-bytes hash, fetch/change times, mirror link — provenance and integrity, never the text
 ├── sources.jsonl · relationships.jsonl · examples.jsonl · negative.jsonl · glossary.json · conflicts.json · changelog.jsonl
 ├── ai/knowledge.jsonl   AI Knowledge Source: one self-contained text record per item with citations (index this)
 ├── ai/index.json        navigation index: taxonomy → ids, subjects → ids, counts, recommended filters
@@ -112,7 +114,7 @@ statement, explanation, code, structured details (expected result, common mistak
 url/title/section/excerpt, or the person/organisation that provided the knowledge). The snapshot README spells out
 the consumption steps; `ai/index.json` lets an agent navigate by taxonomy or subject without reading everything.
 
-**The export contract is formal and versioned independently** (`manifest.export_schema_version`, currently 1.2;
+**The export contract is formal and versioned independently** (`manifest.export_schema_version`, currently 1.5;
 `platform_version`, `database_schema_version` and `plugin_version` are separate fields). Every snapshot ships the
 JSON Schemas it satisfies under `schema/` and is validated against them at build time and on `verify`; the same
 files are committed under [`docs/export-schema/`](docs/export-schema/) with a
@@ -124,6 +126,14 @@ regenerates them (a test keeps the copy in sync).
 contradicting). An item flagged for review, awaiting revalidation, CONFLICTED, STALE or carrying contradicting
 evidence is exported with `usage: caution`, an explicit `caution_reasons` list and a `Caution:` first line in its
 `text`, so no consumer can mistake it for an ordinary trusted citation; superseded items are `historical`.
+
+**The evidence model is self-contained** (schema 1.5): `documents.jsonl` describes every fetched document the
+evidence cites — url, final and canonical url, version, `content_hash` plus the `normalizer_version` that produced
+it, `previous_content_hash`, `raw_sha256` of the fetched bytes, fetch/change/publication times, HTTP validators and
+mirror links — so a consumer can check without the database that every `evidence.document_id` is a known fetch of
+a known source and that `evidence.document_hash` is that document's current (verified) or previous (stale) content
+hash. The text is not exported: source terms may not allow redistribution, and the excerpt in the evidence record
+is the quote. The gate refuses a snapshot whose evidence cites an unexported document.
 
 **Delta snapshots** (`Export delta` in the UI, `kp export delta powerbi [--base <id>]`) describe what changed between
 two full snapshots. A fresh full snapshot is built as the head, then diffed record-by-record against the base using

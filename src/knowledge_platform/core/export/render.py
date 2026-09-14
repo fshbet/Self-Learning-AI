@@ -406,6 +406,8 @@ def readme(manifest: Manifest) -> str:
             "(provenance, lifecycle, evidence ids, dependencies) |",
             "| `evidence.jsonl` | denormalised evidence: source, document, version, hash, section, verbatim excerpt |",
             "| `sources.jsonl` | the source registry (authority, permissions, origin, cadence) |",
+            "| `documents.jsonl` | every fetched document the evidence cites: url, version, content hash "
+            "(+ hashing recipe), raw-bytes hash, fetch time — provenance and integrity, never the text |",
             "| `relationships.jsonl` | dependency graph edges between items |",
             "| `examples.jsonl` | structured examples with supporting items and validator results |",
             "| `negative.jsonl` | limitations, warnings, anti-patterns |",

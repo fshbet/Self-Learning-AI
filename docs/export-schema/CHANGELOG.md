@@ -22,6 +22,20 @@ The JSON Schema files in this directory are generated with `kp export schema` fr
 `core/export/schema.py`; the same files are shipped inside every snapshot under `schema/`, and a test keeps the
 committed copy identical to the generated one.
 
+## 1.5 — 2026-09-14
+
+Additive.
+
+* New file `documents.jsonl` (`schema/documents.schema.json`): one record per fetched document the exported evidence
+  cites — `url`, `final_url`, `canonical_url`, `title`, `version`, `content_hash` with its hashing recipe
+  (`normalizer_version`), `previous_content_hash`, `text_fingerprint`, `raw_sha256` of the fetched bytes,
+  `byte_size`, fetch / change / publication times, HTTP validators and `mirror_of_document_id`. Never the text.
+  A consumer can now verify, from the files alone, that every `evidence.document_id` names a known fetch of a known
+  source and that `evidence.document_hash` is that document's current or previous content hash. The export gate
+  refuses a snapshot whose evidence cites a document (or a document whose source) that is not exported.
+* Manifest `counts.documents` and `files["documents.jsonl"]`.
+* Delta snapshots (delta@1.2) diff and ship `documents.jsonl` like every other record file.
+
 ## 1.4 — 2026-09-14
 
 Additive.
