@@ -30,6 +30,7 @@ class CrawlStats:
     new: int = 0
     changed: int = 0
     unchanged: int = 0
+    confirmed: int = 0  # knowledge items whose source was re-checked and still states them
     skipped: int = 0
     blocked: int = 0
     failed: int = 0
@@ -61,6 +62,18 @@ class UrlScope:
         if self.allow:
             return any(p.search(url) for p in self.allow)
         return parts.path.startswith(self.base_path)
+
+
+def _confirm(session: Session, doc: Document) -> int:
+    """Unchanged page: the claims it evidences are confirmed as still stated (freshness only, audit P1.4)."""
+    from ..pipeline import confirm_unchanged_document
+    from ..plugins.registry import get_registry
+
+    try:
+        plugin = get_registry().get(doc.domain_id)
+    except KeyError:
+        plugin = None
+    return confirm_unchanged_document(session, doc, plugin)
 
 
 def link_mirror(session: Session, doc: Document) -> Document | None:
@@ -148,6 +161,7 @@ def crawl_source(
         if result.not_modified and existing:
             stats.unchanged += 1
             existing.fetched_at = utcnow()
+            stats.confirmed += _confirm(session, existing)
             if depth < source.max_depth and store.exists(existing.raw_object_key):
                 base = str((existing.meta or {}).get("final_url") or url)
                 links = normalize_html(store.get(existing.raw_object_key), base).links
@@ -183,6 +197,7 @@ def crawl_source(
                         published_at=nd.published_at,
                         depth=depth,
                         byte_size=len(result.content),
+                        content_changed_at=utcnow(),
                         status=DocumentStatus.FETCHED,
                         meta={"final_url": result.final_url, "content_type": result.content_type},
                     )
@@ -202,6 +217,7 @@ def crawl_source(
                     existing.published_at = nd.published_at or existing.published_at
                     existing.fetched_at = utcnow()
                     existing.version += 1
+                    existing.content_changed_at = utcnow()
                     existing.byte_size = len(result.content)
                     existing.status = DocumentStatus.FETCHED
                     existing.error = None
@@ -215,6 +231,7 @@ def crawl_source(
                     existing.fetched_at = utcnow()
                     existing.error = None
                     stats.unchanged += 1
+                    stats.confirmed += _confirm(session, existing)
                     if existing.status != DocumentStatus.EXTRACTED:
                         stats.to_extract.append(str(existing.id))
 

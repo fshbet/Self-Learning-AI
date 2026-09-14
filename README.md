@@ -185,6 +185,13 @@ API: `POST /api/knowledge` with `origin`, `derived_from`, `rationale`.
 Confidence (`score@2.0`) is explainable: authority, verified evidence, agreement, specificity, taxonomy match, domain
 validation, **freshness**, **contradiction status**, **version known** — every factor is stored on the item.
 
+Three timestamps with distinct meanings keep freshness honest: `last_verified_at` is a **verification event** (the
+item reached VERIFIED through scoring or a reviewer) and is never touched by a crawl; `last_source_checked_at` is
+stamped when a source holding the item's verified quote is re-fetched and **still contains it** (an unchanged page
+confirms the claim, it does not re-verify it); `last_content_changed_at` records that the source changed while the
+quote persisted. The freshness factor uses the last confirmation, so a stable authoritative page keeps its
+knowledge fresh without pretending it was validated again.
+
 ## Dependency graph and revalidation
 
 `knowledge_relations` holds edges between items (`depends_on`, `example_of`, `derived_from`, `related_to`,

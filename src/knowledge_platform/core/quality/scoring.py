@@ -19,18 +19,20 @@ _WEIGHTS = {
 }
 
 
-def freshness(last_verified_at, *, is_stale: bool, now=None) -> float:
-    """1.0 within 30 days of verification, decaying to 0.2 after half a year; STALE is 0."""
+def freshness(last_confirmed_at, *, is_stale: bool, now=None) -> float:
+    """How recently the source was seen to still state the claim (audit P1.4): 1.0 within 30 days, decaying to 0.2
+    after half a year; STALE is 0. ``last_confirmed_at`` is ``last_source_checked_at`` (an unchanged or still-matching
+    re-crawl), falling back to ``last_verified_at`` and finally to discovery — it never implies a new verification."""
     from datetime import UTC, datetime
 
     if is_stale:
         return 0.0
-    if last_verified_at is None:
+    if last_confirmed_at is None:
         return 0.5
     now = now or datetime.now(UTC)
-    if last_verified_at.tzinfo is None:
-        last_verified_at = last_verified_at.replace(tzinfo=UTC)
-    days = (now - last_verified_at).days
+    if last_confirmed_at.tzinfo is None:
+        last_confirmed_at = last_confirmed_at.replace(tzinfo=UTC)
+    days = (now - last_confirmed_at).days
     return 1.0 if days < 30 else 0.7 if days < 90 else 0.4 if days < 180 else 0.2
 
 
@@ -54,7 +56,7 @@ def score(
     code: str | None,
     topic_matched: bool,
     validator_results: list[dict[str, Any]] | None = None,
-    last_verified_at=None,
+    last_verified_at=None,  # last confirmation of the claim (see freshness); name kept for the factor
     is_stale: bool = False,
     has_open_conflict: bool = False,
     version_known: bool = False,

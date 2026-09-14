@@ -208,10 +208,19 @@ def test_crawl_extract_dedup_stale_and_search(plugin, fake_providers):
         assert top.verification_level >= 2
         assert all(e.verified for e in top.evidence if e.evidence_type == "extraction")
         assert top.quality_factors["rule_version"]
-        # idempotency: crawling again with unchanged content creates nothing
+        # idempotency: crawling again with unchanged content creates nothing ...
         src = s.execute(select(Source).where(Source.domain_id == DOMAIN_ID)).scalar_one()
+        verified_before = top.last_verified_at
+        checked_before = top.last_source_checked_at
+        level_before = top.verification_level
         stats2 = crawl_source(s, src, fetcher=Fetcher(default_delay=0, max_retries=1))
         assert stats2.new == 0 and stats2.changed == 0 and stats2.unchanged >= 1
+        # ... but confirms that the source still states the claims (audit P1.4): freshness only, no new verification
+        assert stats2.confirmed >= 1
+        s.refresh(top)
+        assert top.last_source_checked_at is not None and top.last_source_checked_at != checked_before
+        assert top.last_verified_at == verified_before and top.verification_level == level_before
+        assert top.last_content_changed_at is None and top.quality_factors["freshness"] == 1.0
         before = len(items)
 
     with session_scope() as s:
@@ -230,10 +239,23 @@ def test_crawl_extract_dedup_stale_and_search(plugin, fake_providers):
         changed = s.execute(
             select(Document).where(Document.domain_id == DOMAIN_ID, Document.url.like("%/calculate"))
         ).scalar_one()
-        assert changed.version == 2
+        assert changed.version == 2 and changed.content_changed_at is not None
         assert changed.chunk_hashes and all(h["sha256"] for h in changed.chunk_hashes)
         result = ingest_document(s, changed, plugin)
         assert result.conflicts >= 1 or result.items_stale >= 1
+        # items whose quote survived the change are stamped as "content changed, still stated"; stale ones are not
+        survivors = [
+            k
+            for k in s.execute(select(KnowledgeItem).where(KnowledgeItem.domain_id == DOMAIN_ID)).scalars()
+            if k.first_discovered_at < changed.content_changed_at
+            and any(e.document_id == changed.id and e.verified for e in k.evidence if e.evidence_type == "extraction")
+        ]
+        assert all(k.last_content_changed_at is not None for k in survivors)
+        assert all(
+            k.last_content_changed_at is None
+            for k in s.execute(select(KnowledgeItem).where(KnowledgeItem.domain_id == DOMAIN_ID)).scalars()
+            if k.status == ItemStatus.STALE
+        )
         # section-level delta: the chunk hashes were re-recorded for version 2
         assert result.extraction["chunks"] == len(changed.chunk_hashes)
         # re-ingesting the *same* version sends nothing to the model: every chunk hash is unchanged

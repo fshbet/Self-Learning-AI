@@ -273,6 +273,8 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
             <KV k="Content hash" v={item.content_hash} mono />
             <KV k="Discovered" v={fmtDate(item.first_discovered_at)} />
             <KV k="Last verified" v={fmtDate(item.last_verified_at)} />
+            <KV k="Source last checked" v={item.last_source_checked_at ? `${fmtDate(item.last_source_checked_at)} — still states it` : "—"} />
+            <KV k="Source content changed" v={fmtDate(item.last_content_changed_at)} />
             <KV k="Publication date" v={item.publication_date ?? "—"} />
             {item.duplicate_of_id && <KV k="Duplicate of" v={item.duplicate_of_id} mono />}
             {item.duplicates.length > 0 && <KV k="Folded duplicates" v={`${item.duplicates.length}`} />}

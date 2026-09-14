@@ -190,6 +190,7 @@ class Document(Base):
     url: Mapped[str] = mapped_column(Text)
     title: Mapped[str] = mapped_column(Text, default="")
     content_hash: Mapped[str] = mapped_column(String(80))  # sha256 of normalized text
+    content_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))  # last content change
     previous_content_hash: Mapped[str | None] = mapped_column(String(80))
     raw_object_key: Mapped[str] = mapped_column(Text)  # object store key of raw bytes
     text: Mapped[str] = mapped_column(Text, default="")  # normalized markdown-ish text
@@ -277,7 +278,12 @@ class KnowledgeItem(Base):
     embedding_model: Mapped[str | None] = mapped_column(String(120))
 
     first_discovered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    # verification event: the item reached VERIFIED (scoring or a reviewer). Not touched by crawls.
     last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # freshness (audit P1.4): a source holding this item's verified quote was re-fetched and still contains
+    # it / that source's content changed while the quote persisted. Neither claims a new verification.
+    last_source_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_content_changed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     run_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("runs.id"), index=True)

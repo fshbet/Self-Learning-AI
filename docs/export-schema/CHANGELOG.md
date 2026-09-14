@@ -22,6 +22,14 @@ The JSON Schema files in this directory are generated with `kp export schema` fr
 `core/export/schema.py`; the same files are shipped inside every snapshot under `schema/`, and a test keeps the
 committed copy identical to the generated one.
 
+## 1.3 — 2026-09-14
+
+Additive.
+
+* Knowledge records: `last_source_checked_at` (a source holding the item's verified quote was re-fetched and still
+  contains it) and `last_content_changed_at` (that source changed while the quote persisted). `last_verified_at`
+  keeps meaning "reached VERIFIED" and is never touched by a crawl. AI records carry `last_source_checked_at`.
+
 ## 1.2 — 2026-09-14
 
 Additive.

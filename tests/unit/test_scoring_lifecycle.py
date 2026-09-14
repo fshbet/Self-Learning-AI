@@ -61,3 +61,16 @@ def test_transitions_are_enforced_and_audited():
     with pytest.raises(IllegalTransition):
         transition(s, item, ItemStatus.CANDIDATE)  # terminal state
     assert transition(s, item, ItemStatus.CANDIDATE, force=True)  # human override
+
+
+def test_freshness_uses_the_last_confirmation_not_a_new_verification():
+    from datetime import UTC, datetime, timedelta
+
+    from knowledge_platform.core.quality.scoring import freshness
+
+    now = datetime(2026, 9, 14, tzinfo=UTC)
+    assert freshness(now - timedelta(days=3), is_stale=False, now=now) == 1.0
+    assert freshness(now - timedelta(days=45), is_stale=False, now=now) == 0.7
+    assert freshness(now - timedelta(days=200), is_stale=False, now=now) == 0.2
+    assert freshness(None, is_stale=False, now=now) == 0.5
+    assert freshness(now, is_stale=True, now=now) == 0.0

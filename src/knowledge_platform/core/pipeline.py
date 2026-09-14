@@ -182,7 +182,8 @@ def rescore(session: Session, item: KnowledgeItem, plugin: DomainPlugin, *, acto
         code=item.code,
         topic_matched=bool(item.topic) and item.topic in set(plugin.taxonomy_paths()),
         validator_results=validator_results,
-        last_verified_at=item.last_verified_at or item.first_discovered_at,  # never verified: age since discovery
+        # freshness: the source was last seen to still state it; then the verification event; then discovery
+        last_verified_at=item.last_source_checked_at or item.last_verified_at or item.first_discovered_at,
         is_stale=ItemStatus(item.status) == ItemStatus.STALE,
         has_open_conflict=has_open_conflict(session, item),
         version_known=bool(item.product_version),
@@ -273,6 +274,38 @@ def run_validators(session: Session, item: KnowledgeItem, plugin: DomainPlugin) 
 # ----------------------------------------------------------------------------- stale detection
 
 
+def confirm_unchanged_document(session: Session, doc: Document, plugin: DomainPlugin | None = None) -> int:
+    """An unchanged re-crawl (304 or same content hash) confirms that the source still states every claim it
+    evidences (audit P1.4): stamp ``last_source_checked_at`` and refresh the freshness factor. It is *not* a new
+    verification — ``last_verified_at`` and the verification level are untouched."""
+    items = (
+        session.execute(
+            select(KnowledgeItem)
+            .where(
+                KnowledgeItem.id.in_(
+                    select(Evidence.knowledge_item_id).where(
+                        Evidence.document_id == doc.id,
+                        Evidence.evidence_type == "extraction",
+                        Evidence.verified.is_(True),
+                        Evidence.document_hash == doc.content_hash,
+                    )
+                ),
+                KnowledgeItem.status.in_([ItemStatus.SUPPORTED, ItemStatus.VERIFIED, ItemStatus.CONFLICTED]),
+            )
+            .options(selectinload(KnowledgeItem.evidence))
+        )
+        .scalars()
+        .all()
+    )
+    now = utcnow()
+    for item in items:
+        item.last_source_checked_at = now
+        if plugin is not None:
+            rescore(session, item, plugin, actor="system:freshness")
+    session.flush()
+    return len(items)
+
+
 def mark_stale_items(session: Session, doc: Document, *, actor: str = "system:change-detection") -> int:
     """After a document changed, items whose quotes vanished from it lose that evidence (§24)."""
     stale = 0
@@ -291,13 +324,21 @@ def mark_stale_items(session: Session, doc: Document, *, actor: str = "system:ch
         .scalars()
         .all()
     )
+    now = utcnow()
     for item in items:
+        confirmed = False
         for ev in item.evidence:
             if ev.document_id == doc.id and ev.document_hash != doc.content_hash and ev.evidence_type == "extraction":
                 still_there = ev.excerpt and ev.excerpt in doc.text
                 ev.verified = bool(still_there)
                 if still_there:
                     ev.document_hash = doc.content_hash
+                    ev.source_version = doc.version
+                    confirmed = True
+        if confirmed:
+            # the page changed but still states the claim: checked now, content changed now (no new verification)
+            item.last_source_checked_at = now
+            item.last_content_changed_at = now
         if not any(e.verified for e in item.evidence if e.evidence_type == "extraction"):
             if ItemStatus(item.status) in (ItemStatus.SUPPORTED, ItemStatus.VERIFIED):
                 transition(

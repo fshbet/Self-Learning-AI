@@ -156,6 +156,8 @@ export type Knowledge = {
   review_kind: string | null;
   review_reason: string | null;
   review_flagged_at: string | null;
+  last_source_checked_at: string | null;
+  last_content_changed_at: string | null;
   evidence_count: number;
   source_count: number;
 };

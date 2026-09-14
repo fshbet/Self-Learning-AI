@@ -206,6 +206,8 @@ class KnowledgeOut(ORM):
     version: int
     first_discovered_at: datetime
     last_verified_at: datetime | None
+    last_source_checked_at: datetime | None = None
+    last_content_changed_at: datetime | None = None
     updated_at: datetime
     needs_review: bool = False
     review_kind: str | None = None

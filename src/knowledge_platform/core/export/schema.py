@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-SCHEMA_VERSION = "1.2"  # see docs/export-schema/CHANGELOG.md; minor = additive, major = breaking
+SCHEMA_VERSION = "1.3"  # see docs/export-schema/CHANGELOG.md; minor = additive, major = breaking
 
 Origin = Literal["DIRECT", "DERIVED", "SYNTHESIZED", "EXPERIMENTALLY_VALIDATED"]
 Provenance = Literal["OFFICIAL", "EXTERNAL", "COMMUNITY", "USER", "ORGANIZATION", "DERIVED"]
@@ -53,7 +53,9 @@ class KnowledgeRecord(BaseModel):
     previous_version_id: str | None = None
     superseded_by_id: str | None = None
     first_discovered_at: str
-    last_verified_at: str | None = None
+    last_verified_at: str | None = None  # verification event (reached VERIFIED)
+    last_source_checked_at: str | None = None  # source re-fetched and still states the claim (schema 1.3)
+    last_content_changed_at: str | None = None  # source content changed while the claim persisted
     extraction: dict[str, Any] = Field(default_factory=dict)
     evidence_ids: list[str] = Field(default_factory=list)
     source_ids: list[str] = Field(default_factory=list)
@@ -248,6 +250,7 @@ class AIKnowledgeRecord(BaseModel):
     publication_date: str | None = None
     effective_date: str | None = None
     last_verified_at: str | None = None
+    last_source_checked_at: str | None = None
     citations: list[AICitation] = Field(default_factory=list)
     dependencies: list[dict[str, str]] = Field(default_factory=list)
     related_ids: list[str] = Field(default_factory=list)

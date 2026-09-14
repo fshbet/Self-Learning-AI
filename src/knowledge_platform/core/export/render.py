@@ -213,6 +213,7 @@ def ai_record(
         "publication_date": k.publication_date,
         "effective_date": k.effective_date,
         "last_verified_at": k.last_verified_at,
+        "last_source_checked_at": k.last_source_checked_at,
         "citations": citations,
         "dependencies": k.dependencies,
         "related_ids": related,

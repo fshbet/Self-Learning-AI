@@ -192,6 +192,8 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
             superseded_by_id=str(it.superseded_by_id) if it.superseded_by_id else None,
             first_discovered_at=iso(it.first_discovered_at) or "",
             last_verified_at=iso(it.last_verified_at),
+            last_source_checked_at=iso(it.last_source_checked_at),
+            last_content_changed_at=iso(it.last_content_changed_at),
             extraction=it.extraction or {},
             evidence_ids=[r.id for r in ev_records],
             source_ids=sorted({r.source_id for r in ev_records if r.source_id}),
