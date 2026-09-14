@@ -135,7 +135,7 @@ def plugin(tmp_path_factory):
     )
     (d / "sources.yaml").write_text(
         "sources:\n  - key: fx\n    name: Fixture site\n    url: https://fixture.test/docs/\n    authority: 95\n"
-        "    max_depth: 1\n    max_pages: 10\n",
+        "    source_class: official\n    max_depth: 1\n    max_pages: 10\n",
         encoding="utf-8",
     )
     return load_plugin_dir(d)
