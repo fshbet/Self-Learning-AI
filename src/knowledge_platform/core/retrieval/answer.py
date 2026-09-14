@@ -94,7 +94,12 @@ def answer_question(
     results = [
         r
         for r in hybrid_search(
-            session, domain_id=plugin.id, query=question, limit=limit, include_candidates=include_candidates
+            session,
+            domain_id=plugin.id,
+            query=question,
+            limit=limit,
+            include_candidates=include_candidates,
+            text_search_config=plugin.text_search_config(),
         )
         if r.item.confidence >= min_confidence
     ]

@@ -41,10 +41,22 @@ knowledge_types:
   - note                                                            # neutral: no dependency rules
 sample_questions:                                                   # shown on the Search & Ask page
   - "What is the payload limit of the arm?"
+language: de                                                        # drives lexical search: de -> 'german'
+retrieval:
+  text_search_config: german                                        # optional explicit PostgreSQL config
 ```
 
 `role`: `foundation` | `dependent` | `example` | `neutral`; `polarity`: `positive` | `negative`. The declaration is
 exported in every snapshot's `glossary.json` (`knowledge_type_specs`), so consumers read the same semantics.
+
+**Language / search behaviour.** The core does not assume English. Lexical retrieval uses the PostgreSQL
+text-search configuration the plugin declares (`retrieval.text_search_config`) or, when absent, the one derived
+from `language` (`en` → `english`, `de` → `german`, `fr` → `french`, … see `LANGUAGE_TEXT_SEARCH_CONFIGS`); any
+other language, a multilingual corpus (`language: mul`) or a script PostgreSQL has no stemmer for uses `simple`
+(plain tokenisation, no stemming — always correct, less forgiving). Vector retrieval is language-neutral. A
+configuration PostgreSQL does not have falls back to `simple` with a warning; the English expression index created
+by the initial migration only serves English domains — add a per-domain expression index if a large non-English
+domain needs one.
 
 ## Sources that republish another source
 

@@ -107,6 +107,38 @@ class RiskClass(BaseModel):
     min_verification_level: int = 1
 
 
+# language tag -> PostgreSQL text-search configuration (stemming / stop words for lexical retrieval). Anything
+# else — including multilingual corpora and scripts PostgreSQL has no stemmer for — uses "simple" (plain
+# tokenisation, no stemming), which is always correct if less forgiving; vector retrieval is language-neutral.
+LANGUAGE_TEXT_SEARCH_CONFIGS: dict[str, str] = {
+    "ar": "arabic",
+    "da": "danish",
+    "de": "german",
+    "el": "greek",
+    "en": "english",
+    "es": "spanish",
+    "fi": "finnish",
+    "fr": "french",
+    "hu": "hungarian",
+    "id": "indonesian",
+    "it": "italian",
+    "nl": "dutch",
+    "no": "norwegian",
+    "pt": "portuguese",
+    "ro": "romanian",
+    "ru": "russian",
+    "sv": "swedish",
+    "tr": "turkish",
+}
+
+
+class RetrievalSpec(BaseModel):
+    """How the domain wants to be searched (P2.5). ``text_search_config`` names a PostgreSQL text-search
+    configuration explicitly (e.g. ``german``, ``simple``); when absent it follows the manifest language."""
+
+    text_search_config: str | None = None
+
+
 class Manifest(BaseModel):
     api_version: str
     id: str
@@ -125,6 +157,7 @@ class Manifest(BaseModel):
     extraction_hints: str = ""
     discovery_queries: list[str] = Field(default_factory=list)
     sample_questions: list[str] = Field(default_factory=list)  # shown on the Search & Ask page
+    retrieval: RetrievalSpec = Field(default_factory=RetrievalSpec)
 
     @field_validator("knowledge_types", mode="before")
     @classmethod
@@ -285,6 +318,15 @@ class DomainPlugin:
     def types_with_role(self, *roles: str) -> tuple[str, ...]:
         return tuple(t.name for t in self.manifest.knowledge_types if t.role in roles)
 
+    def text_search_config(self) -> str:
+        """PostgreSQL text-search configuration for lexical retrieval: declared, else derived from ``language``,
+        else ``simple``. The core never assumes English."""
+        declared = (self.manifest.retrieval.text_search_config or "").strip().lower()
+        if declared:
+            return declared
+        lang = (self.manifest.language or "").strip().lower().split("-")[0].split("_")[0]
+        return LANGUAGE_TEXT_SEARCH_CONFIGS.get(lang, "simple")
+
     def sample_questions(self) -> list[str]:
         return list(self.manifest.sample_questions)
 
@@ -345,6 +387,8 @@ class DomainPlugin:
             "knowledge_types": self.knowledge_types(),
             "knowledge_type_specs": [t.model_dump() for t in self.type_specs()],
             "sample_questions": self.sample_questions(),
+            "language": self.manifest.language,
+            "text_search_config": self.text_search_config(),
             "terminology_count": len(self.terminology()),
             "sources_count": len(self.sources()),
             "validators": [v.name for v in self.validators()],

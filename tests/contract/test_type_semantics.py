@@ -100,3 +100,25 @@ def test_export_renders_headings_and_prefixes_from_the_declaration(robotics):
     md = ai_markdown(manifest, [_rec("spec"), hazard, _rec("demo")], {}, [], glossary)
     # sections follow the plugin's declared order and labels
     assert md.index("### Specifications") < md.index("### Hazards") < md.index("### Demonstrations")
+
+
+def test_text_search_config_follows_the_plugin_not_the_core(tmp_path):
+    """P2.5: lexical retrieval configuration is declared by (or derived from) the plugin; the core assumes nothing."""
+    from knowledge_platform.core.plugins.base import LANGUAGE_TEXT_SEARCH_CONFIGS
+
+    counter = iter(range(100))
+
+    def plugin(extra: str):
+        d = tmp_path / f"p{next(counter)}"
+        d.mkdir()
+        (d / "plugin.yaml").write_text(f"api_version: '1.0'\nid: {d.name}\nname: X\n{extra}\n", encoding="utf-8")
+        return load_plugin_dir(d)
+
+    assert plugin("language: en").text_search_config() == "english"
+    assert plugin("language: de-DE").text_search_config() == "german"
+    assert plugin("language: ja").text_search_config() == "simple"  # no stemmer: plain tokenisation
+    assert plugin("language: mul").text_search_config() == "simple"  # multilingual corpus
+    assert plugin("language: en\nretrieval:\n  text_search_config: simple").text_search_config() == "simple"
+    assert plugin("language: fr\nretrieval:\n  text_search_config: German").text_search_config() == "german"
+    assert plugin("language: en").summary()["text_search_config"] == "english"
+    assert "english" in LANGUAGE_TEXT_SEARCH_CONFIGS.values() and "simple" not in LANGUAGE_TEXT_SEARCH_CONFIGS.values()

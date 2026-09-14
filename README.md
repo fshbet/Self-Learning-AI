@@ -393,6 +393,9 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
   verdicts are cached for 60 s, not forever; and the crawler's transport **resolves once and connects to the validated
   address** (Host header and TLS name keep the hostname), so a rebinding DNS answer cannot move the socket
   (`KP_FETCH_ALLOW_PRIVATE=true` for intranet crawls).
+* **Language independence** — lexical retrieval uses the text-search configuration the domain plugin declares or
+  the one derived from its `language` (`simple` for anything PostgreSQL cannot stem, incl. multilingual corpora);
+  the core assumes no language. See `domains/README.md`.
 * **Retrieval policy** — answers are built from VERIFIED / SUPPORTED items; STALE and CONFLICTED items are retrieved
   but labelled for the answer model (and the evaluator checks that the answer says so); items flagged for review or
   awaiting revalidation carry the same labels. CANDIDATE items are **excluded** from search and answers unless a caller

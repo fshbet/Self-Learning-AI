@@ -112,3 +112,28 @@ def test_candidates_are_excluded_unless_asked_for_and_then_labelled(monkeypatch)
     assert r.status_code == 200 and str(ids["c"]) not in {h["item"]["id"] for h in r.json()}
     r = client.get("/api/search", params={"domain": DOMAIN, "q": "SPROCKET", "limit": 20, "include_candidates": "true"})
     assert str(ids["c"]) in {h["item"]["id"] for h in r.json()}
+
+
+def test_lexical_search_uses_the_domain_text_search_configuration():
+    """P2.5: the same query behaves per configuration — German stemming under 'german', literal tokens under
+    'simple' — and an unknown configuration falls back to 'simple' instead of failing."""
+    from knowledge_platform.core.retrieval.search import available_text_search_configs, resolve_text_search_config
+
+    plugin = get_registry().get(DOMAIN)
+    with session_scope() as s:
+        item = create_knowledge(
+            s, plugin, _fact("KESSEL", "KESSEL hat zwei Sicherheitsventile für den Betrieb.", "Sicherheitsventile")
+        )
+        item_id = item.id
+    with session_scope() as s:
+        assert {"english", "german", "simple"} <= available_text_search_configs(s)
+        assert resolve_text_search_config(s, "klingon") == "simple"
+        assert resolve_text_search_config(s, "German") == "german"
+        # German stemming: the singular query form matches the plural in the statement
+        german = hybrid_search(s, domain_id=DOMAIN, query="Sicherheitsventil", limit=5, text_search_config="german")
+        assert any(h.item.id == item_id and h.lex_rank is not None for h in german)
+        # 'simple' tokenises literally: no lexical hit for the singular, the item can still surface by vector rank only
+        simple = hybrid_search(s, domain_id=DOMAIN, query="Sicherheitsventil", limit=5, text_search_config="simple")
+        assert all(h.lex_rank is None for h in simple if h.item.id == item_id)
+        exact = hybrid_search(s, domain_id=DOMAIN, query="Sicherheitsventile", limit=5, text_search_config="simple")
+        assert any(h.item.id == item_id and h.lex_rank is not None for h in exact)
