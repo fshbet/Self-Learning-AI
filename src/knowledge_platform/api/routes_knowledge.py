@@ -14,6 +14,7 @@ from ..core.pipeline import rescore
 from ..core.plugins.registry import get_registry
 from ..core.retrieval.answer import answer_question
 from ..core.retrieval.search import hybrid_search
+from ..core.verification.review_flags import resolve_review
 from ..core.versioning.dependencies import add_relation, relations_for_api
 from ..core.versioning.lifecycle import IllegalTransition, transition
 from ..db import get_db
@@ -94,6 +95,7 @@ def list_knowledge(
     origin: str | None = None,
     q: str | None = None,
     needs_revalidation: bool | None = None,
+    needs_review: bool | None = None,
     min_confidence: float | None = Query(None, ge=0, le=1),
     sort: str = Query("updated", pattern="^(updated|confidence|subject|created)$"),
     page: int = Query(1, ge=1),
@@ -117,6 +119,8 @@ def list_knowledge(
         stmt = stmt.where(KnowledgeItem.origin.in_(origin.split(",")))
     if needs_revalidation is not None:
         stmt = stmt.where(KnowledgeItem.needs_revalidation.is_(needs_revalidation))
+    if needs_review is not None:
+        stmt = stmt.where(KnowledgeItem.needs_review.is_(needs_review))
     if min_confidence is not None:
         stmt = stmt.where(KnowledgeItem.confidence >= min_confidence)
     if q:
@@ -287,6 +291,8 @@ def review(item_id: uuid.UUID, body: ReviewRequest, db: Session = Depends(get_db
         raise HTTPException(404, "knowledge item not found")
     actor = f"human:{body.reviewer}"
     plugin = get_registry().get(item.domain_id)
+    # every human decision explicitly resolves an open review flag (audit P0.2); nothing automatic does
+    resolve_review(item, resolved_by=body.reviewer, resolution=body.reason, action=body.action)
     try:
         if body.action == "approve":
             item.evidence[:] = [e for e in item.evidence if e.evidence_type != "human"]

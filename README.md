@@ -217,8 +217,11 @@ Beyond waiting for a source to change, the platform can *try to disprove* what i
 item (drawer), `Try to falsify 5` on the Review page, `POST /api/knowledge/{id}/falsify` or `kp falsify powerbi
 --limit 5` search the web (SearXNG: `docker compose --profile discovery up -d`) for the statement and its negation,
 fetch the top public pages (SSRF-guarded), and ask the judge model whether a passage **contradicts** the statement.
-A contradiction is stored as unverified `falsification` evidence with the quote and URL and flags the item
-`needs_revalidation` for a reviewer — the platform never rewrites knowledge on the strength of an unregistered web page.
+A contradiction is stored as unverified `falsification` evidence with the quote and URL and raises a **review flag**
+(`needs_review`, kind `falsification`) — the platform never rewrites knowledge on the strength of an unregistered
+web page. Review flags are separate from dependency revalidation: the scheduler never clears them; only a reviewer's
+decision (approve, reject, mark stale or dismiss on the Review page) resolves one, and every resolution is kept in the
+item's `review_log`.
 Supporting passages are kept as unverified web support and do not raise the score.
 
 ## Adding your own URLs and keywords (no files needed)

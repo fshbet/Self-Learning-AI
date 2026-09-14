@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { GitBranch, Globe, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Flag, GitBranch, Globe, RefreshCw, ShieldAlert, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import KnowledgeDrawer from "../components/KnowledgeDrawer";
 import { Card, Confidence, Empty, ErrorBox, Loading, PageHeader, StatusChip, useToast } from "../components/ui";
@@ -40,6 +40,20 @@ export default function Review() {
     queryFn: () => api.knowledge({ domain, needs_revalidation: true, page_size: 50 }),
     refetchInterval: 8000,
   });
+  const flagged = useQuery({
+    queryKey: ["knowledge", "review-flags", domain],
+    queryFn: () => api.knowledge({ domain, needs_review: true, page_size: 50 }),
+    refetchInterval: 8000,
+  });
+  const dismiss = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => api.review(id, { action: "dismiss", reason, reviewer: "reviewer" }),
+    onSuccess: () => {
+      toast("ok", "Review flag resolved (recorded in the item's review log)");
+      qc.invalidateQueries({ queryKey: ["knowledge"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+    },
+    onError: (e) => toast("err", (e as Error).message),
+  });
   const revalidateAll = useMutation({
     mutationFn: () => api.revalidateAll(domain),
     onSuccess: (r) => {
@@ -50,7 +64,7 @@ export default function Review() {
   });
   const falsifySample = useMutation({
     mutationFn: () => api.falsifySample(domain, 5),
-    onSuccess: (r) => toast("ok", `${r.queued} falsification job(s) queued — contradictions appear here as "needs revalidation"`),
+    onSuccess: (r) => toast("ok", `${r.queued} falsification job(s) queued — counter-evidence appears under "Flagged for review"`),
     onError: (e) => toast("err", (e as Error).message),
   });
   const resolve = useMutation({
@@ -109,6 +123,30 @@ export default function Review() {
               ) : (
                 <div className="muted text-xs mt-3">Resolved by {c.resolved_by}: {c.resolution}</div>
               )}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card
+        title={
+          <span className="flex items-center gap-2">
+            <Flag size={14} className="text-amber-500" /> Flagged for review ({flagged.data?.total ?? 0})
+          </span>
+        }
+        className="mb-4"
+      >
+        <p className="muted text-xs mb-2">Counter-evidence from active falsification and other review concerns. These flags are never cleared by the scheduler — only a reviewer's decision (approve, reject, mark stale, or dismiss) resolves them, and every resolution is kept in the item's review log.</p>
+        {flagged.data && flagged.data.items.length === 0 && <div className="muted text-sm">Nothing flagged.</div>}
+        <div className="divide-y divide-[var(--border)]">
+          {flagged.data?.items.map((k) => (
+            <div key={k.id} className="py-2.5 flex items-start gap-3 px-2">
+              <StatusChip status={k.status} />
+              <button onClick={() => setSelected(k.id)} className="flex-1 text-left hover:text-accent-600">
+                <div className="text-sm leading-snug">{k.statement}</div>
+                <div className="muted text-xs mt-0.5"><span className="chip bg-amber-500/15 text-amber-700 dark:text-amber-300 mr-1">{k.review_kind}</span>{k.review_reason} · {timeAgo(k.review_flagged_at)}</div>
+              </button>
+              <button className="btn btn-sm" disabled={dismiss.isPending} title="Clear the flag without changing the item (recorded)" onClick={() => { const reason = prompt("Why is this concern resolved?", "reviewed: counter-evidence not applicable"); if (reason !== null) dismiss.mutate({ id: k.id, reason }); }}>Dismiss</button>
             </div>
           ))}
         </div>

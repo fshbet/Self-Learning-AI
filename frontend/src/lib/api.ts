@@ -152,6 +152,10 @@ export type Knowledge = {
   first_discovered_at: string;
   last_verified_at: string | null;
   updated_at: string;
+  needs_review: boolean;
+  review_kind: string | null;
+  review_reason: string | null;
+  review_flagged_at: string | null;
   evidence_count: number;
   source_count: number;
 };
@@ -353,6 +357,7 @@ export type Stats = {
   avg_confidence: number;
   conflicts_open: number;
   needs_revalidation: number;
+  needs_review: number;
   jobs: Record<string, number>;
   llm: { calls: number; prompt_tokens: number; completion_tokens: number; avg_latency_ms: number; failed: number; cost_tokens_per_item: number };
   topics: { topic: string; count: number }[];
@@ -459,6 +464,7 @@ export const api = {
     polarity?: string;
     origin?: string;
     needs_revalidation?: boolean;
+    needs_review?: boolean;
     q?: string;
     min_confidence?: number;
     sort?: string;

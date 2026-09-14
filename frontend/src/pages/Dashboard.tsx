@@ -61,7 +61,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-5">
         <Stat label="Live knowledge" value={fmtNum(live)} hint={`${fmtNum(s.knowledge_total)} extracted in total`} />
         <Stat label="Verified" value={pct(s.verified_ratio)} hint={`${fmtNum(s.knowledge.VERIFIED ?? 0)} items · avg confidence ${pct(s.avg_confidence)}`} accent="text-emerald-600" />
-        <Stat label="Needs attention" value={fmtNum(s.conflicts_open + s.needs_revalidation)} hint={s.conflicts_open || s.needs_revalidation ? <Link to="/review" className="text-accent-600 hover:underline">{`${s.conflicts_open} conflicts · ${s.needs_revalidation} to revalidate`}</Link> : "No conflicts, nothing to revalidate"} accent={s.conflicts_open ? "text-rose-600" : s.needs_revalidation ? "text-amber-600" : undefined} />
+        <Stat label="Needs attention" value={fmtNum(s.conflicts_open + s.needs_review + s.needs_revalidation)} hint={s.conflicts_open || s.needs_review || s.needs_revalidation ? <Link to="/review" className="text-accent-600 hover:underline">{`${s.conflicts_open} conflicts · ${s.needs_review} flagged · ${s.needs_revalidation} to revalidate`}</Link> : "No conflicts, nothing flagged"} accent={s.conflicts_open || s.needs_review ? "text-rose-600" : s.needs_revalidation ? "text-amber-600" : undefined} />
         <Stat label="Documents" value={fmtNum(docsTotal)} hint={`${fmtNum(s.documents.EXTRACTED ?? 0)} extracted · ${sourcesActive} active sources`} />
         <Stat label="Model calls" value={fmtNum(s.llm.calls)} hint={`${fmtNum(s.llm.prompt_tokens + s.llm.completion_tokens)} tokens · ${fmtNum(s.llm.cost_tokens_per_item)} / item`} />
         <Stat

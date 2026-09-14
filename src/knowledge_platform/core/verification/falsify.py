@@ -5,9 +5,11 @@
                         contradicts ◄───────────────────────────────────────────────────┘──► supports / unrelated
 
 Nothing is changed automatically except a flag: counter-evidence is stored as an unverified ``falsification``
-evidence record (relation ``contradicts``) and the item is marked ``needs_revalidation`` with the URL and rationale,
-so a reviewer decides. Supporting passages are stored too (relation ``supports``) — they do not raise the score,
-because a page found by a search engine has no authority yet; a reviewer can register it as a source.
+evidence record (relation ``contradicts``) and the item gets a *review* flag (``needs_review``, kind
+``falsification``) with the URL and rationale, so a reviewer decides. The flag is independent of dependency
+revalidation and is never cleared by the scheduler (audit P0.2). Supporting passages are stored too (relation
+``supports``) — they do not raise the score, because a page found by a search engine has no authority yet; a
+reviewer can register it as a source.
 Requires a search provider (SearXNG); without one the job reports ``skipped``.
 """
 
@@ -24,6 +26,7 @@ from ..collection.fetcher import FetchBlocked, Fetcher
 from ..collection.normalize import canonicalize_url, normalize
 from ..llm_service import call_json
 from ..plugins.base import DomainPlugin
+from .review_flags import flag_for_review
 
 log = logging.getLogger(__name__)
 
@@ -181,8 +184,7 @@ def falsify_item(
         )
     if contradictions:
         first = contradictions[0]
-        item.needs_revalidation = True
-        item.revalidation_reason = f"falsification: counter-evidence at {first['url']} — {first['rationale']}"[:500]
+        flag_for_review(item, "falsification", f"counter-evidence at {first['url']} — {first['rationale']}")
     item.details = {**(item.details or {}), "last_falsified_at": utcnow().isoformat()}
     session.flush()
     return {

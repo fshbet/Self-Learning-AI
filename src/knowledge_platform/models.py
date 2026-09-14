@@ -250,8 +250,14 @@ class KnowledgeItem(Base):
     polarity: Mapped[str] = mapped_column(String(16), default="positive")  # positive | negative (what does NOT work)
     effective_date: Mapped[str | None] = mapped_column(String(40))
     details: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # structured example / condition fields
+    # dependency state (cleared by revalidation once every dependency is live again)
     needs_revalidation: Mapped[bool] = mapped_column(Boolean, default=False)
     revalidation_reason: Mapped[str | None] = mapped_column(Text)
+    # review flag (falsification | manual | quality): only a reviewer clears it, see verification/review_flags
+    needs_review: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    review_kind: Mapped[str | None] = mapped_column(String(30))
+    review_reason: Mapped[str | None] = mapped_column(Text)
+    review_flagged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     validator_versions: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
     status: Mapped[str] = mapped_column(String(20), default=ItemStatus.EXTRACTED)

@@ -243,8 +243,9 @@ def evaluate_job(session: Session, job: Job) -> dict[str, Any]:
 
 @handler("revalidate_item")
 def revalidate_item_job(session: Session, job: Job) -> dict[str, Any]:
-    """Re-check an item flagged by a dependency change (req. 17): validators, score, conflicts; clear the flag
-    only when every propagating dependency is live again. Never edits the item's statement."""
+    """Re-check an item flagged by a dependency change (req. 17): validators, score, conflicts; clear the
+    *dependency* flag only when every propagating dependency is live again. Never edits the item's statement
+    and never touches the review flag (needs_review): that is a reviewer's decision (audit P0.2)."""
     from ..pipeline import rescore, run_validators
     from ..verification.conflicts import detect_conflicts
     from ..versioning.dependencies import unresolved_dependencies

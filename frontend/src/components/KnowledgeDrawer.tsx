@@ -85,6 +85,7 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
               <ProvenanceChip provenance={item.provenance} />
               <OriginChip origin={item.origin} />
               <PolarityChip polarity={item.polarity} />
+              {item.needs_review && <span className="chip bg-rose-500/15 text-rose-700 dark:text-rose-300" title={item.review_reason ?? ""}>needs review · {item.review_kind}</span>}
               {item.needs_revalidation && <span className="chip bg-amber-500/15 text-amber-700" title={item.revalidation_reason ?? ""}>needs revalidation</span>}
               {item.topic && <span className="chip panel-2">{item.topic}</span>}
               {item.product_version && <span className="chip panel-2">{item.product_version}</span>}
@@ -92,12 +93,22 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
             <p className="text-lg font-medium leading-snug">{item.statement}</p>
             {item.explanation && <p className="muted mt-2 leading-relaxed">{item.explanation}</p>}
             {item.code && <pre className="code mt-3">{item.code}</pre>}
+            {item.needs_review && (
+              <div className="rounded-xl border border-rose-400/60 bg-rose-500/10 p-3 text-sm mt-3 flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-medium text-rose-700 dark:text-rose-300">Needs review ({item.review_kind})</div>
+                  <div className="muted text-xs">{item.review_reason} · flagged {timeAgo(item.review_flagged_at)}</div>
+                  <div className="muted text-[11px] mt-1">Not cleared automatically. Approve, reject, mark stale or dismiss below — the decision is kept in the review log.</div>
+                </div>
+                <button className="btn btn-sm" disabled={review.isPending} onClick={() => review.mutate("dismiss")}>Dismiss</button>
+              </div>
+            )}
             {Object.keys(item.details ?? {}).length > 0 && (
               <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2">
-                {Object.entries(item.details).map(([k, v]) => (
+                {Object.entries(item.details).filter(([k]) => k !== "review_log").map(([k, v]) => (
                   <div key={k} className="panel-2 rounded-lg p-2 text-sm">
                     <div className="text-[11px] uppercase tracking-wider muted font-semibold">{k.replace(/_/g, " ")}</div>
-                    <div>{v}</div>
+                    <div>{String(v)}</div>
                   </div>
                 ))}
               </div>

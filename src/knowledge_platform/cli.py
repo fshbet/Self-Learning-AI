@@ -420,7 +420,7 @@ def falsify(domain: str, limit: int = 5, item: str | None = None) -> None:
                 str(out["pages_checked"]),
                 str(out["contradictions"]),
                 str(out["supporting"]),
-                "yes" if k.needs_revalidation else "no",
+                "yes" if k.needs_review else "no",
             )
             for h in out["hits"]:
                 if h["verdict"] == "contradicts":

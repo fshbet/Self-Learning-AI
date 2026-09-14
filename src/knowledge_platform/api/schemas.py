@@ -207,6 +207,10 @@ class KnowledgeOut(ORM):
     first_discovered_at: datetime
     last_verified_at: datetime | None
     updated_at: datetime
+    needs_review: bool = False
+    review_kind: str | None = None
+    review_reason: str | None = None
+    review_flagged_at: datetime | None = None
     evidence_count: int = 0
     source_count: int = 0
 
@@ -262,7 +266,7 @@ class KnowledgeCreate(BaseModel):
 
 
 class ReviewRequest(BaseModel):
-    action: str = Field(pattern="^(approve|reject|stale|reopen)$")
+    action: str = Field(pattern="^(approve|reject|stale|reopen|dismiss)$")  # dismiss = clear the review flag only
     reason: str = ""
     reviewer: str = "reviewer"
 
@@ -424,6 +428,7 @@ class StatsOut(BaseModel):
     avg_confidence: float
     conflicts_open: int
     needs_revalidation: int = 0
+    needs_review: int = 0
     jobs: dict[str, int]
     llm: dict[str, Any]
     topics: list[dict[str, Any]]

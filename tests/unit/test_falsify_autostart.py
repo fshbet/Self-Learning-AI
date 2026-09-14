@@ -75,7 +75,8 @@ def test_falsify_flags_counter_evidence_and_skips_private_hosts(monkeypatch):
     )
     assert out["pages_checked"] == 2 and out["contradictions"] == 1 and out["supporting"] == 0
     assert not private.called  # SSRF guard: search hits pointing at internal hosts are never fetched
-    assert item.needs_revalidation and "blog.test/divide" in item.revalidation_reason
+    assert item.needs_review and item.review_kind == "falsification" and "blog.test/divide" in item.review_reason
+    assert not item.needs_revalidation  # review state is separate from dependency state (audit P0.2)
     ev = [e for e in item.evidence if e.evidence_type == "falsification"]
     assert len(ev) == 1 and ev[0].relation == "contradicts" and not ev[0].verified
     assert ev[0].excerpt.startswith("DIVIDE raises an error") and ev[0].details["version"] == falsify.FALSIFY_VERSION
