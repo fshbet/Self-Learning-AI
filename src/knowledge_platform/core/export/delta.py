@@ -4,11 +4,13 @@ A delta is computed from the *stored* canonical files of a base and a head full 
 reproducible and never depends on live database state. ``build_delta_snapshot`` first builds (or takes) the head
 full snapshot, then diffs record by record:
 
-    knowledge      added / modified / superseded / removed(rejected or excluded) / status_changes
-    relationships  added / removed
+    knowledge      added / modified (+changed_fields) / superseded / removed(rejected or excluded) / status_changes
+    relationships  added / modified / removed
     sources        added / modified / removed
-    evidence       added / removed
+    evidence       added / modified / removed      (e.g. `verified` flipping when a page changed)
     examples, negative  added / modified / removed
+    every modified record (except knowledge, which ships whole) comes with `changes[id] = {changed_fields,
+    before, after}` restricted to the fields that differ, so a consumer knows *what* changed
     conflicts      opened / resolved
     changelog      transitions the base snapshot did not carry
 """
@@ -31,7 +33,7 @@ from .canonical import dumps_canonical, integrity_hash, iso, sha256_bytes
 from .schema import SCHEMA_VERSION
 from .snapshot import build_snapshot, latest_ready, read_file
 
-DELTA_VERSION = "delta@1.0"
+DELTA_VERSION = "delta@1.1"  # 1.1: modified records carry changed_fields + before/after (audit P0.4)
 
 VOLATILE_KNOWLEDGE_FIELDS = ("quality_factors", "last_verified_at", "confidence")  # change without content change
 
@@ -60,17 +62,36 @@ def _rec_hash(rec: dict[str, Any], ignore: tuple[str, ...] = ()) -> str:
 
 
 def _diff(
-    base: dict[str, dict[str, Any]], head: dict[str, dict[str, Any]], ignore: tuple[str, ...] = ()
-) -> dict[str, list[str]]:
+    base: dict[str, dict[str, Any]],
+    head: dict[str, dict[str, Any]],
+    ignore: tuple[str, ...] = (),
+    *,
+    with_changes: bool = True,
+) -> dict[str, Any]:
+    """added / modified / removed ids; for modified records also ``changes[id]`` with the differing fields and their
+    before/after values (volatile ``ignore`` fields never count as a modification)."""
     added = sorted(k for k in head if k not in base)
     removed = sorted(k for k in base if k not in head)
     modified = sorted(k for k in head if k in base and _rec_hash(head[k], ignore) != _rec_hash(base[k], ignore))
-    return {"added": added, "modified": modified, "removed": removed}
+    out: dict[str, Any] = {"added": added, "modified": modified, "removed": removed}
+    if with_changes:
+        changes: dict[str, dict[str, Any]] = {}
+        for k in modified:
+            fields = sorted(
+                f for f in set(base[k]) | set(head[k]) if f not in ignore and base[k].get(f) != head[k].get(f)
+            )
+            changes[k] = {
+                "changed_fields": fields,
+                "before": {f: base[k].get(f) for f in fields},
+                "after": {f: head[k].get(f) for f in fields},
+            }
+        out["changes"] = changes
+    return out
 
 
 def compute_delta(base: Snapshot, head: Snapshot) -> dict[str, Any]:
     kb, kh = _records(base, "knowledge.jsonl"), _records(head, "knowledge.jsonl")
-    kdiff = _diff(kb, kh, ignore=VOLATILE_KNOWLEDGE_FIELDS)
+    kdiff = _diff(kb, kh, ignore=VOLATILE_KNOWLEDGE_FIELDS, with_changes=False)  # knowledge ships whole records
     status_changes = [
         {"id": k, "from": kb[k]["status"], "to": kh[k]["status"]}
         for k in sorted(kh)
@@ -145,11 +166,13 @@ def _counts(d: dict[str, Any]) -> dict[str, int]:
         "knowledge_rescored_only": len(k["rescored_only"]),
         "status_changes": len(k["status_changes"]),
         "relationships_added": len(d["relationships"]["added"]),
+        "relationships_modified": len(d["relationships"]["modified"]),
         "relationships_removed": len(d["relationships"]["removed"]),
         "sources_added": len(d["sources"]["added"]),
         "sources_modified": len(d["sources"]["modified"]),
         "sources_removed": len(d["sources"]["removed"]),
         "evidence_added": len(d["evidence"]["added"]),
+        "evidence_modified": len(d["evidence"]["modified"]),
         "evidence_removed": len(d["evidence"]["removed"]),
         "examples_changed": sum(len(v) for v in d["examples"].values()),
         "negative_changed": sum(len(v) for v in d["negative"].values()),
@@ -168,8 +191,13 @@ def _readme(plugin: DomainPlugin, d: dict[str, Any], counts: dict[str, int]) -> 
         f"Base integrity `{b['integrity_hash']}` · head integrity `{h['integrity_hash']}`.",
         "",
         "Apply on top of the base snapshot: upsert the records in `knowledge.jsonl`, `evidence.jsonl`,",
-        "`relationships.jsonl`, `sources.jsonl`, `examples.jsonl`, `negative.jsonl`; drop the ids listed under",
-        "`removed` in `delta.json`; treat `superseded` and `status_changes` as lifecycle updates.",
+        "`relationships.jsonl`, `sources.jsonl`, `examples.jsonl`, `negative.jsonl` (each carries the head",
+        "version of every added *and modified* record); drop the ids listed under `removed` in `delta.json`;",
+        "treat `superseded` and `status_changes` as lifecycle updates. For every modified evidence, relationship,",
+        "source, example or negative record `delta.json` lists `changes[id]` = the changed fields with their",
+        "before/after values (for example evidence whose `verified` flag flipped after a page changed);",
+        "modified knowledge items list their `changed_fields`. Items under `rescored_only` changed only in",
+        "confidence / quality factors: take those values from the head snapshot, this delta does not ship them.",
         "`ai/knowledge.jsonl` carries the AI Knowledge Source records for added and modified items only.",
         "",
         "| Change | Count |",
@@ -239,9 +267,12 @@ def build_delta_snapshot(
                 {"id": k, "last_status": d["knowledge"]["removed"] and _records(base, "knowledge.jsonl")[k]["status"]}
                 for k in d["knowledge"]["removed"]
             ),
-            "evidence.jsonl": _jsonl(head_evidence[k] for k in d["evidence"]["added"]),
+            "evidence.jsonl": _jsonl(
+                head_evidence[k] for k in sorted(set(d["evidence"]["added"]) | set(d["evidence"]["modified"]))
+            ),
             "relationships.jsonl": _jsonl(
-                _records(head, "relationships.jsonl")[k] for k in d["relationships"]["added"]
+                _records(head, "relationships.jsonl")[k]
+                for k in sorted(set(d["relationships"]["added"]) | set(d["relationships"]["modified"]))
             ),
             "sources.jsonl": _jsonl(
                 _records(head, "sources.jsonl")[k]

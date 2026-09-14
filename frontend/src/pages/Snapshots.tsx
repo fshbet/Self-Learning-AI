@@ -22,14 +22,14 @@ const KIND_HINT: Record<string, string> = {
   "ai/knowledge.md": "AI/human readable, grouped by taxonomy",
   "knowledge.html": "human-readable rendering",
   "README.md": "what this is and how to consume it",
-  "delta.json": "full change lists: added / modified (with changed fields) / superseded / removed / status changes",
+  "delta.json": "full change lists: added / modified (changed fields; before/after for evidence, relations, sources, examples, negatives) / superseded / removed / status changes",
   "removed.jsonl": "base records that are no longer in the head snapshot",
 };
 
 const DELTA_HINT: Record<string, string> = {
   "knowledge.jsonl": "full head records of added, modified and superseded items",
-  "evidence.jsonl": "evidence added since the base",
-  "relationships.jsonl": "dependency edges added since the base",
+  "evidence.jsonl": "evidence added or modified since the base (head versions)",
+  "relationships.jsonl": "dependency edges added or modified since the base",
   "sources.jsonl": "sources added or modified",
   "examples.jsonl": "examples added or modified",
   "negative.jsonl": "negative knowledge added or modified",
@@ -158,8 +158,8 @@ export default function Snapshots() {
                   ["Removed", counts.knowledge_removed],
                   ["Status changes", counts.status_changes],
                   ["Rescored only", counts.knowledge_rescored_only],
-                  ["Evidence +/−", `${counts.evidence_added ?? 0} / ${counts.evidence_removed ?? 0}`],
-                  ["Relations +/−", `${counts.relationships_added ?? 0} / ${counts.relationships_removed ?? 0}`],
+                  ["Evidence +/~/−", `${counts.evidence_added ?? 0} / ${counts.evidence_modified ?? 0} / ${counts.evidence_removed ?? 0}`],
+                  ["Relations +/~/−", `${counts.relationships_added ?? 0} / ${counts.relationships_modified ?? 0} / ${counts.relationships_removed ?? 0}`],
                   ["Conflicts opened/resolved", `${counts.conflicts_opened ?? 0} / ${counts.conflicts_resolved ?? 0}`],
                   ["Changelog", counts.changelog_entries],
                 ].map(([label, v]) => (

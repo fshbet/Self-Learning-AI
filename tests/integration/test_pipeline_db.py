@@ -437,6 +437,30 @@ def test_delta_snapshot_between_two_full_snapshots(plugin, fake_providers):
             ),
         )
         added_id = str(added.id)
+        # an evidence *modification*: a verified quote is no longer found (the page changed). A reviewer-provided
+        # evidence keeps the item exportable, so the delta must show the flip rather than a removal
+        live = next(
+            k
+            for k in s.execute(
+                select(KnowledgeItem).where(
+                    KnowledgeItem.domain_id == plugin.id,
+                    KnowledgeItem.status.in_([ItemStatus.SUPPORTED, ItemStatus.VERIFIED, ItemStatus.CONFLICTED]),
+                )
+            ).scalars()
+            if any(e.evidence_type == "extraction" and e.verified for e in k.evidence)
+        )
+        live.evidence.append(
+            Evidence(
+                knowledge_item_id=live.id,
+                evidence_type="human",
+                excerpt="confirmed by reviewer",
+                verified=True,
+                details={"provided": True, "provided_by": "qa", "authority": 80},
+            )
+        )
+        flipped = next(e for e in live.evidence if e.evidence_type == "extraction" and e.verified)
+        flipped.verified = False
+        flipped_id = str(flipped.id)
 
     with session_scope() as s:
         delta = build_delta_snapshot(s, plugin, base_snapshot_id=base_id, created_by="test")
@@ -448,6 +472,33 @@ def test_delta_snapshot_between_two_full_snapshots(plugin, fake_providers):
         assert d["knowledge"]["added"] == [added_id]
         assert d["knowledge"]["removed"] == [removed_id] and d["changelog_entries"] >= 1
         assert m["counts"]["knowledge_added"] == 1 and m["counts"]["knowledge_removed"] == 1
+        # evidence modification (audit P0.4): counted, explained field by field, and shipped as the head record
+        assert flipped_id in d["evidence"]["modified"] and m["counts"]["evidence_modified"] >= 1
+        change = d["evidence"]["changes"][flipped_id]
+        assert change["changed_fields"] == ["verified"]
+        assert change["before"] == {"verified": True} and change["after"] == {"verified": False}
+        ev_delta = {
+            json.loads(line)["id"]: json.loads(line)
+            for line in read_file(delta, "evidence.jsonl").decode().splitlines()
+            if line
+        }
+        assert ev_delta[flipped_id]["verified"] is False
+        # applying the delta to the base reproduces the head evidence file exactly
+        head = s.get(type(delta), uuid.UUID(m["head_snapshot_id"]))
+        base = s.get(type(delta), base_id)
+        ev_base = {
+            json.loads(line)["id"]: json.loads(line)
+            for line in read_file(base, "evidence.jsonl").decode().splitlines()
+            if line
+        }
+        ev_head = {
+            json.loads(line)["id"]: json.loads(line)
+            for line in read_file(head, "evidence.jsonl").decode().splitlines()
+            if line
+        }
+        applied = {k: v for k, v in ev_base.items() if k not in set(d["evidence"]["removed"])}
+        applied.update(ev_delta)
+        assert applied == ev_head
         # delta files carry the full head records of changed items and the AI Knowledge Source for them
         recs = {json.loads(line)["id"] for line in read_file(delta, "knowledge.jsonl").decode().splitlines() if line}
         assert added_id in recs and removed_id not in recs

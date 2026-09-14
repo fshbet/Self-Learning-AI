@@ -124,17 +124,21 @@ the stored canonical files, so a delta is reproducible and never depends on live
 ```
 powerbi-knowledge-v7/            kind: delta · base v5 → head v6 (ids and integrity hashes in the manifest)
 ├── delta.json                   added / modified (+ changed_fields) / superseded / removed / status_changes /
-│                                rescored_only, plus relationship, source, evidence, example, negative and conflict diffs
+│                                rescored_only for knowledge; added / modified / removed for relationships, sources,
+│                                evidence, examples, negatives — every modified one with changes[id] = changed_fields
+│                                + before/after (e.g. an evidence `verified` flag flipping after a page changed)
 ├── knowledge.jsonl              full head records of added, modified and superseded items
-├── removed.jsonl                base records that dropped out (rejected or excluded)
-├── evidence.jsonl · relationships.jsonl · sources.jsonl · examples.jsonl · negative.jsonl   changed records only
+├── removed.jsonl                ids (and last status) of base items that dropped out (rejected or excluded)
+├── evidence.jsonl · relationships.jsonl · sources.jsonl · examples.jsonl · negative.jsonl   head records of added + modified
 ├── conflicts.json · changelog.jsonl   conflicts opened/resolved and transitions since the base
 └── ai/knowledge.jsonl · README.md     AI Knowledge Source for the changed items; how to apply the delta
 ```
 
 Apply a delta on top of its base by upserting the records it carries, dropping the `removed` ids and treating
-`superseded`/`status_changes` as lifecycle updates. Volatile fields (`confidence`, `last_verified_at`, …) do not
-count as modifications; items whose only change is a rescore are listed under `rescored_only`.
+`superseded`/`status_changes` as lifecycle updates; base + delta reproduces the head's evidence, relationship, source,
+example and negative files exactly. Volatile fields (`confidence`, `quality_factors`, `last_verified_at`) do not count
+as modifications; items whose only change is a rescore are listed under `rescored_only` and their scores must be taken
+from the head snapshot.
 
 ## Knowledge origin, provenance and polarity
 
