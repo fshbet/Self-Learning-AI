@@ -29,3 +29,22 @@ def _db_available() -> bool:
 
 
 requires_db = pytest.mark.skipif(not _db_available(), reason="PostgreSQL not reachable (KP_DATABASE_URL)")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _drop_mocked_call_accounting():
+    """Tests that run under respx without mocking the model endpoint leave failed 'ollama' call records behind,
+    which would show up in the operator's 24h model-failure metrics. Remove them at the end of the session."""
+    yield
+    if not _db_available():
+        return
+    try:
+        from sqlalchemy import delete
+
+        from knowledge_platform.db import session_scope
+        from knowledge_platform.models import LLMCall
+
+        with session_scope() as s:
+            s.execute(delete(LLMCall).where(LLMCall.ok.is_(False), LLMCall.error.like("RESPX:%")))
+    except Exception:
+        pass
