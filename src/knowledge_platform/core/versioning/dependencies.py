@@ -17,7 +17,7 @@ import re
 import uuid
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from ...models import ItemStatus, KnowledgeItem, KnowledgeRelation
@@ -94,7 +94,7 @@ def derive_relations(session: Session, item: KnowledgeItem, plugin: Any) -> list
                 KnowledgeItem.domain_id == item.domain_id,
                 KnowledgeItem.id != item.id,
                 KnowledgeItem.status.in_(LIVE + (ItemStatus.CONFLICTED, ItemStatus.STALE, ItemStatus.CANDIDATE)),
-                KnowledgeItem.subject.ilike(item.subject),
+                func.lower(KnowledgeItem.subject) == item.subject.strip().lower(),  # exact, never a LIKE pattern
             )
         )
         .scalars()

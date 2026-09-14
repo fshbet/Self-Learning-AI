@@ -18,7 +18,7 @@ import logging
 import re
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ...models import Conflict, Evidence, ItemStatus, KnowledgeItem
@@ -146,7 +146,7 @@ def detect_conflicts(
             select(KnowledgeItem).where(
                 KnowledgeItem.domain_id == item.domain_id,
                 KnowledgeItem.status.in_(_LIVE),
-                KnowledgeItem.subject.ilike(item.subject),
+                func.lower(KnowledgeItem.subject) == (item.subject or "").strip().lower(),  # not ilike: '%', '_', '\'
                 KnowledgeItem.id != item.id,
             )
         )

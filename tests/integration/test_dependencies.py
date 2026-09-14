@@ -126,3 +126,45 @@ def test_relations_propagate_and_revalidate():
         rec = next(k for k in data["knowledge"] if k.id == str(example_id))
         assert {"relation": "example_of", "item_id": str(fact_id)} in rec.dependencies
     assert client.get(f"/api/stats?domain={DOMAIN}").json()["needs_revalidation"] == 0
+
+
+def test_subject_matching_is_exact_not_a_like_pattern(monkeypatch):
+    """Found by the P2.0 crawl: subjects such as "CU %", "Calc_method" or a trailing backslash were used as ILIKE
+    patterns, so "CU %" matched "CU % Limit" (false same-subject relations / conflict candidates) and a subject
+    ending in a backslash crashed extraction (LIKE pattern must not end with escape character)."""
+    from knowledge_platform.core.verification.conflicts import detect_conflicts
+    from knowledge_platform.core.versioning.dependencies import dependencies_of, derive_relations
+
+    monkeypatch.setattr("knowledge_platform.core.verification.conflicts.judge", lambda *a, **k: ("contradict", "", ""))
+    plugin = get_registry().get(DOMAIN)
+
+    def fact(subject, statement, obj, kind="fact", predicate="is"):
+        return create_knowledge(
+            s,
+            plugin,
+            KnowledgeEntry(
+                statement=statement,
+                subject=subject,
+                predicate=predicate,
+                object=obj,
+                knowledge_type=kind,
+                provenance="ORGANIZATION",
+                provided_by="qa",
+                authority=90,
+                evidence_text="spec",
+            ),
+        )
+
+    with session_scope() as s:
+        a = fact("CU %", "CU % is a capacity metric.", "a capacity metric", kind="definition")
+        b = fact("CU % Limit", "CU % Limit caps usage at 100.", "a cap", kind="procedure")
+        # different subjects: no structural relation and no conflict candidate between them
+        assert derive_relations(s, b, plugin) == []
+        assert detect_conflicts(s, b, domain_name="x") == []
+        assert not [r for r, k in dependencies_of(s, b.id) if k.id == a.id]
+        # a subject ending in a backslash (custom format strings) must not crash the query
+        c = fact("Escape\\", "Escape\ ends a format string.", "a format string", predicate="ends")
+        assert derive_relations(s, c, plugin) == [] and detect_conflicts(s, c, domain_name="x") == []
+        # the same subject in different case still matches
+        d = fact("cu %", "cu % is measured per second.", "per second", kind="procedure", predicate="is measured")
+        assert {k.id for r, k in dependencies_of(s, d.id)} == {a.id}
