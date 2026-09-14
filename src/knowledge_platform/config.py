@@ -77,6 +77,7 @@ class Settings(BaseSettings):
     # API / worker
     api_host: str = "127.0.0.1"
     api_port: int = 8010
+    allowed_origins: str = ""  # extra browser origins allowed to use the API (comma-separated), see api/security.py
     embedded_worker: bool = True
     worker_poll_seconds: float = 2.0
     scheduler_enabled: bool = True

@@ -194,6 +194,23 @@ overdue sources, next evaluation, next snapshot). Dead-letter jobs are retried f
 
 The runner never edits knowledge; its findings tell you what to crawl, review or tune (req. 16 of the V2 plan).
 
+## Security boundary
+
+This is a single-user, local-first application: the API binds to `KP_API_HOST` (127.0.0.1) and anything that can
+run on the machine — a shell, `kp`, a script — is trusted; there is no login. What is *not* trusted is a web page open
+in your browser. Two checks keep other sites away from `http://127.0.0.1:8010/api/*`:
+
+* **CORS** is limited to the application's own origins (the served UI on every loopback spelling, the Vite dev server
+  on port 5173, plus `KP_ALLOWED_ORIGINS`); preflights from any other origin are refused and foreign scripts cannot
+  read responses.
+* **Origin guard**: every mutating request (POST/PUT/PATCH/DELETE) that carries a browser `Origin` outside that list —
+  or `Sec-Fetch-Site: cross-site` — is answered `403` before it reaches a route. Requests without a browser origin
+  (curl, `kp`, server-to-server) are unaffected.
+
+Outbound, the **SSRF guard** (below) keeps the crawler off internal addresses, and validators are static checks that
+never execute crawled content. If you expose the API beyond localhost, put an authenticating reverse proxy in front of
+it and add its origin to `KP_ALLOWED_ORIGINS`.
+
 ## Active falsification (optional)
 
 Beyond waiting for a source to change, the platform can *try to disprove* what it believes. `Try to falsify` on an

@@ -32,6 +32,7 @@ from .routes_runs import router as runs_router
 from .routes_settings import router as settings_router
 from .routes_snapshots import router as snapshots_router
 from .schemas import HealthOut, StatsOut
+from .security import OriginGuardMiddleware, allowed_origins
 
 log = logging.getLogger(__name__)
 
@@ -63,7 +64,10 @@ app = FastAPI(
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
 )
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+# Browser boundary (audit P0.1): the guard refuses cross-origin mutations; CORS is limited to the app's own
+# origins. Order matters: CORS is added last so it is outermost and answers preflights before the guard.
+app.add_middleware(OriginGuardMiddleware)
+app.add_middleware(CORSMiddleware, allow_origins=allowed_origins(), allow_methods=["*"], allow_headers=["*"])
 
 for r in (
     domains_router,
