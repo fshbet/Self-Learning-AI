@@ -18,19 +18,60 @@ from urllib.parse import urlsplit
 import httpx
 
 from ...config import get_settings
-from .netguard import check_url
+from .netguard import check_syntax, resolve_validated
 
 log = logging.getLogger(__name__)
 
 
+class FetchBlocked(Exception):
+    """robots.txt (or another policy) forbids fetching this URL."""
+
+
 def _guard_request(request: httpx.Request) -> None:
-    ok, reason = check_url(str(request.url))
+    """Cheap syntax layer on every hop (scheme, credentials, internal names, IP literals in any spelling)."""
+    ok, reason = check_syntax(str(request.url))
     if not ok:
         raise FetchBlocked(f"refusing {request.url}: {reason}")
 
 
-class FetchBlocked(Exception):
-    """robots.txt (or another policy) forbids fetching this URL."""
+class GuardedTransport(httpx.BaseTransport):
+    """Resolve once, validate every address, connect to a validated one (audit P1.10).
+
+    The URL's host is replaced by the validated IP for the connection while the ``Host`` header and the TLS
+    server name (``sni_hostname`` extension, also used for certificate verification) keep the original hostname.
+    A second DNS answer between check and connect — DNS rebinding — therefore cannot move the socket. Applies to
+    every request the client makes: initial fetch, redirects and robots.txt. Unresolvable names pass through by
+    name and fail in the OS (nothing internal is reachable that way); IP literals are validated directly.
+    """
+
+    def __init__(self, inner: httpx.BaseTransport) -> None:
+        self._inner = inner
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        host = request.url.host
+        if host and not get_settings().fetch_allow_private:
+            addresses, reason = resolve_validated(host)
+            if reason:
+                raise FetchBlocked(f"refusing {request.url}: {reason}")
+            if addresses and addresses[0] != host.strip("[]"):
+                ip = addresses[0]
+                pinned_host = f"[{ip}]" if ":" in ip else ip
+                url = request.url.copy_with(host=pinned_host)
+                headers = request.headers.copy()
+                headers["Host"] = request.url.netloc.decode("ascii")
+                extensions = dict(request.extensions)
+                if request.url.scheme == "https":
+                    extensions["sni_hostname"] = host
+                pinned = httpx.Request(
+                    request.method, url, headers=headers, content=request.content, extensions=extensions
+                )
+                response = self._inner.handle_request(pinned)
+                response.request = request  # keep the logical URL for redirects / logging
+                return response
+        return self._inner.handle_request(request)
+
+    def close(self) -> None:
+        self._inner.close()
 
 
 @dataclass
@@ -75,6 +116,7 @@ class Fetcher:
             timeout=timeout or s.crawl_timeout_seconds,
             follow_redirects=True,
             event_hooks={"request": [_guard_request]},  # SSRF guard applies to every hop, redirects included
+            transport=GuardedTransport(httpx.HTTPTransport()),  # resolve once, connect to the validated address
         )
         self._hosts: dict[str, _HostPolicy] = {}
         self._hosts_lock = threading.Lock()

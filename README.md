@@ -351,9 +351,13 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
   republisher of another (`mirror_of` in `sources.yaml`, `mirror_of_source_id` in the Sources API); and a source that
   only repeats verbatim excerpts another source already supplied is not counted either. Only genuinely independent
   sources raise the agreement factor. Not attempted (by decision): fuzzy similarity of substantially edited copies.
-* **SSRF guard** — every outbound fetch (plugin sources, user URLs, discovered pages and every redirect hop) must resolve
-  to a public address; loopback, RFC 1918, link-local, CGNAT, multicast, reserved ranges and internal hostnames are
-  refused, as are non-http(s) schemes and URLs carrying credentials (`KP_FETCH_ALLOW_PRIVATE=true` for intranet crawls).
+* **SSRF guard** — every outbound fetch (plugin sources, user URLs, discovered pages, robots.txt and every redirect hop)
+  must resolve to a public address; loopback, RFC 1918, link-local, CGNAT, multicast, reserved ranges and internal
+  hostnames are refused, as are non-http(s) schemes and URLs carrying credentials. IP literals are canonicalised in every
+  spelling before checking (`127.1`, `2130706433`, `0x7f000001`, `0177.0.0.1`, IPv4-mapped/6to4 IPv6, zone ids); DNS
+  verdicts are cached for 60 s, not forever; and the crawler's transport **resolves once and connects to the validated
+  address** (Host header and TLS name keep the hostname), so a rebinding DNS answer cannot move the socket
+  (`KP_FETCH_ALLOW_PRIVATE=true` for intranet crawls).
 * **Responsible collection** — robots.txt (incl. Crawl-delay), identified User-Agent, per-host rate limits, backoff on 429/5xx.
 * **Accounting** — every model call is recorded (model, tokens, latency) so cost per knowledge item is visible on the dashboard.
 
