@@ -132,6 +132,7 @@ function AddSourceForm({ domain, onDone }: { domain: string; onDone: () => void 
 }
 
 function Keywords({ domain }: { domain: string }) {
+  const { current } = useDomain();
   const qc = useQueryClient();
   const toast = useToast();
   const [value, setValue] = useState("");
@@ -179,7 +180,7 @@ function Keywords({ domain }: { domain: string }) {
           if (value.trim().length >= 2) add.mutate(value.trim());
         }}
       >
-        <input className="input flex-1" placeholder='e.g. "Power BI incremental refresh best practices"' value={value} onChange={(e) => setValue(e.target.value)} />
+        <input className="input flex-1" placeholder={`e.g. "${current?.name ?? "topic"} best practices"`} value={value} onChange={(e) => setValue(e.target.value)} />
         <button type="submit" className="btn btn-sm" disabled={add.isPending || value.trim().length < 2}>
           <Plus size={12} /> Add keyword
         </button>

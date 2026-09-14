@@ -66,7 +66,8 @@ export default function AddKnowledge({ open, onClose, onCreated }: { open: boole
     },
     onError: (e) => toast("err", (e as Error).message),
   });
-  const negative = f.polarity === "negative" || ["limitation", "warning"].includes(f.knowledge_type);
+  const specs = current?.manifest.knowledge_type_specs ?? [];
+  const negative = f.polarity === "negative" || specs.find((t) => t.name === f.knowledge_type)?.polarity === "negative";
 
   return (
     <Drawer open={open} onClose={onClose} title="Add knowledge (user / organisation)">

@@ -134,7 +134,7 @@ export default function Knowledge() {
                     <td>
                       <div className="font-medium leading-snug">{k.statement}</div>
                       <div className="muted text-xs mt-1 flex items-center gap-2 flex-wrap">
-                        <TypeChip type={k.knowledge_type} />
+                        <TypeChip type={k.knowledge_type} spec={current?.manifest.knowledge_type_specs?.find((t) => t.name === k.knowledge_type)} />
                         <ProvenanceChip provenance={k.provenance} />
                         <PolarityChip polarity={k.polarity} />
                         <span className="mono">{k.subject}</span>

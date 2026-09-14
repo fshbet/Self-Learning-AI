@@ -16,7 +16,7 @@ from __future__ import annotations
 from abc import ABC
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -40,6 +40,68 @@ class TaxonomyNode(BaseModel):
         return v
 
 
+class KnowledgeTypeSpec(BaseModel):
+    """A knowledge type and its *semantics* (audit P1.5). The core never assumes what a type means: the plugin says
+    whether it is negative knowledge, whether it is a foundation others depend on, a dependent, a structured example
+    or neutral, and how to label it. Strings in ``knowledge_types`` are upgraded with DEFAULT_TYPE_SPECS."""
+
+    name: str
+    polarity: Literal["positive", "negative"] = "positive"
+    role: Literal["foundation", "dependent", "example", "neutral"] = "neutral"
+    label: str = ""  # plural heading in exports ("Limitations"); defaults to the name, title-cased
+    prefix: str = ""  # singular prefix for negative items in AI text ("Limitation"); defaults to the label
+    description: str = ""
+
+    @field_validator("name")
+    @classmethod
+    def _slug(cls, v: str) -> str:
+        if not v or not all(c.isalnum() or c in "_-" for c in v):
+            raise ValueError("knowledge type names are slugs (letters, digits, '_', '-')")
+        return v
+
+    def heading(self) -> str:
+        return self.label or self.name.replace("_", " ").capitalize() + "s"
+
+    def negative_prefix(self) -> str:
+        return self.prefix or (self.label.rstrip("s") if self.label else self.name.replace("_", " ").capitalize())
+
+
+# semantics of the conventional vocabulary; a plugin may override any of them or add its own types
+DEFAULT_TYPE_SPECS: dict[str, dict[str, str]] = {
+    "definition": {"role": "foundation", "label": "Definitions"},
+    "fact": {"role": "foundation", "label": "Facts"},
+    "procedure": {"role": "dependent", "label": "Procedures"},
+    "example": {"role": "example", "label": "Examples"},
+    "best_practice": {"role": "dependent", "label": "Best practices"},
+    "limitation": {"role": "dependent", "polarity": "negative", "label": "Limitations", "prefix": "Limitation"},
+    "warning": {"role": "dependent", "polarity": "negative", "label": "Warnings", "prefix": "Warning"},
+    "anti_pattern": {"role": "dependent", "polarity": "negative", "label": "Anti-patterns", "prefix": "Anti-pattern"},
+    "common_mistake": {
+        "role": "dependent",
+        "polarity": "negative",
+        "label": "Common mistakes",
+        "prefix": "Common mistake",
+    },
+    "pitfall": {"role": "dependent", "polarity": "negative", "label": "Pitfalls", "prefix": "Pitfall"},
+}
+
+
+def coerce_type_specs(values: list[Any]) -> list[KnowledgeTypeSpec]:
+    out: list[KnowledgeTypeSpec] = []
+    for v in values:
+        if isinstance(v, KnowledgeTypeSpec):
+            out.append(v)
+        elif isinstance(v, str):
+            out.append(KnowledgeTypeSpec(name=v, **DEFAULT_TYPE_SPECS.get(v, {})))
+        elif isinstance(v, dict):
+            base = dict(DEFAULT_TYPE_SPECS.get(str(v.get("name", "")), {}))
+            base.update(v)
+            out.append(KnowledgeTypeSpec.model_validate(base))
+        else:
+            raise ValueError(f"knowledge type entries must be names or objects, got {type(v).__name__}")
+    return out
+
+
 class RiskClass(BaseModel):
     description: str = ""
     min_verification_level: int = 1
@@ -54,12 +116,20 @@ class Manifest(BaseModel):
     language: str = "en"
     taxonomy: list[TaxonomyNode] = Field(default_factory=list)
     terminology: dict[str, str] = Field(default_factory=dict)
-    knowledge_types: list[str] = Field(
-        default_factory=lambda: ["fact", "definition", "procedure", "example", "best_practice", "limitation"]
+    knowledge_types: list[KnowledgeTypeSpec] = Field(
+        default_factory=lambda: coerce_type_specs(
+            ["fact", "definition", "procedure", "example", "best_practice", "limitation"]
+        )
     )
     risk_classes: dict[str, RiskClass] = Field(default_factory=lambda: {"default": RiskClass()})
     extraction_hints: str = ""
     discovery_queries: list[str] = Field(default_factory=list)
+    sample_questions: list[str] = Field(default_factory=list)  # shown on the Search & Ask page
+
+    @field_validator("knowledge_types", mode="before")
+    @classmethod
+    def _coerce_types(cls, v: Any) -> Any:
+        return coerce_type_specs(list(v or []))
 
     @field_validator("id")
     @classmethod
@@ -193,7 +263,29 @@ class DomainPlugin:
         return self.manifest.terminology
 
     def knowledge_types(self) -> list[str]:
-        return self.manifest.knowledge_types
+        return [t.name for t in self.manifest.knowledge_types]
+
+    # type semantics (audit P1.5): the core asks, the plugin answers --------------
+    def type_specs(self) -> list[KnowledgeTypeSpec]:
+        return list(self.manifest.knowledge_types)
+
+    def type_spec(self, name: str) -> KnowledgeTypeSpec:
+        for t in self.manifest.knowledge_types:
+            if t.name == name:
+                return t
+        return KnowledgeTypeSpec(name=name or "fact", **DEFAULT_TYPE_SPECS.get(name or "", {}))
+
+    def polarity_of(self, name: str) -> str:
+        return self.type_spec(name).polarity
+
+    def role_of(self, name: str) -> str:
+        return self.type_spec(name).role
+
+    def types_with_role(self, *roles: str) -> tuple[str, ...]:
+        return tuple(t.name for t in self.manifest.knowledge_types if t.role in roles)
+
+    def sample_questions(self) -> list[str]:
+        return list(self.manifest.sample_questions)
 
     def risk_classes(self) -> dict[str, RiskClass]:
         return self.manifest.risk_classes
@@ -250,6 +342,8 @@ class DomainPlugin:
             "path": str(self.path),
             "taxonomy_paths": self.taxonomy_paths(),
             "knowledge_types": self.knowledge_types(),
+            "knowledge_type_specs": [t.model_dump() for t in self.type_specs()],
+            "sample_questions": self.sample_questions(),
             "terminology_count": len(self.terminology()),
             "sources_count": len(self.sources()),
             "validators": [v.name for v in self.validators()],

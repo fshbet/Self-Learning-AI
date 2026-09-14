@@ -9,7 +9,6 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-NEGATIVE_TYPES = frozenset({"limitation", "warning", "anti_pattern", "common_mistake", "pitfall"})
 OFFICIAL_AUTHORITY = 80
 
 
@@ -45,8 +44,14 @@ def derive_provenance(sources: Iterable[Any]) -> str:
     return CLASS_TO_PROVENANCE.get(str(cls), "EXTERNAL")
 
 
-def derive_polarity(knowledge_type: str) -> str:
-    return "negative" if (knowledge_type or "").lower() in NEGATIVE_TYPES else "positive"
+def derive_polarity(knowledge_type: str, plugin: Any | None = None) -> str:
+    """Polarity of a knowledge type as the plugin declares it (audit P1.5); without a plugin, the conventional
+    vocabulary's defaults apply."""
+    if plugin is not None:
+        return plugin.polarity_of(knowledge_type or "")
+    from ..plugins.base import DEFAULT_TYPE_SPECS
+
+    return DEFAULT_TYPE_SPECS.get((knowledge_type or "").lower(), {}).get("polarity", "positive")
 
 
 def derive_origin(item: Any) -> str:

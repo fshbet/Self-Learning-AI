@@ -2,6 +2,8 @@
 
 export type Page<T> = { items: T[]; total: number; page: number; page_size: number };
 
+export type KnowledgeTypeSpec = { name: string; polarity: "positive" | "negative"; role: "foundation" | "dependent" | "example" | "neutral"; label: string; prefix: string; description: string };
+
 export type Domain = {
   id: string;
   name: string;
@@ -16,6 +18,8 @@ export type Domain = {
   manifest: {
     taxonomy_paths?: string[];
     knowledge_types?: string[];
+    knowledge_type_specs?: KnowledgeTypeSpec[];
+    sample_questions?: string[];
     sources_count?: number;
     validators?: string[];
     skills?: string[];

@@ -166,7 +166,7 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
             knowledge_type=it.knowledge_type,
             origin=it.origin or derive_origin(it),  # type: ignore[arg-type]
             provenance=it.provenance or derive_provenance(item_sources),  # type: ignore[arg-type]
-            polarity=it.polarity or derive_polarity(it.knowledge_type),  # type: ignore[arg-type]
+            polarity=it.polarity or derive_polarity(it.knowledge_type, plugin),  # type: ignore[arg-type]
             subject=it.subject,
             predicate=it.predicate,
             object=it.object,
@@ -212,7 +212,7 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
             content_hash=it.content_hash,
         )
         knowledge.append(rec)
-        if it.knowledge_type == "example" and not rec.historical:
+        if plugin.role_of(it.knowledge_type) == "example" and not rec.historical:
             details = it.details or {}
             examples.append(
                 ExampleRecord(
@@ -298,6 +298,8 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
         "terminology": plugin.terminology(),
         "taxonomy": [n.model_dump() for n in plugin.taxonomy()],
         "knowledge_types": plugin.knowledge_types(),
+        # type semantics as the plugin declares them (audit P1.5): renderers and consumers read these
+        "knowledge_type_specs": [t.model_dump() for t in plugin.type_specs()],
         "risk_classes": {k: v.model_dump() for k, v in plugin.risk_classes().items()},
     }
     return {
@@ -466,6 +468,7 @@ def _render_files(snap: Snapshot, plugin: DomainPlugin, data: dict[str, Any], ga
         ev_by_item[e.knowledge_item_id].append(e)
     rel_by_item: dict[str, list[str]] = defaultdict(list)
     statements = {k.id: k.statement for k in data["knowledge"]}
+    specs = {t["name"]: t for t in data["glossary"].get("knowledge_type_specs", [])}
     for r in data["relationships"]:
         rel_by_item[r.from_item_id].append(r.to_item_id)
         rel_by_item[r.to_item_id].append(r.from_item_id)
@@ -502,6 +505,7 @@ def _render_files(snap: Snapshot, plugin: DomainPlugin, data: dict[str, Any], ga
                         for d in k.dependencies
                         if d.get("relation") == "derived_from" and d["item_id"] in statements
                     ],
+                    specs=specs,
                 )
             ).model_dump()
             for k in data["knowledge"]

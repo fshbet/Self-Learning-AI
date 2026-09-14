@@ -27,8 +27,6 @@ log = logging.getLogger(__name__)
 RELATION_TYPES = ("depends_on", "example_of", "derived_from", "related_to", "supersedes", "contradicts")
 # relation types along which a change in the target invalidates the source
 PROPAGATING = ("depends_on", "example_of", "derived_from")
-FOUNDATION_TYPES = ("definition", "fact")
-DEPENDENT_TYPES = ("example", "procedure", "best_practice", "limitation", "warning")
 LIVE = (ItemStatus.SUPPORTED, ItemStatus.VERIFIED)
 _WS = re.compile(r"\s+")
 
@@ -72,9 +70,13 @@ def add_relation(
     return rel
 
 
-def derive_relations(session: Session, item: KnowledgeItem) -> list[KnowledgeRelation]:
-    """Structural relations for a new/updated item (see module docstring)."""
+def derive_relations(session: Session, item: KnowledgeItem, plugin: Any) -> list[KnowledgeRelation]:
+    """Structural relations for a new/updated item (see module docstring). Which types are foundations, dependents
+    or examples is the plugin's declaration (audit P1.5), never a core assumption."""
     created: list[KnowledgeRelation] = []
+    foundation = plugin.types_with_role("foundation")
+    dependent = plugin.types_with_role("dependent", "example")
+    example = plugin.types_with_role("example")
     subject = _norm(item.subject)
     if not subject:
         return created
@@ -90,18 +92,18 @@ def derive_relations(session: Session, item: KnowledgeItem) -> list[KnowledgeRel
         .scalars()
         .all()
     )
-    if item.knowledge_type in DEPENDENT_TYPES:
+    if item.knowledge_type in dependent:
         for other in same_subject:
-            if other.knowledge_type in FOUNDATION_TYPES:
-                rtype = "example_of" if item.knowledge_type == "example" else "depends_on"
+            if other.knowledge_type in foundation:
+                rtype = "example_of" if item.knowledge_type in example else "depends_on"
                 rel = add_relation(session, item, other, rtype, details={"rule": "same-subject foundation"})
                 if rel:
                     created.append(rel)
-    elif item.knowledge_type in FOUNDATION_TYPES:
+    elif item.knowledge_type in foundation:
         # a new foundation item: existing dependents about the same subject now depend on it too
         for other in same_subject:
-            if other.knowledge_type in DEPENDENT_TYPES:
-                rtype = "example_of" if other.knowledge_type == "example" else "depends_on"
+            if other.knowledge_type in dependent:
+                rtype = "example_of" if other.knowledge_type in example else "depends_on"
                 rel = add_relation(session, other, item, rtype, details={"rule": "same-subject foundation"})
                 if rel:
                     created.append(rel)

@@ -63,9 +63,8 @@ export default function SearchAsk() {
   }
 
   const examples = useMemo(() => {
-    if (domain === "powerbi")
-      return ["What does CALCULATE do?", "When should I use DIVIDE instead of the / operator?", "How does incremental refresh work?", "What is query folding?"];
-    return [`What is ${current?.name ?? "this domain"}?`];
+    const declared = current?.manifest.sample_questions ?? [];
+    return declared.length ? declared : [`What is ${current?.name ?? "this domain"}?`];
   }, [domain, current]);
 
   return (

@@ -123,7 +123,7 @@ def create_knowledge(session: Session, plugin: DomainPlugin, entry: KnowledgeEnt
         extraction={"method": "human", "extractor_version": ENTRY_VERSION, "provided_by": entry.provided_by},
         origin=entry.origin,
         provenance="DERIVED" if premises else entry.provenance,  # derived knowledge has no source of its own
-        polarity=entry.polarity or derive_polarity(entry.knowledge_type),
+        polarity=entry.polarity or derive_polarity(entry.knowledge_type, plugin),
         details={k: v for k, v in entry.details.items() if isinstance(v, str) and v.strip()},
         first_discovered_at=utcnow(),
     )
@@ -179,6 +179,6 @@ def create_knowledge(session: Session, plugin: DomainPlugin, entry: KnowledgeEnt
     run_validators(session, item, plugin)
     rescore(session, item, plugin, actor=f"human:{entry.provided_by}")
     detect_conflicts(session, item, domain_name=plugin.name)
-    derive_relations(session, item)
+    derive_relations(session, item, plugin)
     session.flush()
     return item

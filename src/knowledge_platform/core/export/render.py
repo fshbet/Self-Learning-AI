@@ -11,17 +11,20 @@ from .schema import ConflictRecord, EvidenceRecord, KnowledgeRecord, Manifest
 
 RENDER_VERSION = "render@1.2"  # bump when README/markdown/html output changes: it alters file hashes
 
-TYPE_ORDER = ["definition", "fact", "procedure", "example", "best_practice", "limitation", "warning", "anti_pattern"]
-TYPE_LABEL = {
-    "definition": "Definitions",
-    "fact": "Facts",
-    "procedure": "Procedures",
-    "example": "Examples",
-    "best_practice": "Best practices",
-    "limitation": "Limitations",
-    "warning": "Warnings",
-    "anti_pattern": "Anti-patterns",
-}
+
+def type_specs(glossary: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
+    """name -> spec from the snapshot glossary (the plugin's declaration, audit P1.5); empty when absent."""
+    return {t["name"]: t for t in (glossary or {}).get("knowledge_type_specs", [])}
+
+
+def type_heading(name: str, specs: dict[str, dict[str, Any]]) -> str:
+    spec = specs.get(name, {})
+    return spec.get("label") or name.replace("_", " ").capitalize() + "s"
+
+
+def type_prefix(name: str, specs: dict[str, dict[str, Any]]) -> str:
+    spec = specs.get(name, {})
+    return spec.get("prefix") or (spec.get("label") or name.replace("_", " ").capitalize()).rstrip("s")
 
 
 def _cite_lines(ev: list[EvidenceRecord]) -> list[str]:
@@ -43,7 +46,6 @@ def _cite_lines(ev: list[EvidenceRecord]) -> list[str]:
 # ----------------------------------------------------------------------------- AI knowledge source
 
 
-NEGATIVE_PREFIX = {"limitation": "Limitation", "warning": "Warning", "anti_pattern": "Anti-pattern"}
 DETAIL_LABEL = {
     "expected_behavior": "Expected behaviour",
     "expected_result": "Expected result",
@@ -129,11 +131,16 @@ def _cite_label(c: dict[str, Any]) -> str:
     return label
 
 
-def ai_text(k: KnowledgeRecord, citations: list[dict[str, Any]], premises: list[str] | None = None) -> str:
+def ai_text(
+    k: KnowledgeRecord,
+    citations: list[dict[str, Any]],
+    premises: list[str] | None = None,
+    specs: dict[str, dict[str, Any]] | None = None,
+) -> str:
     """Self-contained text block: statement, explanation, code, structured details, scope, numbered sources."""
     head = k.statement
     if k.polarity == "negative":
-        head = f"{NEGATIVE_PREFIX.get(k.knowledge_type, 'Negative knowledge')}: {k.statement}"
+        head = f"{type_prefix(k.knowledge_type, specs or {})}: {k.statement}"
     parts = [head]
     # trust state first, in the text itself: a consumer that only reads `text` must still see it (audit P0.3)
     if k.historical:
@@ -171,7 +178,11 @@ def ai_text(k: KnowledgeRecord, citations: list[dict[str, Any]], premises: list[
 
 
 def ai_record(
-    k: KnowledgeRecord, ev: list[EvidenceRecord], related: list[str], premises: list[str] | None = None
+    k: KnowledgeRecord,
+    ev: list[EvidenceRecord],
+    related: list[str],
+    premises: list[str] | None = None,
+    specs: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """One self-contained record an AI/RAG system can index: text block + provenance + citations."""
     citations = ai_citations(ev)
@@ -191,7 +202,7 @@ def ai_record(
         "provenance": k.provenance,
         "topic": k.topic,
         "subject": k.subject,
-        "text": ai_text(k, citations, premises),
+        "text": ai_text(k, citations, premises, specs),
         "statement": k.statement,
         "code": k.code,
         "details": k.details,
@@ -285,6 +296,7 @@ def ai_markdown(
     glossary: dict[str, Any],
 ) -> str:
     by_topic: dict[str, list[KnowledgeRecord]] = defaultdict(list)
+    specs = type_specs(glossary)
     for k in items:
         if not k.historical:
             by_topic[k.topic or "(unclassified)"].append(k)
@@ -304,11 +316,12 @@ def ai_markdown(
     for topic in sorted(by_topic):
         lines += [f"## {topic}", ""]
         group = by_topic[topic]
-        for t in TYPE_ORDER + sorted({k.knowledge_type for k in group} - set(TYPE_ORDER)):
+        declared = list(specs)  # the plugin's order; undeclared types follow alphabetically
+        for t in declared + sorted({k.knowledge_type for k in group} - set(declared)):
             sub = [k for k in group if k.knowledge_type == t]
             if not sub:
                 continue
-            lines += [f"### {TYPE_LABEL.get(t, t.replace('_', ' ').title())}", ""]
+            lines += [f"### {type_heading(t, specs)}", ""]
             for k in sorted(sub, key=lambda x: (x.subject.lower(), x.id)):
                 flags = f"{k.status} · L{k.verification_level} · {k.confidence:.0%}"
                 if k.polarity == "negative":

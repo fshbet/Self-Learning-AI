@@ -67,10 +67,11 @@ export function PolarityChip({ polarity }: { polarity: string }) {
   return <span className="chip bg-rose-500/12 text-rose-700 dark:text-rose-300" title="negative knowledge: what does not work">does not work</span>;
 }
 
-const NEGATIVE_TYPES = new Set(["limitation", "warning", "anti_pattern", "common_mistake", "pitfall"]);
-
-export function TypeChip({ type }: { type: string }) {
-  const cls = NEGATIVE_TYPES.has(type) ? "bg-rose-500/12 text-rose-700 dark:text-rose-300" : type === "example" ? "bg-teal-500/12 text-teal-700 dark:text-teal-300" : "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300";
+/** Colour by the plugin's declared semantics (polarity / role), falling back to the conventional vocabulary. */
+export function TypeChip({ type, spec }: { type: string; spec?: { polarity?: string; role?: string } }) {
+  const negative = spec ? spec.polarity === "negative" : ["limitation", "warning", "anti_pattern", "common_mistake", "pitfall"].includes(type);
+  const example = spec ? spec.role === "example" : type === "example";
+  const cls = negative ? "bg-rose-500/12 text-rose-700 dark:text-rose-300" : example ? "bg-teal-500/12 text-teal-700 dark:text-teal-300" : "bg-indigo-500/12 text-indigo-700 dark:text-indigo-300";
   return <span className={`chip ${cls}`}>{type.replace(/_/g, " ")}</span>;
 }
 

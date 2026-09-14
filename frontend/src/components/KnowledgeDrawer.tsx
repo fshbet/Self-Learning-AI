@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, ExternalLink, FlaskConical, GitBranch, Globe, History, Quote, RefreshCw, ShieldAlert, XCircle } from "lucide-react";
 import { useState } from "react";
 import { api, type Evidence } from "../lib/api";
+import { useDomain } from "../lib/domain";
 import { fmtDate, hostOf, timeAgo } from "../lib/format";
 import { Confidence, Drawer, ErrorBox, KV, Loading, OriginChip, PolarityChip, ProvenanceChip, StatusChip, TypeChip, useToast } from "./ui";
 
@@ -42,6 +43,7 @@ export function EvidenceCard({ e }: { e: Evidence }) {
 export default function KnowledgeDrawer({ id, onClose }: { id: string | null; onClose: () => void }) {
   const qc = useQueryClient();
   const toast = useToast();
+  const { current } = useDomain();
   const [reason, setReason] = useState("");
   const q = useQuery({ queryKey: ["knowledge", id], queryFn: () => api.knowledgeItem(id!), enabled: !!id });
   const review = useMutation({
@@ -81,7 +83,7 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
               <StatusChip status={item.status} />
-              <TypeChip type={item.knowledge_type} />
+              <TypeChip type={item.knowledge_type} spec={current?.manifest.knowledge_type_specs?.find((t) => t.name === item.knowledge_type)} />
               <ProvenanceChip provenance={item.provenance} />
               <OriginChip origin={item.origin} />
               <PolarityChip polarity={item.polarity} />

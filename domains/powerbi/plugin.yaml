@@ -9,7 +9,21 @@ description: >
   the Power BI Service, administration, security, gateways and refresh, the REST API,
   and Microsoft Fabric integration.
 
-knowledge_types: [fact, definition, procedure, example, best_practice, limitation, warning, anti_pattern]
+# knowledge types with their semantics (polarity, role) — the core reads these instead of assuming them
+knowledge_types:
+  - {name: definition, role: foundation, label: Definitions}
+  - {name: fact, role: foundation, label: Facts}
+  - {name: procedure, role: dependent, label: Procedures}
+  - {name: example, role: example, label: Examples}
+  - {name: best_practice, role: dependent, label: Best practices}
+  - {name: limitation, role: dependent, polarity: negative, label: Limitations, prefix: Limitation}
+  - {name: warning, role: dependent, polarity: negative, label: Warnings, prefix: Warning}
+  - {name: anti_pattern, role: dependent, polarity: negative, label: Anti-patterns, prefix: Anti-pattern}
+sample_questions:
+  - What does CALCULATE do?
+  - When should I use DIVIDE instead of the / operator?
+  - How does incremental refresh work?
+  - What is query folding?
 
 taxonomy:
   - name: DAX

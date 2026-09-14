@@ -463,7 +463,7 @@ def ingest_document(
         stats.validators_run += run_validators(session, item, plugin)
         rescore(session, item, plugin)
         stats.conflicts += len(detect_conflicts(session, item, domain_name=plugin.name, run_id=run_id))
-        stats.relations += len(derive_relations(session, item))
+        stats.relations += len(derive_relations(session, item, plugin))
         stats.items_created += 1
 
     for item in touched.values():

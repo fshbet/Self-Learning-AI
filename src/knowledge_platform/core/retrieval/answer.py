@@ -36,7 +36,7 @@ _DETAIL_LABELS = {
 }
 
 
-def _format_items(results: list[SearchResult]) -> str:
+def _format_items(results: list[SearchResult], plugin: DomainPlugin | None = None) -> str:
     lines = []
     for n, r in enumerate(results, start=1):
         it = r.item
@@ -48,7 +48,7 @@ def _format_items(results: list[SearchResult]) -> str:
         label = ""
         if it.polarity == "negative":
             label = f"{it.knowledge_type.replace('_', '-').upper()}: "
-        elif it.knowledge_type == "example":
+        elif plugin is not None and plugin.role_of(it.knowledge_type) == "example":
             label = "EXAMPLE: "
         block = f"[{n}] ({', '.join(meta)}) {label}{it.statement}"
         if it.explanation:
@@ -90,7 +90,7 @@ def answer_question(
             no_results=True,
         )
     system = ANSWER_SYSTEM.format(domain_name=plugin.name)
-    user = ANSWER_USER.format(question=question, items=_format_items(results))
+    user = ANSWER_USER.format(question=question, items=_format_items(results, plugin))
     text = call_text(purpose="answer", system=system, user=user, session=session)
     cited = sorted({int(m) for m in _CITE.findall(text) if 0 < int(m) <= len(results)})
     citations = [retrieved[n - 1] for n in cited]

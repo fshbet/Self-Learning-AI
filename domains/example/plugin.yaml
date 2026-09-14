@@ -8,6 +8,8 @@ description: >
   Replace this with a short description of the technology or subject area. The description is
   given to the extraction model, so make it precise.
 
+# plain names use the conventional semantics; see domains/README.md for the object form
+# ({name, role: foundation|dependent|example|neutral, polarity: positive|negative, label, prefix})
 knowledge_types: [fact, definition, procedure, example, best_practice, limitation]
 
 taxonomy:

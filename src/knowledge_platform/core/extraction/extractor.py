@@ -195,7 +195,7 @@ def extract_from_text(
                     polarity="negative"
                     if (
                         raw.get("polarity") == "negative"
-                        or derive_polarity(raw.get("knowledge_type") or "") == "negative"
+                        or derive_polarity(raw.get("knowledge_type") or "", plugin) == "negative"
                     )
                     else "positive",
                     details={k: v for k, v in (raw.get("details") or {}).items() if isinstance(v, str) and v.strip()},
