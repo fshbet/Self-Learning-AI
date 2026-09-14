@@ -14,12 +14,14 @@ from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session
 
 from ..models import (
+    Conflict,
     Document,
     EvaluationRun,
     Evidence,
     Job,
     JobStatus,
     KnowledgeItem,
+    KnowledgeRelation,
     LLMCall,
     Run,
     Snapshot,
@@ -128,7 +130,13 @@ def storage(session: Session, domain: str | None = None) -> dict[str, Any]:
             domain,
         )
     ).scalar_one()
+    try:
+        database_bytes = int(session.execute(select(func.pg_database_size(func.current_database()))).scalar_one())
+    except Exception:  # noqa: BLE001 - a non-PostgreSQL or restricted connection simply lacks the figure
+        session.rollback()
+        database_bytes = 0
     return {
+        "database_bytes": database_bytes,
         "documents": int(docs[0]),
         "document_bytes": int(docs[1]),
         "mirror_documents": int(mirrors),
@@ -189,13 +197,134 @@ def schedule(session: Session, domain: str | None = None) -> dict[str, Any]:
     }
 
 
+def knowledge_metrics(session: Session, domain: str | None = None) -> dict[str, Any]:
+    """Corpus size and trust-state counts (P2.0.1): the numbers to compare before and after a crawl.
+
+    Counts are by state, never a score, so growth in coverage and growth in doubt (conflicted, stale, flagged)
+    are visible side by side. ``last_evaluation`` carries the latest finished evaluation's metrics verbatim.
+    """
+    ki = _domain_filter(
+        select(KnowledgeItem.status, func.count()).group_by(KnowledgeItem.status), KnowledgeItem, domain
+    )
+    by_status = {str(k): int(v) for k, v in session.execute(ki).all()}
+    sources = session.execute(
+        _domain_filter(
+            select(Source.status, Source.enabled, func.count()).group_by(Source.status, Source.enabled),
+            Source,
+            domain,
+        )
+    ).all()
+    docs = session.execute(
+        _domain_filter(select(Document.status, func.count()).group_by(Document.status), Document, domain)
+    ).all()
+    ev_stmt = (
+        select(Evidence.evidence_type, Evidence.relation, Evidence.verified, func.count())
+        .join(KnowledgeItem, KnowledgeItem.id == Evidence.knowledge_item_id)
+        .group_by(Evidence.evidence_type, Evidence.relation, Evidence.verified)
+    )
+    if domain:
+        ev_stmt = ev_stmt.where(KnowledgeItem.domain_id == domain)
+    evidence = session.execute(ev_stmt).all()
+    relations = session.execute(
+        _domain_filter(
+            select(KnowledgeRelation.relation_type, func.count()).group_by(KnowledgeRelation.relation_type),
+            KnowledgeRelation,
+            domain,
+        )
+    ).all()
+    conflicts = session.execute(
+        _domain_filter(select(Conflict.status, func.count()).group_by(Conflict.status), Conflict, domain)
+    ).all()
+    flags = session.execute(
+        _domain_filter(
+            select(
+                func.sum(case((KnowledgeItem.needs_review.is_(True), 1), else_=0)),
+                func.sum(case((KnowledgeItem.needs_revalidation.is_(True), 1), else_=0)),
+                func.sum(case((KnowledgeItem.polarity == "negative", 1), else_=0)),
+                func.sum(case((KnowledgeItem.origin != "DIRECT", 1), else_=0)),
+                func.sum(case((KnowledgeItem.superseded_by_id.is_not(None), 1), else_=0)),
+            ),
+            KnowledgeItem,
+            domain,
+        )
+    ).one()
+    by_type = {
+        str(k): int(v)
+        for k, v in session.execute(
+            _domain_filter(
+                select(KnowledgeItem.knowledge_type, func.count()).group_by(KnowledgeItem.knowledge_type),
+                KnowledgeItem,
+                domain,
+            )
+        ).all()
+    }
+    area = func.split_part(KnowledgeItem.topic, "/", 1)
+    topics = session.execute(_domain_filter(select(area, func.count()).group_by(area), KnowledgeItem, domain)).all()
+    last_eval = session.execute(
+        _domain_filter(
+            select(EvaluationRun).where(EvaluationRun.status == "DONE").order_by(EvaluationRun.started_at.desc()),
+            EvaluationRun,
+            domain,
+        ).limit(1)
+    ).scalar_one_or_none()
+    calls = session.execute(
+        select(
+            LLMCall.purpose,
+            func.count(),
+            func.coalesce(func.sum(LLMCall.prompt_tokens), 0),
+            func.coalesce(func.sum(LLMCall.completion_tokens), 0),
+        ).group_by(LLMCall.purpose)
+    ).all()
+    return {
+        "sources": {
+            "total": sum(int(n) for *_, n in sources),
+            "active_enabled": sum(int(n) for st, en, n in sources if st == SourceStatus.ACTIVE and en),
+            "by_status": {f"{st}{'' if en else ' (disabled)'}": int(n) for st, en, n in sources},
+        },
+        "documents": {"total": sum(int(n) for _, n in docs), "by_status": {str(k): int(v) for k, v in docs}},
+        "knowledge_items": {
+            "total": sum(by_status.values()),
+            "by_status": by_status,
+            "by_type": by_type,
+            "by_area": {str(k or "(none)"): int(v) for k, v in topics},
+            "needs_review": int(flags[0] or 0),
+            "needs_revalidation": int(flags[1] or 0),
+            "negative": int(flags[2] or 0),
+            "derived_or_synthesized": int(flags[3] or 0),
+            "superseded": int(flags[4] or 0),
+        },
+        "evidence": {
+            "total": sum(int(n) for *_, n in evidence),
+            "verified": sum(int(n) for _, _, ver, n in evidence if ver),
+            "by_type": {f"{t}/{r}": int(n) for t, r, _, n in evidence},
+        },
+        "relationships": {
+            "total": sum(int(n) for _, n in relations),
+            "by_type": {str(k): int(v) for k, v in relations},
+        },
+        "conflicts": {str(k): int(v) for k, v in conflicts},
+        "model_calls_total": {
+            str(p): {"calls": int(n), "prompt_tokens": int(pt), "completion_tokens": int(ct)} for p, n, pt, ct in calls
+        },
+        "last_evaluation": {
+            "id": str(last_eval.id),
+            "started_at": last_eval.started_at.isoformat(),
+            "dataset_version": last_eval.dataset_version,
+            "metrics": last_eval.metrics,
+        }
+        if last_eval
+        else None,
+    }
+
+
 def ops_metrics(session: Session, domain: str | None = None) -> dict[str, Any]:
     return {
         "queue": queue_health(session),
         "models": model_latency(session),
         "storage": storage(session, domain),
         "schedule": schedule(session, domain),
+        "knowledge": knowledge_metrics(session, domain),
     }
 
 
-__all__ = ["model_latency", "ops_metrics", "queue_health", "schedule", "storage"]
+__all__ = ["knowledge_metrics", "model_latency", "ops_metrics", "queue_health", "schedule", "storage"]

@@ -49,7 +49,13 @@ def test_database_backed_listings_and_ops():
     out = _run("eval", "list", "powerbi")
     assert "powerbi" in out or "no evaluation" in out.lower() or out.strip()
     out = _run("ops", "powerbi")
-    assert "queue" in out and "dead-letter" in out and "schedule" in out
+    assert "queue" in out and "dead-letter" in out and "schedule" in out and "items by status" in out
+    metrics = json.loads(_run("ops", "powerbi", "--json"))
+    kb = metrics["knowledge"]  # P2.0.1 growth metrics: every count the before/after comparison relies on
+    assert {"sources", "documents", "knowledge_items", "evidence", "relationships", "conflicts"} <= set(kb)
+    assert kb["knowledge_items"]["total"] == sum(kb["knowledge_items"]["by_status"].values())
+    assert kb["evidence"]["verified"] <= kb["evidence"]["total"]
+    assert {"needs_review", "needs_revalidation", "negative", "superseded"} <= set(kb["knowledge_items"])
     out = _run("domains", "sync", "example")
     assert "sources_created" in out
     missing = runner.invoke(app, ["export", "verify", "00000000-0000-0000-0000-000000000000"])

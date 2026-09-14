@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import shutil
 from pathlib import Path
@@ -474,14 +475,20 @@ def autostart_status(name: str = "KnowledgePlatform") -> None:
 
 
 @app.command()
-def ops(domain: str | None = typer.Argument(None)) -> None:
-    """Operational metrics: queue health, dead letters, model latency, storage, schedule."""
+def ops(
+    domain: str | None = typer.Argument(None),
+    as_json: bool = typer.Option(False, "--json", help="print every metric (incl. knowledge counts) as JSON"),
+) -> None:
+    """Operational metrics: queue health, dead letters, model latency, storage, schedule, knowledge counts."""
     from .core.observability import ops_metrics
     from .db import session_scope
 
     with session_scope() as session:
         m = ops_metrics(session, domain)
-    q, models, st, sched = m["queue"], m["models"], m["storage"], m["schedule"]
+    if as_json:
+        print(json.dumps(m, default=str, indent=2))
+        return
+    q, models, st, sched, kb = m["queue"], m["models"], m["storage"], m["schedule"], m["knowledge"]
     table = Table("area", "metric", "value", title=f"Operations{' · ' + domain if domain else ''}")
     table.add_row("queue", "queued / running", f"{q['queued']} / {q['running']}")
     table.add_row("queue", "retrying / dead-letter", f"{q['failed_awaiting_retry']} / {q['dead_letter']}")
@@ -499,6 +506,19 @@ def ops(domain: str | None = typer.Argument(None)) -> None:
     )
     table.add_row("storage", "snapshots", f"{st['snapshots']} ({st['snapshot_bytes'] / 1e6:.1f} MB)")
     table.add_row("storage", "evidence / embedded items", f"{st['evidence_records']} / {st['items_embedded']}")
+    table.add_row(
+        "knowledge",
+        "sources / documents / items",
+        f"{kb['sources']['active_enabled']} active / {kb['documents']['total']} / {kb['knowledge_items']['total']}",
+    )
+    table.add_row(
+        "knowledge", "items by status", ", ".join(f"{k} {v}" for k, v in kb["knowledge_items"]["by_status"].items())
+    )
+    table.add_row(
+        "knowledge",
+        "evidence verified / relations / conflicts",
+        f"{kb['evidence']['verified']}/{kb['evidence']['total']} / {kb['relationships']['total']} / {kb['conflicts']}",
+    )
     table.add_row(
         "schedule", "next source check", f"{sched['next_source_check'] or '—'} ({sched['sources_overdue']} overdue)"
     )
