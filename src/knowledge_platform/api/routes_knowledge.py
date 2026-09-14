@@ -17,6 +17,7 @@ from ..core.retrieval.search import hybrid_search
 from ..core.verification.review_flags import resolve_review
 from ..core.versioning.dependencies import add_relation, relations_for_api
 from ..core.versioning.lifecycle import IllegalTransition, transition
+from ..core.versioning.supersede import supersede
 from ..db import get_db
 from ..models import Conflict, Document, Evidence, ItemStatus, KnowledgeItem, KnowledgeRelation, Source, utcnow
 from .schemas import (
@@ -312,6 +313,9 @@ def review(item_id: uuid.UUID, body: ReviewRequest, db: Session = Depends(get_db
             rescore(db, item, plugin, actor=actor)
             if item.status != ItemStatus.VERIFIED:
                 transition(db, item, ItemStatus.VERIFIED, reason=body.reason or "approved", actor=actor, force=True)
+            # the reviewer took responsibility for the item as it stands: the dependency flag is settled too
+            item.needs_revalidation = False
+            item.revalidation_reason = None
             for c in db.execute(
                 select(Conflict).where(
                     or_(Conflict.item_a_id == item.id, Conflict.item_b_id == item.id), Conflict.status == "OPEN"
@@ -328,6 +332,13 @@ def review(item_id: uuid.UUID, body: ReviewRequest, db: Session = Depends(get_db
         elif body.action == "reopen":
             transition(db, item, ItemStatus.CANDIDATE, reason=body.reason or "reopened", actor=actor, force=True)
             rescore(db, item, plugin, actor=actor)
+        elif body.action == "supersede":
+            # explicit versioning (P2.1): this item is replaced by another current item of the same domain
+            new = db.get(KnowledgeItem, body.superseded_by) if body.superseded_by else None
+            if new is None or new.domain_id != item.domain_id:
+                raise HTTPException(422, "superseded_by must name a knowledge item of the same domain")
+            if not supersede(db, item, new, reason=body.reason or "superseded by reviewer", actor=actor):
+                raise HTTPException(409, "cannot supersede: already superseded, or the successor is not live")
     except IllegalTransition as exc:
         raise HTTPException(409, str(exc)) from exc
     db.commit()

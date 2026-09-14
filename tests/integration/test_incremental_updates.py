@@ -37,8 +37,9 @@ from knowledge_platform.core.export.snapshot import build_snapshot, read_file, v
 from knowledge_platform.core.knowledge_entry import KnowledgeEntry, create_knowledge
 from knowledge_platform.core.pipeline import ingest_document
 from knowledge_platform.core.plugins.registry import load_plugin_dir
+from knowledge_platform.core.retrieval.search import hybrid_search
 from knowledge_platform.db import session_scope
-from knowledge_platform.models import Document, Domain, ItemStatus, KnowledgeItem, LLMCall, Snapshot, Source
+from knowledge_platform.models import Conflict, Document, Domain, ItemStatus, KnowledgeItem, LLMCall, Snapshot, Source
 
 pytestmark = requires_db
 
@@ -425,3 +426,60 @@ def test_snapshot_n_plus_1_and_delta_reconstruction(plugin):
             assert not differing, (path, differing, [(reconstructed[k], expected[k]) for k in list(differing)[:2]])
         state["snapshot_n1"] = head.id
         state["delta"] = delta.id
+
+
+@respx.mock
+def test_changed_claim_becomes_next_version(plugin):
+    """P2.1 through the pipeline: BETAFN's documented behaviour changes in v3 → the stale item is superseded by the
+    new statement (version link, historical export, delta `superseded`), never deleted."""
+    respx.reset()
+    _mock_site(3)
+    with session_scope() as s:
+        src = s.execute(select(Source).where(Source.domain_id == DOMAIN_ID)).scalar_one()
+        stats = crawl_source(s, src, fetcher=_fetcher())
+        assert stats.changed == 1
+        guide = s.execute(select(Document).where(Document.url == "https://fixture.test/docs/guide")).scalar_one()
+        old_beta = _items(s)["BETAFN"]
+        old_beta_id, old_version = old_beta.id, old_beta.version
+        result = ingest_document(s, guide, plugin)
+        assert result.items_stale == 1 and result.items_created == 1 and result.items_superseded == 1, result
+
+    with session_scope() as s:
+        rows = (
+            s.execute(
+                select(KnowledgeItem).where(KnowledgeItem.domain_id == DOMAIN_ID, KnowledgeItem.subject == "BETAFN")
+            )
+            .scalars()
+            .all()
+        )
+        old = next(k for k in rows if k.id == old_beta_id)
+        new = next(k for k in rows if k.id != old_beta_id)
+        assert old.status == ItemStatus.SUPERSEDED and old.superseded_by_id == new.id
+        assert new.previous_version_id == old.id and new.version == old_version + 1
+        assert new.status in (ItemStatus.VERIFIED, ItemStatus.SUPPORTED) and "zero when" in new.statement
+        assert old.evidence and old.statement.startswith("BETAFN returns a blank value")  # history kept
+        assert not s.execute(select(Conflict).where(Conflict.domain_id == DOMAIN_ID)).scalars().all()
+        hits = {h.item.id for h in hybrid_search(s, domain_id=DOMAIN_ID, query="BETAFN denominator zero", limit=10)}
+        assert new.id in hits and old.id not in hits
+        state["beta_old"], state["beta_new"] = old.id, new.id
+
+    with session_scope() as s:
+        base = s.get(Snapshot, state["snapshot_n1"])
+        head = build_snapshot(s, plugin, created_by="test")
+        assert head.status == "ready", head.error
+        delta = build_delta_snapshot(s, plugin, base_snapshot_id=base.id, head_snapshot_id=head.id, created_by="test")
+        assert delta.status == "ready", delta.error
+        d = json.loads(read_file(delta, "delta.json").decode())
+        old_id, new_id = str(state["beta_old"]), str(state["beta_new"])
+        assert d["knowledge"]["superseded"] == [old_id] and new_id in d["knowledge"]["added"]
+        assert old_id not in d["knowledge"]["modified"] and old_id not in d["knowledge"]["removed"]
+        ai = _records(delta, "ai/knowledge.jsonl")
+        assert ai[old_id]["usage"] == "historical" and new_id in ai[old_id]["text"] and ai[new_id]["usage"] == "cite"
+        rel = _records(delta, "relationships.jsonl")
+        assert any(r["relation_type"] == "supersedes" for r in rel.values())
+        for path in RECORD_FILES:
+            removed_ids = set(d.get(path.split(".")[0].replace("ai/knowledge", "knowledge"), {}).get("removed", []))
+            reconstructed = {k: v for k, v in _records(base, path).items() if k not in removed_ids}
+            reconstructed.update(_records(delta, path))
+            expected = _records(head, path)
+            assert reconstructed == expected, path

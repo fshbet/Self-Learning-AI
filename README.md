@@ -206,6 +206,20 @@ the root and the number of hops) — is flagged `needs_revalidation`; the `reval
 detection and clears the flag only when all dependencies are live again. Flagged items appear on the Review page
 ("Needs revalidation") and are re-queued by the scheduler; snapshots export the edges as `relationships.jsonl`.
 
+### Supersede-by-new-version
+
+A claim that *changes* on its source page is the next version of the item it replaces, not an unrelated new fact.
+When a page changes, the item whose quote vanished goes STALE; if the same page now yields exactly one new item about
+the same subject with the same core predicate (and polarity), the two are linked: `old.superseded_by_id` /
+`new.previous_version_id`, `new.version = old.version + 1`, a `supersedes` relation, and the old item moves to
+SUPERSEDED. Ambiguous pairings are left STALE for a reviewer, who links versions explicitly
+(`POST /api/knowledge/{id}/review {"action": "supersede", "superseded_by": …}`). The old version is never deleted:
+it keeps its evidence and history, is excluded from retrieval, and is exported as `historical` with the successor's
+id in its text. Propagating relations that pointed at the old version are carried to the new one and the dependents
+are flagged; `revalidate_item` settles an ordinary dependent on the live successor, while a DERIVED / SYNTHESIZED
+conclusion stays flagged until a reviewer re-derives it (approve clears the flag) — its premise no longer reads the
+same. Deltas list the change under `superseded`.
+
 ## Self-evaluation and regression protection
 
 Every domain plugin ships a golden question set (`evaluation.yaml`). The runner answers each question from the current

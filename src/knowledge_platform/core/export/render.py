@@ -9,7 +9,7 @@ from typing import Any
 
 from .schema import ConflictRecord, EvidenceRecord, KnowledgeRecord, Manifest
 
-RENDER_VERSION = "render@1.2"  # bump when README/markdown/html output changes: it alters file hashes
+RENDER_VERSION = "render@1.3"  # bump when output changes (alters file hashes); 1.3: historical text names successor
 
 
 def type_specs(glossary: dict[str, Any] | None) -> dict[str, dict[str, Any]]:
@@ -144,7 +144,8 @@ def ai_text(
     parts = [head]
     # trust state first, in the text itself: a consumer that only reads `text` must still see it (audit P0.3)
     if k.historical:
-        parts.insert(0, "Historical: this item was superseded and is kept for provenance only.")
+        by = f" by {k.superseded_by_id}" if k.superseded_by_id else ""
+        parts.insert(0, f"Historical: this item was superseded{by} and is kept for provenance only.")
     else:
         reasons = caution_reasons(k)
         if reasons:

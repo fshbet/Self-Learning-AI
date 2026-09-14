@@ -28,6 +28,7 @@ from .retrieval.embeddings import embed_items
 from .verification.conflicts import detect_conflicts
 from .versioning.dependencies import derive_relations
 from .versioning.lifecycle import advance_to, status_for_level, transition, verification_level
+from .versioning.supersede import link_superseded
 
 log = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class IngestStats:
     items_merged: int = 0  # folded into existing items as extra evidence
     items_near_duplicate: int = 0
     items_stale: int = 0
+    items_superseded: int = 0  # stale items linked to the new version that replaced them (P2.1)
     conflicts: int = 0
     relations: int = 0
     validators_run: int = 0
@@ -161,6 +163,9 @@ def _rescore_derived(session: Session, item: KnowledgeItem, *, actor: str) -> No
     from .versioning.dependencies import dependencies_of
 
     premises = [k for r, k in dependencies_of(session, item.id) if r.relation_type == "derived_from"]
+    # a premise that was superseded and whose successor was carried over is represented by the successor
+    premise_ids = {p.id for p in premises}
+    premises = [p for p in premises if not (p.superseded_by_id and p.superseded_by_id in premise_ids)]
     live = [p for p in premises if ItemStatus(p.status) in (ItemStatus.SUPPORTED, ItemStatus.VERIFIED)]
     all_live = bool(premises) and len(live) == len(premises)
     human_approved = any(e.evidence_type == "human" and e.details.get("approved") for e in item.evidence)
@@ -500,6 +505,9 @@ def ingest_document(
         stats.conflicts += len(detect_conflicts(session, item, domain_name=plugin.name, run_id=run_id))
         stats.relations += len(derive_relations(session, item, plugin))
         stats.items_created += 1
+
+    # a changed claim is the next version of the stale item it replaced, not an unrelated new fact (P2.1)
+    stats.items_superseded = len(link_superseded(session, doc, survivors))
 
     for item in touched.values():
         rescore(session, item, plugin)

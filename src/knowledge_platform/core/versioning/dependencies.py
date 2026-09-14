@@ -213,10 +213,21 @@ def _reaches(session: Session, start: uuid.UUID, target: uuid.UUID) -> bool:
 def unresolved_dependencies(session: Session, item: KnowledgeItem) -> list[KnowledgeItem]:
     """Dependencies that are not settled: not live (stale, conflicted, rejected, superseded), or themselves still
     awaiting revalidation — unless that dependency lies on a cycle back to ``item`` (then the flag alone must not
-    hold both hostage; its liveness decides)."""
+    hold both hostage; its liveness decides). A superseded dependency whose successor relation was carried over
+    is settled by the successor, except for ``derived_from`` (see versioning/supersede.py)."""
     out: list[KnowledgeItem] = []
-    for r, k in dependencies_of(session, item.id):
+    deps = dependencies_of(session, item.id)
+    present = {(r.relation_type, k.id) for r, k in deps}
+    for r, k in deps:
         if r.relation_type not in PROPAGATING:
+            continue
+        if (
+            k.superseded_by_id
+            and (r.relation_type, k.superseded_by_id) in present
+            and r.relation_type != "derived_from"
+        ):
+            # superseded, and the relation was carried to the new version: the current version decides (P2.1).
+            # A derived conclusion is the exception — its premise changed, a reviewer must re-derive it.
             continue
         if ItemStatus(k.status) not in LIVE:
             out.append(k)

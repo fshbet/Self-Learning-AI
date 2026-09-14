@@ -276,9 +276,11 @@ class KnowledgeCreate(BaseModel):
 
 
 class ReviewRequest(BaseModel):
-    action: str = Field(pattern="^(approve|reject|stale|reopen|dismiss)$")  # dismiss = clear the review flag only
+    # dismiss = clear the review flag only; supersede = this item is replaced by `superseded_by` (P2.1)
+    action: str = Field(pattern="^(approve|reject|stale|reopen|dismiss|supersede)$")
     reason: str = ""
     reviewer: str = "reviewer"
+    superseded_by: uuid.UUID | None = None
 
 
 # ----------------------------------------------------------------------------- conflicts
