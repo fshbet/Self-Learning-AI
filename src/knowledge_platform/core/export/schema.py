@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-SCHEMA_VERSION = "1.0"
+SCHEMA_VERSION = "1.1"  # 1.1: trust state (review / revalidation flags, evidence_status) on knowledge records
 
 Origin = Literal["DIRECT", "DERIVED", "SYNTHESIZED", "EXPERIMENTALLY_VALIDATED"]
 Provenance = Literal["OFFICIAL", "EXTERNAL", "COMMUNITY", "USER", "ORGANIZATION", "DERIVED"]
@@ -58,6 +58,14 @@ class KnowledgeRecord(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list)
     source_ids: list[str] = Field(default_factory=list)
     dependencies: list[dict[str, str]] = Field(default_factory=list)  # {"relation": ..., "item_id": ...}
+    # trust state (schema 1.1, audit P0.3): a consumer must be able to see that an item needs caution
+    needs_revalidation: bool = False  # a dependency changed; revalidation pending
+    revalidation_reason: str | None = None
+    needs_review: bool = False  # falsification / manual / quality concern awaiting a reviewer
+    review_kind: str | None = None
+    review_reason: str | None = None
+    review_flagged_at: str | None = None
+    evidence_status: dict[str, int] = Field(default_factory=dict)  # verified / unverified / contradicting counts
     content_hash: str
 
 

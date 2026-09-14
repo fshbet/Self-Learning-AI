@@ -192,6 +192,17 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
             evidence_ids=[r.id for r in ev_records],
             source_ids=sorted({r.source_id for r in ev_records if r.source_id}),
             dependencies=deps_by_item.get(str(it.id), []),
+            needs_revalidation=bool(it.needs_revalidation),
+            revalidation_reason=it.revalidation_reason,
+            needs_review=bool(it.needs_review),
+            review_kind=it.review_kind,
+            review_reason=it.review_reason,
+            review_flagged_at=iso(it.review_flagged_at),
+            evidence_status={
+                "verified": sum(1 for r in ev_records if r.verified and r.relation != "contradicts"),
+                "unverified": sum(1 for r in ev_records if not r.verified and r.relation != "contradicts"),
+                "contradicting": sum(1 for r in ev_records if r.relation == "contradicts"),
+            },
             content_hash=it.content_hash,
         )
         knowledge.append(rec)

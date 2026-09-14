@@ -87,3 +87,22 @@ def test_ai_index_groups_by_topic_subject_and_counts():
     assert idx["polarity"] == {"negative": 1, "positive": 2}
     assert idx["recommended_filters"]["exclude"] == {"usage": ["historical"]}
     assert idx["terminology"]["DAX"]
+
+
+def test_flagged_items_are_caution_and_say_so_in_the_text():
+    flagged = _rec(needs_review=True, review_kind="falsification", review_reason="counter-evidence at https://x")
+    r = ai_record(flagged, [], [])
+    assert r["usage"] == "caution" and r["needs_review"] and r["review_kind"] == "falsification"
+    assert r["caution_reasons"] == ["flagged for review (falsification): counter-evidence at https://x"]
+    assert r["text"].startswith("Caution: flagged for review (falsification): counter-evidence at https://x.")
+    reval = _rec(needs_revalidation=True, revalidation_reason="dependency k0 became STALE")
+    assert usage_hint(reval) == "caution" and "awaiting revalidation" in ai_record(reval, [], [])["text"]
+    contradicted = _rec(evidence_status={"verified": 1, "unverified": 0, "contradicting": 1})
+    assert usage_hint(contradicted) == "caution"
+    assert "1 contradicting evidence record(s) attached" in ai_record(contradicted, [], [])["caution_reasons"][0]
+    plain = ai_record(_rec(), [], [])
+    assert plain["usage"] == "cite" and plain["caution_reasons"] == [] and not plain["text"].startswith("Caution")
+    hist = ai_record(_rec(status="SUPERSEDED", historical=True, needs_review=True), [], [])
+    assert hist["usage"] == "historical" and hist["text"].startswith("Historical:")
+    idx = ai_index([flagged, reval, _rec(id="k9")], {})
+    assert idx["usage"] == {"caution": 2, "cite": 1} and idx["flagged"] == {"needs_review": 1, "needs_revalidation": 1}

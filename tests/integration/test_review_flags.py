@@ -13,6 +13,8 @@ from knowledge_platform import adapters
 from knowledge_platform.api.app import app
 from knowledge_platform.core.collection.fetcher import Fetcher
 from knowledge_platform.core.domains import sync_domain
+from knowledge_platform.core.export.render import ai_record
+from knowledge_platform.core.export.snapshot import gather
 from knowledge_platform.core.knowledge_entry import KnowledgeEntry, create_knowledge
 from knowledge_platform.core.orchestration.jobs import enqueue_revalidations, revalidate_item_job
 from knowledge_platform.core.plugins.registry import get_registry
@@ -132,13 +134,26 @@ def test_falsification_flag_survives_revalidation_and_scheduler_until_resolved()
         # a review-only flag is never queued for revalidation: the scheduler has no business with it
         assert enqueue_revalidations(s, DOMAIN) == 0
 
-    # 4. the flag is visible to the API/UI and counted
+    # 4. the export carries the trust state: the canonical record and the AI record both say "caution"
+    with session_scope() as s:
+        data = gather(s, plugin)
+        rec = next(k for k in data["knowledge"] if k.id == str(example_id))
+        assert rec.needs_review and rec.review_kind == "falsification" and "blog.test" in rec.review_reason
+        assert rec.review_flagged_at and not rec.needs_revalidation
+        assert rec.evidence_status["contradicting"] == 1 and rec.evidence_status["verified"] >= 1
+        ai = ai_record(rec, [e for e in data["evidence"] if e.knowledge_item_id == rec.id], [])
+        assert ai["usage"] == "caution" and ai["text"].startswith("Caution: flagged for review (falsification)")
+        assert ai["needs_review"] and ai["evidence_status"]["contradicting"] == 1
+        untouched = next(k for k in data["knowledge"] if k.id == str(fact_id))
+        assert not untouched.needs_review and ai_record(untouched, [], [])["usage"] == "cite"
+
+    # 5. the flag is visible to the API/UI and counted
     listed = client.get(f"/api/knowledge?domain={DOMAIN}&needs_review=true").json()
     assert [k["id"] for k in listed["items"]] == [str(example_id)]
     assert listed["items"][0]["review_kind"] == "falsification"
     assert client.get(f"/api/stats?domain={DOMAIN}").json()["needs_review"] == 1
 
-    # 5. only an explicit reviewer decision clears it; the decision is logged and the evidence kept
+    # 6. only an explicit reviewer decision clears it; the decision is logged and the evidence kept
     r = client.post(
         f"/api/knowledge/{example_id}/review",
         json={"action": "dismiss", "reason": "counter-evidence refers to an older release", "reviewer": "alice"},

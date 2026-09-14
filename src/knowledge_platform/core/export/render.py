@@ -9,7 +9,7 @@ from typing import Any
 
 from .schema import ConflictRecord, EvidenceRecord, KnowledgeRecord, Manifest
 
-RENDER_VERSION = "render@1.1"  # bump when README/markdown/html output changes: it alters file hashes
+RENDER_VERSION = "render@1.2"  # bump when README/markdown/html output changes: it alters file hashes
 
 TYPE_ORDER = ["definition", "fact", "procedure", "example", "best_practice", "limitation", "warning", "anti_pattern"]
 TYPE_LABEL = {
@@ -53,11 +53,32 @@ DETAIL_LABEL = {
 }
 
 
+def caution_reasons(k: KnowledgeRecord) -> list[str]:
+    """Why a consumer must not treat this record as an ordinary trusted citation (audit P0.3). Empty = none."""
+    reasons: list[str] = []
+    if k.needs_review:
+        reasons.append(f"flagged for review ({k.review_kind}): {k.review_reason or 'no reason given'}")
+    if k.needs_revalidation:
+        reasons.append(f"awaiting revalidation: {k.revalidation_reason or 'a dependency changed'}")
+    if k.status == "CONFLICTED":
+        reasons.append("status CONFLICTED: another item contradicts it and the conflict is unresolved")
+    if k.status == "STALE":
+        reasons.append("status STALE: its evidence no longer appears in the current source")
+    if (k.evidence_status or {}).get("contradicting"):
+        reasons.append(f"{k.evidence_status['contradicting']} contradicting evidence record(s) attached")
+    return reasons
+
+
 def usage_hint(k: KnowledgeRecord) -> str:
-    """How an AI consumer should treat the record: cite | caution | historical."""
+    """How an AI consumer should treat the record: cite | caution | historical.
+
+    historical  superseded item kept for provenance — do not answer with it
+    caution     flagged for review, awaiting revalidation, CONFLICTED/STALE or carrying contradicting evidence
+    cite        an ordinary current item
+    """
     if k.historical:
         return "historical"
-    if k.status in ("CONFLICTED", "STALE"):
+    if caution_reasons(k):
         return "caution"
     return "cite"
 
@@ -114,6 +135,13 @@ def ai_text(k: KnowledgeRecord, citations: list[dict[str, Any]]) -> str:
     if k.polarity == "negative":
         head = f"{NEGATIVE_PREFIX.get(k.knowledge_type, 'Negative knowledge')}: {k.statement}"
     parts = [head]
+    # trust state first, in the text itself: a consumer that only reads `text` must still see it (audit P0.3)
+    if k.historical:
+        parts.insert(0, "Historical: this item was superseded and is kept for provenance only.")
+    else:
+        reasons = caution_reasons(k)
+        if reasons:
+            parts.insert(0, "Caution: " + "; ".join(reasons) + ".")
     if k.explanation and k.explanation.strip().lower() != k.statement.strip().lower():
         parts.append(k.explanation)
     if k.code:
@@ -163,6 +191,13 @@ def ai_record(k: KnowledgeRecord, ev: list[EvidenceRecord], related: list[str]) 
         "historical": k.historical,
         "superseded_by_id": k.superseded_by_id,
         "usage": usage_hint(k),
+        "caution_reasons": caution_reasons(k),
+        "needs_review": k.needs_review,
+        "review_kind": k.review_kind,
+        "review_reason": k.review_reason,
+        "needs_revalidation": k.needs_revalidation,
+        "revalidation_reason": k.revalidation_reason,
+        "evidence_status": k.evidence_status,
         "confidence": k.confidence,
         "verification_level": k.verification_level,
         "validated_by": validators,
@@ -183,6 +218,8 @@ def ai_index(items: list[KnowledgeRecord], glossary: dict[str, Any]) -> dict[str
     by_type: dict[str, int] = defaultdict(int)
     by_status: dict[str, int] = defaultdict(int)
     by_polarity: dict[str, int] = defaultdict(int)
+    by_usage: dict[str, int] = defaultdict(int)
+    flagged: dict[str, int] = defaultdict(int)
     subjects: dict[str, list[str]] = defaultdict(list)
     for k in items:
         t = topics.setdefault(k.topic or "(unclassified)", {"count": 0, "types": defaultdict(int), "ids": []})
@@ -191,6 +228,11 @@ def ai_index(items: list[KnowledgeRecord], glossary: dict[str, Any]) -> dict[str
         t["ids"].append(k.id)
         by_type[k.knowledge_type] += 1
         by_status["SUPERSEDED" if k.historical else k.status] += 1
+        by_usage[usage_hint(k)] += 1
+        if k.needs_review:
+            flagged["needs_review"] += 1
+        if k.needs_revalidation:
+            flagged["needs_revalidation"] += 1
         by_polarity[k.polarity] += 1
         subjects[k.subject.strip().lower()].append(k.id)
     for t in topics.values():
@@ -201,8 +243,11 @@ def ai_index(items: list[KnowledgeRecord], glossary: dict[str, Any]) -> dict[str
         "record_fields": {
             "text": "self-contained text to embed/index "
             "(statement, explanation, code, details, scope, numbered sources)",
-            "usage": "cite = safe to answer with; caution = CONFLICTED/STALE, surface with a warning; "
-            "historical = superseded, do not answer with",
+            "usage": "cite = an ordinary current item; caution = flagged for review, awaiting revalidation, "
+            "CONFLICTED/STALE or carrying contradicting evidence (see caution_reasons; the text starts with "
+            "'Caution:'); historical = superseded, do not answer with",
+            "caution_reasons": "why usage is caution (empty when cite); needs_review/review_kind/review_reason, "
+            "needs_revalidation/revalidation_reason and evidence_status carry the underlying state",
             "citations": "documents (url, title, section, excerpt) or human-provided evidence; cite them in answers",
             "dependencies": "items this record relies on (relation + item_id); a change there may invalidate it",
         },
@@ -214,6 +259,8 @@ def ai_index(items: list[KnowledgeRecord], glossary: dict[str, Any]) -> dict[str
         "topics": dict(sorted(topics.items())),
         "types": dict(sorted(by_type.items())),
         "statuses": dict(sorted(by_status.items())),
+        "usage": dict(sorted(by_usage.items())),
+        "flagged": dict(sorted(flagged.items())),
         "polarity": dict(sorted(by_polarity.items())),
         "subjects": {s: sorted(ids) for s, ids in sorted(subjects.items())},
         "taxonomy": glossary.get("taxonomy", []),
@@ -353,9 +400,10 @@ def readme(manifest: Manifest) -> str:
             "(each is self-contained: statement, explanation, code, details, scope and numbered sources). Keep "
             "`id`, `topic`, `type`, `polarity`, `status`, `usage`, `verification_level`, `product_version` and "
             "`citations` as metadata.",
-            "3. Filter by `usage`: `cite` records can be answered with; `caution` (CONFLICTED / STALE) should "
-            "be surfaced with a warning; `historical` (superseded) should not be answered with. Prefer "
-            "`verification_level` ≥ 2 and VERIFIED over SUPPORTED.",
+            "3. Filter by `usage`: `cite` records can be answered with; `caution` records are flagged for "
+            "review, awaiting revalidation, CONFLICTED / STALE or carry contradicting evidence — `caution_reasons` "
+            "says why and the `text` starts with 'Caution:' — surface them only with that warning; `historical` "
+            "(superseded) should not be answered with. Prefer `verification_level` ≥ 2 and VERIFIED over SUPPORTED.",
             "4. Answer with citations: every record carries `citations` (document url/title/section/excerpt or the "
             "person/organisation that provided it). Negative records (`polarity: negative`) say what does *not* "
             "work — use them to avoid recommending unsupported behaviour.",

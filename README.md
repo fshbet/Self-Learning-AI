@@ -106,10 +106,16 @@ every hash. Included: VERIFIED, SUPPORTED, CONFLICTED, STALE (flagged) and SUPER
 **AI Knowledge Source** (`ai/`): each `ai/knowledge.jsonl` record carries a `text` block that stands on its own —
 statement, explanation, code, structured details (expected result, common mistake, how to validate), scope
 (product version, effective dates) and numbered sources — plus metadata an AI system can filter on: `usage`
-(`cite` / `caution` for CONFLICTED–STALE / `historical` for superseded), `verification_level`, `polarity`
+(`cite` / `caution` / `historical`), `verification_level`, `polarity`
 (negative records say what does *not* work), `validated_by`, `dependencies` and `citations` (documents with
 url/title/section/excerpt, or the person/organisation that provided the knowledge). The snapshot README spells out
 the consumption steps; `ai/index.json` lets an agent navigate by taxonomy or subject without reading everything.
+
+**Trust state travels with the export** (schema 1.1): every knowledge record carries `needs_review` / `review_kind` /
+`review_reason`, `needs_revalidation` / `revalidation_reason` and an `evidence_status` summary (verified, unverified,
+contradicting). An item flagged for review, awaiting revalidation, CONFLICTED, STALE or carrying contradicting
+evidence is exported with `usage: caution`, an explicit `caution_reasons` list and a `Caution:` first line in its
+`text`, so no consumer can mistake it for an ordinary trusted citation; superseded items are `historical`.
 
 **Delta snapshots** (`Export delta` in the UI, `kp export delta powerbi [--base <id>]`) describe what changed between
 two full snapshots. A fresh full snapshot is built as the head, then diffed record-by-record against the base using

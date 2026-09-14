@@ -21,6 +21,7 @@ from knowledge_platform.adapters.llm.base import LLMProvider, LLMResult
 from knowledge_platform.core.collection.collector import crawl_source
 from knowledge_platform.core.collection.fetcher import Fetcher
 from knowledge_platform.core.domains import sync_domain
+from knowledge_platform.core.export.schema import SCHEMA_VERSION
 from knowledge_platform.core.pipeline import ingest_document
 from knowledge_platform.core.plugins.registry import load_plugin_dir
 from knowledge_platform.core.retrieval.search import hybrid_search
@@ -351,7 +352,7 @@ def test_snapshot_is_reproducible_verifiable_and_gated(plugin, fake_providers):
         assert b.status == "ready" and b.version == a.version + 1
         assert a.integrity_hash == b.integrity_hash  # identical knowledge → identical bytes → identical hash
         m = a.manifest
-        assert m["schema_version"] == "1.0" and m["counts"]["knowledge"] >= 1 and m["gate"]["provenance_ok"]
+        assert m["schema_version"] == SCHEMA_VERSION and m["counts"]["knowledge"] >= 1 and m["gate"]["provenance_ok"]
         assert set(m["files"]) >= {
             "knowledge.jsonl",
             "evidence.jsonl",
