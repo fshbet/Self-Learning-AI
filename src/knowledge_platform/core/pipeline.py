@@ -119,7 +119,57 @@ def has_open_conflict(session: Session, item: KnowledgeItem) -> bool:
     )
 
 
+def _rescore_derived(session: Session, item: KnowledgeItem, *, actor: str) -> None:
+    """DERIVED / SYNTHESIZED items (audit P1.3) have no source of their own: confidence and level follow their
+    premises (derived_from relations) — never more certain than the weakest one, SUPPORTED at most until a person
+    approves, and demoted to CANDIDATE while any premise is not live."""
+    from .versioning.dependencies import dependencies_of
+
+    premises = [k for r, k in dependencies_of(session, item.id) if r.relation_type == "derived_from"]
+    live = [p for p in premises if ItemStatus(p.status) in (ItemStatus.SUPPORTED, ItemStatus.VERIFIED)]
+    all_live = bool(premises) and len(live) == len(premises)
+    human_approved = any(e.evidence_type == "human" and e.details.get("approved") for e in item.evidence)
+    weakest = min((float(p.confidence) for p in premises), default=0.0)
+    item.confidence = round(weakest * DERIVATION_DISCOUNT, 4) if all_live else round(weakest * 0.5, 4)
+    item.quality_factors = {
+        "derivation": {
+            "origin": item.origin,
+            "premises": len(premises),
+            "premises_live": len(live),
+            "weakest_premise_confidence": weakest,
+            "discount": DERIVATION_DISCOUNT,
+        },
+        "rule_version": SCORING_RULE_VERSION,
+    }
+    item.scoring_rule_version = SCORING_RULE_VERSION
+    level = min((int(p.verification_level) for p in premises), default=0) if all_live else 0
+    item.verification_level = 5 if human_approved else min(level, 3)
+    if ItemStatus(item.status) in (ItemStatus.REJECTED, ItemStatus.SUPERSEDED, ItemStatus.CONFLICTED):
+        return
+    if human_approved:
+        target = ItemStatus.VERIFIED
+    elif all_live and item.verification_level >= 1:
+        target = ItemStatus.SUPPORTED
+    else:
+        target = ItemStatus.CANDIDATE
+    current = ItemStatus(item.status)
+    if current == ItemStatus.STALE:
+        if all_live and target != ItemStatus.CANDIDATE:
+            transition(session, item, target, reason="premises live again", actor=actor)
+        return
+    if target == ItemStatus.CANDIDATE and current in (ItemStatus.SUPPORTED, ItemStatus.VERIFIED):
+        transition(session, item, ItemStatus.STALE, reason="a premise is no longer live", actor=actor)
+        return
+    advance_to(session, item, target, reason=f"derived: premises live={all_live}, level {level}", actor=actor)
+
+
+DERIVATION_DISCOUNT = 0.9
+
+
 def rescore(session: Session, item: KnowledgeItem, plugin: DomainPlugin, *, actor: str = "system:score") -> None:
+    if item.origin in ("DERIVED", "SYNTHESIZED"):
+        _rescore_derived(session, item, actor=actor)
+        return
     distinct, max_auth, validator_passed, human_approved, validator_results = _evidence_summary(session, item)
     evidence_verified = any(
         e.verified for e in item.evidence if e.evidence_type == "extraction" or e.details.get("provided")

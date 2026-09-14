@@ -129,7 +129,7 @@ def _cite_label(c: dict[str, Any]) -> str:
     return label
 
 
-def ai_text(k: KnowledgeRecord, citations: list[dict[str, Any]]) -> str:
+def ai_text(k: KnowledgeRecord, citations: list[dict[str, Any]], premises: list[str] | None = None) -> str:
     """Self-contained text block: statement, explanation, code, structured details, scope, numbered sources."""
     head = k.statement
     if k.polarity == "negative":
@@ -161,10 +161,18 @@ def ai_text(k: KnowledgeRecord, citations: list[dict[str, Any]]) -> str:
         parts.append(" · ".join(scope))
     if citations:
         parts.append("Sources:\n" + "\n".join(f"[{i}] {_cite_label(c)}" for i, c in enumerate(citations, 1)))
+    if k.origin in ("DERIVED", "SYNTHESIZED"):
+        label = "Derived from" if k.origin == "DERIVED" else "Synthesized from"
+        lines = [f"- {p}" for p in (premises or [])] or [
+            f"- {d['item_id']}" for d in k.dependencies if d.get("relation") == "derived_from"
+        ]
+        parts.append(f"{label} ({k.origin.lower()} knowledge, no verbatim source of its own):\n" + "\n".join(lines))
     return "\n\n".join(parts)
 
 
-def ai_record(k: KnowledgeRecord, ev: list[EvidenceRecord], related: list[str]) -> dict[str, Any]:
+def ai_record(
+    k: KnowledgeRecord, ev: list[EvidenceRecord], related: list[str], premises: list[str] | None = None
+) -> dict[str, Any]:
     """One self-contained record an AI/RAG system can index: text block + provenance + citations."""
     citations = ai_citations(ev)
     validators = sorted(
@@ -183,7 +191,7 @@ def ai_record(k: KnowledgeRecord, ev: list[EvidenceRecord], related: list[str]) 
         "provenance": k.provenance,
         "topic": k.topic,
         "subject": k.subject,
-        "text": ai_text(k, citations),
+        "text": ai_text(k, citations, premises),
         "statement": k.statement,
         "code": k.code,
         "details": k.details,

@@ -31,6 +31,12 @@ Additive.
 * `manifest.export_schema_version` (same value as `schema_version`, which stays for 1.0 consumers) and
   `manifest.database_schema_version`.
 * `ai/knowledge.jsonl` records are now a formal type (`AIKnowledgeRecord`).
+* `evidence_type` vocabulary gains `derivation` (the recorded reasoning of a DERIVED/SYNTHESIZED item).
+* `knowledge.jsonl` records with `origin` DERIVED/SYNTHESIZED carry `provenance: DERIVED` and `derived_from`
+  dependencies; their AI record text ends with a `Derived from` / `Synthesized from` block naming the premises.
+* `evidence_type` vocabulary gains `derivation` (the recorded reasoning of a DERIVED/SYNTHESIZED item).
+* `knowledge.jsonl` records with `origin` DERIVED/SYNTHESIZED carry `provenance: DERIVED` and `derived_from`
+  dependencies; their AI record text ends with a `Derived from` / `Synthesized from` block naming the premises.
 
 ## 1.1 — 2026-09-14
 

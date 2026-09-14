@@ -194,6 +194,9 @@ export type KnowledgeCreate = {
   evidence_url?: string | null;
   provided_by?: string;
   authority?: number;
+  origin?: "DIRECT" | "DERIVED" | "SYNTHESIZED";
+  derived_from?: string[];
+  rationale?: string;
 };
 
 export type KnowledgeDetail = Knowledge & {

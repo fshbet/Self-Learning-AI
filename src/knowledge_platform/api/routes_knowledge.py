@@ -295,7 +295,10 @@ def review(item_id: uuid.UUID, body: ReviewRequest, db: Session = Depends(get_db
     resolve_review(item, resolved_by=body.reviewer, resolution=body.reason, action=body.action)
     try:
         if body.action == "approve":
-            item.evidence[:] = [e for e in item.evidence if e.evidence_type != "human"]
+            # replace an earlier approval only; a person's *provided* evidence (USER/ORGANIZATION items) stays
+            item.evidence[:] = [
+                e for e in item.evidence if not (e.evidence_type == "human" and e.details.get("approved"))
+            ]
             item.evidence.append(
                 Evidence(
                     knowledge_item_id=item.id,

@@ -362,6 +362,7 @@ def vocabulary() -> dict[str, Any]:
             "human": "provided or approved by a person",
             "validator": "result of a domain validator",
             "falsification": "a web passage found while trying to disprove the item (never verified)",
+            "derivation": "the recorded reasoning of a DERIVED/SYNTHESIZED item (not a source quote; see derived_from)",
         },
         "evidence_relation": {
             "supports": "supports the claim",

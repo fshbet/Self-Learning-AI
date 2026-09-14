@@ -168,6 +168,20 @@ answer cites a negative item — otherwise the finding `limitation_not_surfaced`
 
 Human-authored items carry a `human` evidence record with the author, declared authority and what it is based on; they go
 through the same dedup, validators, scoring, conflicts and export as extracted knowledge and stay distinguishable.
+
+**Derived and synthesized knowledge** (`origin` DERIVED / SYNTHESIZED) is entered the same way (Knowledge → Add
+knowledge → Origin) but must name its premises — existing items picked from search — and a rationale. No quote is
+fabricated: the chain is `derived_from` relations plus a `derivation` evidence record holding the reasoning, the
+provenance is `DERIVED`, and the item follows its premises: confidence = 0.9 × the weakest premise, `SUPPORTED` at most
+until a reviewer approves it, demoted to `STALE` and flagged for revalidation as soon as a premise stops being live.
+API: `POST /api/knowledge` with `origin`, `derived_from`, `rationale`.
+
+**Derived and synthesized knowledge** (`origin` DERIVED / SYNTHESIZED) is entered the same way (Knowledge → Add
+knowledge → Origin) but must name its premises — existing items picked from search — and a rationale. No quote is
+fabricated: the chain is `derived_from` relations plus a `derivation` evidence record holding the reasoning, the
+provenance is `DERIVED`, and the item follows its premises: confidence = 0.9 × the weakest premise, `SUPPORTED` at most
+until a reviewer approves it, demoted to `STALE` and flagged for revalidation as soon as a premise stops being live.
+API: `POST /api/knowledge` with `origin`, `derived_from`, `rationale`.
 Confidence (`score@2.0`) is explainable: authority, verified evidence, agreement, specificity, taxonomy match, domain
 validation, **freshness**, **contradiction status**, **version known** — every factor is stored on the item.
 

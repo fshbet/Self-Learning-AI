@@ -463,6 +463,7 @@ def _render_files(snap: Snapshot, plugin: DomainPlugin, data: dict[str, Any], ga
     for e in data["evidence"]:
         ev_by_item[e.knowledge_item_id].append(e)
     rel_by_item: dict[str, list[str]] = defaultdict(list)
+    statements = {k.id: k.statement for k in data["knowledge"]}
     for r in data["relationships"]:
         rel_by_item[r.from_item_id].append(r.to_item_id)
         rel_by_item[r.to_item_id].append(r.from_item_id)
@@ -490,7 +491,16 @@ def _render_files(snap: Snapshot, plugin: DomainPlugin, data: dict[str, Any], ga
         "changelog.jsonl": jsonl(data["changelog"]),
         "ai/knowledge.jsonl": jsonl(
             AIKnowledgeRecord.model_validate(
-                ai_record(k, ev_by_item.get(k.id, []), sorted(set(rel_by_item.get(k.id, []))))
+                ai_record(
+                    k,
+                    ev_by_item.get(k.id, []),
+                    sorted(set(rel_by_item.get(k.id, []))),
+                    premises=[
+                        statements[d["item_id"]]
+                        for d in k.dependencies
+                        if d.get("relation") == "derived_from" and d["item_id"] in statements
+                    ],
+                )
             ).model_dump()
             for k in data["knowledge"]
         ),

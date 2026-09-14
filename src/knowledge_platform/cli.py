@@ -379,7 +379,7 @@ def export_schema(out: Path = typer.Option(Path("docs/export-schema"), help="dir
     out.mkdir(parents=True, exist_ok=True)
     for path, doc in schema_files().items():
         target = out / Path(path).name
-        target.write_text(dumps_canonical(doc) + "\n", encoding="utf-8")
+        target.write_text(dumps_canonical(doc) + "\n", encoding="utf-8", newline="\n")
         console.print(f"wrote {target}")
     console.print(f"export schema version {EXPORT_SCHEMA_VERSION}")
 

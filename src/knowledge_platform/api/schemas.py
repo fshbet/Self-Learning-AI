@@ -263,6 +263,10 @@ class KnowledgeCreate(BaseModel):
     evidence_url: str | None = None
     provided_by: str = "user"
     authority: int = Field(default=60, ge=0, le=100)
+    # derived knowledge (audit P1.3): the premises and the reasoning; no quote is fabricated
+    origin: str = Field(default="DIRECT", pattern="^(DIRECT|DERIVED|SYNTHESIZED)$")
+    derived_from: list[uuid.UUID] = Field(default_factory=list)
+    rationale: str = ""
 
 
 class ReviewRequest(BaseModel):

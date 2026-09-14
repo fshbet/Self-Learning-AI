@@ -49,7 +49,9 @@ def transition(
 def verification_level(
     *, distinct_sources: int, max_authority: int, validator_passed: bool, human_approved: bool
 ) -> int:
-    """Levels from §31: 0 unverified … 5 expert approved."""
+    """Levels from §31: 0 unverified … 5 expert approved (a reviewer's approval is itself level 5)."""
+    if human_approved:
+        return 5
     if distinct_sources == 0:
         return 0
     level = 1

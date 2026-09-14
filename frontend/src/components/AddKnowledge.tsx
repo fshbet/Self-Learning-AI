@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Plus, X } from "lucide-react";
 import { useState } from "react";
 import { api, type KnowledgeCreate } from "../lib/api";
 import { useDomain } from "../lib/domain";
@@ -30,7 +30,18 @@ export default function AddKnowledge({ open, onClose, onCreated }: { open: boole
     authority: 60,
     code: "",
     product_version: "",
+    origin: "DIRECT",
+    derived_from: [],
+    rationale: "",
   });
+  const [premiseQuery, setPremiseQuery] = useState("");
+  const [premises, setPremises] = useState<{ id: string; statement: string }[]>([]);
+  const premiseSearch = useQuery({
+    queryKey: ["search", "premises", domain, premiseQuery],
+    queryFn: () => api.search(domain, premiseQuery, 6),
+    enabled: premiseQuery.trim().length > 2,
+  });
+  const derived = f.origin === "DERIVED" || f.origin === "SYNTHESIZED";
   const set = <K extends keyof KnowledgeCreate>(k: K, v: KnowledgeCreate[K]) => setF((x) => ({ ...x, [k]: v }));
   const setDetail = (k: string, v: string) => setF((x) => ({ ...x, details: { ...(x.details ?? {}), [k]: v } }));
   const create = useMutation({
@@ -42,6 +53,8 @@ export default function AddKnowledge({ open, onClose, onCreated }: { open: boole
         product_version: f.product_version || null,
         evidence_url: f.evidence_url || null,
         provided_by: f.provided_by || "user",
+        derived_from: derived ? premises.map((p) => p.id) : [],
+        rationale: derived ? f.rationale : "",
         details: Object.fromEntries(Object.entries(f.details ?? {}).filter(([, v]) => v && v.trim())),
       }),
     onSuccess: (item) => {
@@ -138,7 +151,40 @@ export default function AddKnowledge({ open, onClose, onCreated }: { open: boole
           )}
         </div>
 
-        <div className="panel-2 rounded-xl p-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="panel-2 rounded-xl p-3 space-y-3">
+          <label className="text-xs muted block">
+            Origin
+            <select className="input w-full mt-1" value={f.origin ?? "DIRECT"} onChange={(e) => set("origin", e.target.value as KnowledgeCreate["origin"])}>
+              <option value="DIRECT">direct — I state it from my own knowledge / a source I name below</option>
+              <option value="DERIVED">derived — a conclusion that follows from existing items</option>
+              <option value="SYNTHESIZED">synthesized — several existing items combined into one statement</option>
+            </select>
+          </label>
+          {derived && (
+            <div className="rounded-lg border border-line p-3 space-y-2">
+              <div className="text-xs muted">Premises — the items this conclusion rests on{f.origin === "SYNTHESIZED" ? " (at least two)" : ""}. No quote is invented: the chain is recorded as <span className="mono">derived_from</span> relations and the item follows its premises (never more certain than the weakest; flagged when one changes).</div>
+              <div className="flex flex-wrap gap-1">
+                {premises.map((p) => (
+                  <span key={p.id} className="chip panel-2 max-w-full"><span className="truncate max-w-[28rem]">{p.statement}</span><button type="button" className="ml-1" onClick={() => setPremises((x) => x.filter((y) => y.id !== p.id))}><X size={12} /></button></span>
+                ))}
+              </div>
+              <input className="input w-full" placeholder="search existing knowledge to add a premise…" value={premiseQuery} onChange={(e) => setPremiseQuery(e.target.value)} />
+              {premiseSearch.data && premiseSearch.data.length > 0 && (
+                <div className="divide-y divide-[var(--border)] max-h-40 overflow-auto">
+                  {premiseSearch.data.filter((h) => !premises.some((p) => p.id === h.item.id)).map((h) => (
+                    <button type="button" key={h.item.id} className="w-full text-left text-sm py-1.5 px-1 hover:panel-2" onClick={() => setPremises((x) => [...x, { id: h.item.id, statement: h.item.statement }])}>
+                      + {h.item.statement}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <label className="text-xs muted block">
+                Rationale — how does the conclusion follow?
+                <textarea className="input w-full mt-1" rows={2} value={f.rationale ?? ""} onChange={(e) => set("rationale", e.target.value)} />
+              </label>
+            </div>
+          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <label className="text-xs muted">
             Provenance
             <select className="input w-full mt-1" value={f.provenance} onChange={(e) => set("provenance", e.target.value as "USER" | "ORGANIZATION")}>
@@ -162,6 +208,7 @@ export default function AddKnowledge({ open, onClose, onCreated }: { open: boole
             Authority
             <input className="input w-full mt-1" type="number" min={0} max={100} value={f.authority ?? 60} onChange={(e) => set("authority", Number(e.target.value))} />
           </label>
+          </div>
         </div>
 
         <div className="flex justify-end gap-2">

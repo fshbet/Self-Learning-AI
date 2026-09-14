@@ -73,7 +73,7 @@ ALLOWED_TRANSITIONS: dict[ItemStatus, set[ItemStatus]] = {
     ItemStatus.SUPPORTED: {ItemStatus.VERIFIED, ItemStatus.CONFLICTED, ItemStatus.REJECTED, ItemStatus.STALE},
     ItemStatus.VERIFIED: {ItemStatus.CONFLICTED, ItemStatus.STALE, ItemStatus.SUPERSEDED, ItemStatus.REJECTED},
     ItemStatus.CONFLICTED: {ItemStatus.VERIFIED, ItemStatus.SUPERSEDED, ItemStatus.REJECTED, ItemStatus.SUPPORTED},
-    ItemStatus.STALE: {ItemStatus.VERIFIED, ItemStatus.SUPERSEDED, ItemStatus.REJECTED},
+    ItemStatus.STALE: {ItemStatus.SUPPORTED, ItemStatus.VERIFIED, ItemStatus.SUPERSEDED, ItemStatus.REJECTED},
     ItemStatus.REJECTED: set(),
     ItemStatus.SUPERSEDED: set(),
 }
