@@ -41,7 +41,7 @@ from .canonical import dumps_canonical, integrity_hash, iso, sha256_bytes
 from .schema import SCHEMA_VERSION
 from .snapshot import build_snapshot, latest_ready, read_file
 
-DELTA_VERSION = "delta@1.2"  # 1.2: files ship every differing record (exact reconstruction); 1.1: changes[id]
+DELTA_VERSION = "delta@1.3"  # 1.3: manifest head_files + glossary/schema when changed; 1.2: every differing record
 
 VOLATILE_KNOWLEDGE_FIELDS = ("quality_factors", "last_verified_at", "confidence")  # change without content change
 
@@ -230,7 +230,10 @@ def _readme(plugin: DomainPlugin, d: dict[str, Any], counts: dict[str, int]) -> 
         *(f"| {k.replace('_', ' ')} | {v} |" for k, v in counts.items()),
         "",
         "Full record lists are in `delta.json`. Both referenced snapshots remain the canonical versions;",
-        "this delta is derived from their stored files and is reproducible.",
+        "this delta is derived from their stored files and is reproducible. `kp export apply <base> <delta>`",
+        "rebuilds the head's record files from the base and this delta and checks every one of them against the",
+        "head hashes recorded in this manifest (`head_files`); the human-readable renderings are derived, not",
+        "reconstructed.",
         "",
     ]
     return "\n".join(lines)
@@ -312,6 +315,14 @@ def build_delta_snapshot(
             "ai/knowledge.jsonl": _jsonl(head_ai[k] for k in sorted(_ship("ai"))),
             "README.md": _readme(plugin, d, counts).encode("utf-8"),
         }
+        # glossary and the schema contract travel only when they changed (plugin or export-schema bump), so that
+        # base + delta reproduces the head exactly (see export/apply.py)
+        head_manifest_files = (head.manifest or {}).get("files") or {}
+        base_manifest_files = (base.manifest or {}).get("files") or {}
+        for path in sorted(head_manifest_files):
+            if path == "glossary.json" or path.startswith(("schema/", "ext/")):
+                if head_manifest_files[path]["sha256"] != (base_manifest_files.get(path) or {}).get("sha256"):
+                    files[path] = read_file(head, path)
         store = get_object_store()
         digests: dict[str, str] = {}
         sizes: dict[str, int] = {}
@@ -342,6 +353,8 @@ def build_delta_snapshot(
             "platform_version": __version__,
             "counts": counts,
             "files": {p: {"sha256": digests[p], "bytes": sizes[p]} for p in sorted(files)},
+            # the head's per-file hashes: `kp export apply` rebuilds the head from base + delta and checks these
+            "head_files": {p: m["sha256"] for p, m in sorted(head_manifest_files.items())},
             "integrity_hash": integrity_hash(digests),
         }
         manifest_bytes = dumps_canonical(manifest).encode("utf-8")

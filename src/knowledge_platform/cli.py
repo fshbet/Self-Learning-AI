@@ -385,6 +385,50 @@ def export_schema(out: Path = typer.Option(Path("docs/export-schema"), help="dir
     console.print(f"export schema version {EXPORT_SCHEMA_VERSION}")
 
 
+@export_app.command("apply")
+def export_apply(
+    base: str = typer.Argument(..., help="base full snapshot: id, directory or zip"),
+    delta: str = typer.Argument(..., help="delta snapshot: id, directory or zip"),
+    out: Path = typer.Option(..., "--out", help="directory for the reconstructed files + reconstruction.json"),
+) -> None:
+    """Rebuild the head snapshot's record files from base + delta and check them against the head hashes the
+    delta recorded (the formal integrity test of the delta contract). Exit code 1 when any promised file differs."""
+    import uuid as _uuid
+
+    from .core.export.apply import ApplyError, SnapshotFiles, apply_delta, write_files
+    from .db import session_scope
+    from .models import Snapshot
+
+    def _load(ref: str) -> SnapshotFiles:
+        path = Path(ref)
+        if path.exists():
+            return SnapshotFiles.from_dir(path)
+        with session_scope() as session:
+            snap = session.get(Snapshot, _uuid.UUID(ref))
+            if snap is None or snap.status != "ready":
+                raise typer.BadParameter(f"{ref}: not a stored, ready snapshot nor an existing path")
+            return SnapshotFiles.from_stored(snap)
+
+    try:
+        files, report = apply_delta(_load(base), _load(delta))
+    except ApplyError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+    write_files(files, report, out)
+    table = Table("file", "reconstructed sha256", "matches head", title=f"apply {report['delta_version']}")
+    for path, f in report["files"].items():
+        table.add_row(path, f["sha256"][:23] + "…", {True: "yes", False: "[red]NO[/red]", None: "—"}[f["matches"]])
+    console.print(table)
+    console.print(
+        f"head v{report['head_version']} · verified against head hashes: {report['verified_against_head']} · "
+        f"derived (not reconstructed): {', '.join(report['not_reconstructed']) or '—'} · "
+        f"missing: {', '.join(report['missing']) or 'none'}"
+    )
+    console.print(f"[{'green' if report['ok'] else 'red'}]reconstruction ok: {report['ok']}[/]")
+    if not report["ok"]:
+        raise typer.Exit(code=1)
+
+
 @export_app.command("verify")
 def export_verify(snapshot_id: str) -> None:
     """Recompute file hashes and the integrity hash of a stored snapshot."""

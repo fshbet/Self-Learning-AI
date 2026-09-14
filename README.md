@@ -161,6 +161,14 @@ bytes: `added`, `modified` (+ `changed_fields` / `changes[id]` with before/after
 `status_changes`, and `rescored_only` / `refreshed` for records that moved without changing meaning.
 `tests/integration/test_incremental_updates.py` proves the promise across two consecutive deltas.
 
+**`kp export apply <base> <delta> --out DIR`** is the formal integrity test of that contract: it rebuilds the head's
+record files from the base and the delta (snapshot ids, unzipped directories or zips — no database needed) and
+checks every one of them against the head hashes the delta manifest recorded (`head_files`); `reconstruction.json`
+lists each file's hash and verdict, and the command exits non-zero when any promised file differs or the delta was
+built against a different base. The derived renderings (`ai/index.json`, `ai/knowledge.md`, `knowledge.html`,
+`README.md`) are not reconstructed — they carry no information of their own. Record files follow a canonical order
+(by id; evidence by item then id; changelog by time then id) so reconstruction is byte-exact.
+
 ## Knowledge origin, provenance and polarity
 
 Every item records **how** it was obtained and **where** it came from (req. 8–9, 19):

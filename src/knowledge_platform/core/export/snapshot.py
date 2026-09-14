@@ -79,7 +79,9 @@ def _relations_for(session: Session, domain_id: str) -> list[RelationshipRecord]
         from ...models import KnowledgeRelation  # type: ignore[attr-defined]
     except ImportError:
         return []
-    rows = session.execute(select(KnowledgeRelation).where(KnowledgeRelation.domain_id == domain_id)).scalars()
+    rows = session.execute(
+        select(KnowledgeRelation).where(KnowledgeRelation.domain_id == domain_id).order_by(KnowledgeRelation.id)
+    ).scalars()
     return [
         RelationshipRecord(
             id=str(r.id),
@@ -310,7 +312,7 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
         ).scalars()
     ]
     item_ids = [it.id for it in items]
-    changelog = (
+    changelog = sorted(
         [
             ChangelogRecord(
                 id=str(t.id),
@@ -329,7 +331,8 @@ def gather(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
             ).scalars()
         ]
         if item_ids
-        else []
+        else [],
+        key=lambda t: (t.at, t.id),  # canonical: second-precision time, then id (reconstructible from the files)
     )
     glossary = {
         "terminology": plugin.terminology(),

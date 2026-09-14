@@ -502,3 +502,51 @@ def test_changed_claim_becomes_next_version(plugin):
             reconstructed.update(_records(delta, path))
             expected = _records(head, path)
             assert reconstructed == expected, path
+
+
+def test_export_apply_rebuilds_the_head_byte_for_byte(tmp_path):
+    """P2.4: base + delta → head, verified against the head hashes the delta recorded; wrong base refused; CLI."""
+    from typer.testing import CliRunner
+
+    from knowledge_platform.cli import app as cli_app
+    from knowledge_platform.core.export.apply import ApplyError, SnapshotFiles, apply_delta, write_files
+
+    with session_scope() as s:
+        base = SnapshotFiles.from_stored(s.get(Snapshot, state["snapshot_n"]))
+        delta = SnapshotFiles.from_stored(s.get(Snapshot, state["delta"]))
+        head = SnapshotFiles.from_stored(s.get(Snapshot, state["snapshot_n1"]))
+        # the head hashes travel in the delta: applying needs no head and no database
+        assert delta.manifest["head_files"] == {p: m["sha256"] for p, m in head.manifest["files"].items()}
+        files, report = apply_delta(base, delta)
+        assert report["ok"] is True and report["missing"] == [], report
+        promised = [p for p in head.files if p not in report["not_reconstructed"]]
+        assert set(files) == set(promised)
+        for path in promised:
+            assert files[path] == head.files[path], path  # byte for byte
+        assert set(report["not_reconstructed"]) == {"ai/index.json", "ai/knowledge.md", "knowledge.html", "README.md"}
+        # the second delta (N+1 → N+2) applies on the reconstructed state just the same
+        delta2 = SnapshotFiles.from_stored(
+            s.execute(
+                select(Snapshot)
+                .where(Snapshot.domain_id == DOMAIN_ID, Snapshot.kind == "delta")
+                .order_by(Snapshot.version.desc())
+            )
+            .scalars()
+            .first()
+        )
+        rebuilt = SnapshotFiles(head.manifest, files | {p: head.files[p] for p in report["not_reconstructed"]})
+        files2, report2 = apply_delta(rebuilt, delta2)
+        assert report2["ok"] is True, report2
+        # a delta refuses a base it was not built against
+        with pytest.raises(ApplyError):
+            apply_delta(head, delta)
+        write_files(files, report, tmp_path / "rebuilt")
+        assert (tmp_path / "rebuilt" / "reconstruction.json").exists()
+        assert (tmp_path / "rebuilt" / "knowledge.jsonl").read_bytes() == head.files["knowledge.jsonl"]
+        # from directories as well (no database): the written files are a valid base for the CLI
+        base_id, delta_id = str(state["snapshot_n"]), str(state["delta"])
+    runner = CliRunner(env={"COLUMNS": "240"})
+    result = runner.invoke(cli_app, ["export", "apply", base_id, delta_id, "--out", str(tmp_path / "cli")])
+    assert result.exit_code == 0, result.output
+    assert "reconstruction ok: True" in result.output
+    assert json.loads((tmp_path / "cli" / "reconstruction.json").read_text())["ok"] is True
