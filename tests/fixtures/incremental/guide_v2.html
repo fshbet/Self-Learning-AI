@@ -1,0 +1,12 @@
+<html><head><title>Function guide</title></head><body>
+<main>
+<h1>Function guide</h1>
+<h2>Alpha</h2>
+<p>ALPHAFN evaluates an expression in a modified filter context. It is the most important function of the fixture language and it is used in almost every non-trivial measure written by practitioners, which is why the guide opens with it and returns to it repeatedly in later sections.</p>
+<h2>Beta</h2>
+<p>BETAFN returns a blank value when the denominator is zero. The second edition of the guide expands this section with a worked example of the alternate-result argument, explains when a blank is preferable to a zero, and warns that dividing by a blank is treated exactly like dividing by zero.</p>
+<h2>Delta</h2>
+<p>DELTAFN aggregates values over a table expression. It accepts any table, including one produced by another function, and it is the building block that the fixture language uses for every explicit iteration; practitioners meet it as soon as they leave simple sums behind.</p>
+<h2>Epsilon</h2>
+<p>EPSILONFN removes filters from the columns it receives. The second edition adds this section because readers asked how a measure can ignore the current selection; the function clears the named filters while leaving every other filter in place, which is the common pattern for share-of-total calculations.</p>
+</main></body></html>

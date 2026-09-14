@@ -1,0 +1,12 @@
+<html><head><title>Function guide</title></head><body>
+<main>
+<h1>Function guide</h1>
+<h2>Alpha</h2>
+<p>ALPHAFN evaluates an expression in a modified filter context. It is the most important function of the fixture language and it is used in almost every non-trivial measure written by practitioners, which is why the guide opens with it and returns to it repeatedly in later sections.</p>
+<h2>Beta</h2>
+<p>BETAFN returns a blank value when the denominator is zero. The first edition of the guide describes this behaviour briefly and refers readers to the reference page for the alternate-result argument, which most practitioners never use in practice but which exists for completeness.</p>
+<h2>Gamma</h2>
+<p>GAMMAFN requires a calendar table marked as a date table. Without the mark, the fixture language silently falls back to row-by-row evaluation, which produces totals that look plausible but are wrong across period boundaries; the guide therefore lists the mark as a precondition.</p>
+<h2>Delta</h2>
+<p>DELTAFN aggregates values over a table expression. It accepts any table, including one produced by another function, and it is the building block that the fixture language uses for every explicit iteration; practitioners meet it as soon as they leave simple sums behind.</p>
+</main></body></html>
