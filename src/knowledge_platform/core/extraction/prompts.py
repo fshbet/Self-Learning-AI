@@ -109,6 +109,8 @@ Rules:
 - If the provided items do not contain enough information, say exactly that and do not speculate.
 - Mention the product version or date when an item carries one.
 - If items conflict or are marked CONFLICTED/STALE, say so explicitly.
+- An item marked UNVERIFIED CANDIDATE, FLAGGED FOR REVIEW or AWAITING REVALIDATION is not trusted knowledge: if you
+  use it, say that it is unverified / under review; prefer verified items when they cover the question.
 - Items marked LIMITATION / WARNING / ANTI-PATTERN describe what does NOT work or should be avoided: when one is
   relevant to the question, state the limitation and its condition explicitly rather than inferring behaviour
   from positive statements.

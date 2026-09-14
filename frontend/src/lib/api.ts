@@ -242,7 +242,7 @@ export type AskResponse = {
   question: string;
   answer: string;
   citations: { n: number; id: string; statement: string; status: string; confidence: number; topic: string }[];
-  retrieved: { n: number; id: string; statement: string; status: string; confidence: number; topic: string; score: number }[];
+  retrieved: { n: number; id: string; statement: string; status: string; confidence: number; topic: string; score: number; trust_notes?: string[] }[];
   insufficient: boolean;
 };
 
@@ -497,7 +497,8 @@ export const api = {
   conflicts: (domain?: string, status = "OPEN") => request<Conflict[]>(`/conflicts${qs({ domain, status })}`),
   resolveConflict: (id: string, body: { keep: string; resolution?: string; reviewer?: string }) =>
     request<Conflict>(`/conflicts/${id}/resolve`, { method: "POST", body: JSON.stringify(body) }),
-  search: (domain: string, q: string, limit = 10) => request<SearchHit[]>(`/search${qs({ domain, q, limit })}`),
+  search: (domain: string, q: string, limit = 10, includeCandidates = false) =>
+    request<SearchHit[]>(`/search${qs({ domain, q, limit, include_candidates: includeCandidates })}`),
   ask: (domain: string, question: string, limit = 8) =>
     request<AskResponse>("/ask", { method: "POST", body: JSON.stringify({ domain, question, limit }) }),
   topics: (domain: string) => request<TopicCount[]>(`/topics${qs({ domain })}`),

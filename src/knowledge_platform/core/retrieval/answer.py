@@ -8,6 +8,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
+from ...models import ItemStatus, KnowledgeItem
 from ..extraction.prompts import ANSWER_SYSTEM, ANSWER_USER
 from ..llm_service import call_text
 from ..plugins.base import DomainPlugin
@@ -36,11 +37,28 @@ _DETAIL_LABELS = {
 }
 
 
+def trust_notes(it: KnowledgeItem) -> list[str]:
+    """Why the answer model must not treat an item as ordinary trusted knowledge (P2.2). Empty = none."""
+    notes: list[str] = []
+    if it.status == ItemStatus.CANDIDATE:
+        notes.append("UNVERIFIED CANDIDATE: not yet supported by verified evidence")
+    if it.status == ItemStatus.STALE:
+        notes.append("STALE: its evidence no longer appears in the current source, may be outdated")
+    if it.status == ItemStatus.CONFLICTED:
+        notes.append("CONFLICTED: another item contradicts it and the conflict is unresolved")
+    if it.needs_review:
+        notes.append(f"FLAGGED FOR REVIEW ({it.review_kind or 'manual'}): {it.review_reason or 'no reason given'}")
+    if it.needs_revalidation:
+        notes.append("AWAITING REVALIDATION: a dependency changed")
+    return notes
+
+
 def _format_items(results: list[SearchResult], plugin: DomainPlugin | None = None) -> str:
     lines = []
     for n, r in enumerate(results, start=1):
         it = r.item
         meta = [f"status={it.status}", f"confidence={it.confidence:.2f}"]
+        meta.extend(trust_notes(it))
         if it.product_version:
             meta.append(f"version={it.product_version}")
         if it.publication_date:
@@ -63,11 +81,21 @@ def _format_items(results: list[SearchResult], plugin: DomainPlugin | None = Non
 
 
 def answer_question(
-    session: Session, plugin: DomainPlugin, question: str, *, limit: int = 8, min_confidence: float = 0.0
+    session: Session,
+    plugin: DomainPlugin,
+    question: str,
+    *,
+    limit: int = 8,
+    min_confidence: float = 0.0,
+    include_candidates: bool = False,
 ) -> Answer:
+    """Grounded answer from the retrieval policy's default set; ``include_candidates`` adds CANDIDATE items,
+    labelled UNVERIFIED in the prompt so the answer states their status (they never pass as trusted)."""
     results = [
         r
-        for r in hybrid_search(session, domain_id=plugin.id, query=question, limit=limit)
+        for r in hybrid_search(
+            session, domain_id=plugin.id, query=question, limit=limit, include_candidates=include_candidates
+        )
         if r.item.confidence >= min_confidence
     ]
     retrieved = [
@@ -79,6 +107,7 @@ def answer_question(
             "confidence": r.item.confidence,
             "topic": r.item.topic,
             "score": r.score,
+            "trust_notes": trust_notes(r.item),
         }
         for n, r in enumerate(results, start=1)
     ]

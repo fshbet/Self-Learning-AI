@@ -419,11 +419,15 @@ def resolve_conflict(conflict_id: uuid.UUID, body: ConflictResolve, db: Session 
 
 @router.get("/search", response_model=list[SearchHitOut])
 def search(
-    domain: str, q: str, limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db)
+    domain: str,
+    q: str,
+    limit: int = Query(10, ge=1, le=50),
+    include_candidates: bool = Query(False, description="also return CANDIDATE items (marked as unverified)"),
+    db: Session = Depends(get_db),
 ) -> list[SearchHitOut]:
     if domain not in get_registry():
         raise HTTPException(404, f"unknown domain {domain}")
-    results = hybrid_search(db, domain_id=domain, query=q, limit=limit)
+    results = hybrid_search(db, domain_id=domain, query=q, limit=limit, include_candidates=include_candidates)
     outs = _to_out(db, [r.item for r in results])
     hits = []
     for r, o in zip(results, outs, strict=True):

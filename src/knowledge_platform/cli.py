@@ -560,14 +560,21 @@ def serve(host: str | None = None, port: int | None = None, reload: bool = False
 
 
 @app.command()
-def search(domain: str, query: str, limit: int = 8) -> None:
-    """Hybrid search from the terminal."""
+def search(
+    domain: str,
+    query: str,
+    limit: int = 8,
+    include_candidates: bool = typer.Option(False, "--include-candidates", help="also list unverified CANDIDATE items"),
+) -> None:
+    """Hybrid search from the terminal (verified / supported knowledge; stale and conflicted items are marked)."""
     from .core.retrieval.search import hybrid_search
     from .db import session_scope
 
     with session_scope() as session:
         table = Table("score", "status", "conf", "statement", "topic")
-        for r in hybrid_search(session, domain_id=domain, query=query, limit=limit):
+        for r in hybrid_search(
+            session, domain_id=domain, query=query, limit=limit, include_candidates=include_candidates
+        ):
             table.add_row(
                 f"{r.score:.3f}", r.item.status, f"{r.item.confidence:.2f}", r.item.statement[:110], r.item.topic
             )

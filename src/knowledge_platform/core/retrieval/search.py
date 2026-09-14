@@ -16,7 +16,14 @@ TSV_EXPR = (
     "coalesce(explanation,'') || ' ' || coalesce(topic,''))"
 )
 
-_SERVABLE = [ItemStatus.SUPPORTED, ItemStatus.VERIFIED, ItemStatus.CONFLICTED, ItemStatus.STALE, ItemStatus.CANDIDATE]
+# Retrieval policy (P2.2) — what an answer may be built from:
+#   VERIFIED / SUPPORTED  normal retrieval
+#   CONFLICTED / STALE    retrieved, but labelled as caution for the answer model (and the evaluator checks the label)
+#   CANDIDATE             excluded unless a caller asks for it explicitly; then labelled UNVERIFIED — never silently
+#                         ranked alongside trusted knowledge. It stays in the database for future validation.
+#   EXTRACTED / REJECTED / SUPERSEDED   never served (superseded knowledge is historical: exported, not answered)
+DEFAULT_STATUSES = (ItemStatus.SUPPORTED, ItemStatus.VERIFIED, ItemStatus.CONFLICTED, ItemStatus.STALE)
+CAUTION_STATUSES = (ItemStatus.CONFLICTED, ItemStatus.STALE)
 
 _SQL = f"""
 WITH vec AS (
@@ -58,12 +65,18 @@ def hybrid_search(
     query: str,
     limit: int = 10,
     statuses: list[str] | None = None,
+    include_candidates: bool = False,
     pool: int = 50,
     rrf_k: int = 60,
 ) -> list[SearchResult]:
+    """``statuses`` overrides the policy entirely; otherwise DEFAULT_STATUSES, plus CANDIDATE when asked for."""
     query = query.strip()
     if not query:
         return []
+    if statuses is None:
+        statuses = [st.value for st in DEFAULT_STATUSES]
+        if include_candidates:
+            statuses.append(ItemStatus.CANDIDATE.value)
     embedder = get_embedder()
     vec = embedder.embed_one(query)
     rows = session.execute(
@@ -72,7 +85,7 @@ def hybrid_search(
             "vec": str(vec),
             "emb": embedder.identity,
             "domain": domain_id,
-            "statuses": statuses or [s.value for s in _SERVABLE],
+            "statuses": statuses,
             "q": query,
             "pool": pool,
             "k": rrf_k,

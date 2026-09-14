@@ -51,8 +51,9 @@ export default function SearchAsk() {
   const [mode, setMode] = useState<"search" | "ask">("ask");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  const [includeCandidates, setIncludeCandidates] = useState(false);
 
-  const search = useMutation({ mutationFn: (q: string) => api.search(domain, q, 12) });
+  const search = useMutation({ mutationFn: (q: string) => api.search(domain, q, 12, includeCandidates) });
   const ask = useMutation({ mutationFn: (q: string) => api.ask(domain, q, 8) });
   const busy = search.isPending || ask.isPending;
 
@@ -105,12 +106,18 @@ export default function SearchAsk() {
             {mode === "ask" ? "Ask" : "Search"}
           </button>
         </div>
-        <div className="flex flex-wrap gap-1.5 mt-2">
+        <div className="flex flex-wrap gap-1.5 mt-2 items-center">
           {examples.map((ex) => (
             <button type="button" key={ex} className="chip panel-2 hover:bg-accent-500/15 cursor-pointer" onClick={() => setQuery(ex)}>
               {ex}
             </button>
           ))}
+          {mode === "search" && (
+            <label className="ml-auto flex items-center gap-1.5 text-xs muted cursor-pointer" title="CANDIDATE items are not backed by verified evidence; they are excluded from answers and from search unless asked for">
+              <input type="checkbox" checked={includeCandidates} onChange={(e) => setIncludeCandidates(e.target.checked)} />
+              include unverified candidates
+            </label>
+          )}
         </div>
       </form>
 
@@ -154,6 +161,9 @@ function AnswerView({ data, onSelect }: { data: AskResponse; onSelect: (id: stri
                   <StatusChip status={r.status} />
                 </div>
                 <div className="leading-snug">{r.statement}</div>
+                {r.trust_notes?.length ? (
+                  <div className="mt-1 text-[11px] text-amber-700 dark:text-amber-300">{r.trust_notes.join(" · ")}</div>
+                ) : null}
                 <div className="mt-2"><Confidence value={r.confidence} compact /></div>
               </button>
             );
