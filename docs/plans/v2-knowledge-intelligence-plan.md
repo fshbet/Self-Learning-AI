@@ -403,6 +403,24 @@ the following, each with regression tests (139 tests, 82 % coverage):
 | P1.10 netguard | `4d100e2` | literal canonicalisation, TTL DNS cache, resolve-once/connect-to-validated-IP transport |
 | P1.11 tests | `7b50779` | queue/worker/scheduler/CLI behaviour tests |
 
-Still deferred by decision: media handling, PDF export, fuzzy source similarity. P2 candidates (not started):
-`kp export apply`, `documents.jsonl`, supersede-by-new-version, locator refresh, language-aware FTS, excluding
-CANDIDATE items from answers, coverage/evidence/verification-quality dashboards.
+### 16.1 P2 — operating at realistic scale (2026-09-14)
+
+| Item | Commit | What |
+|---|---|---|
+| P2.0.1 baseline metrics | `59232c9` | `knowledge_metrics()` in ops, `kp ops --json`; small-KB baseline stored under `docs/reports/p2/` |
+| P2.0 corpus sources | `06740a1` | six more official Microsoft Learn sections (reports/visuals, Service, developer, support, Fabric, enterprise) |
+| P2.0.3 / P2.0.4 | `8e41cf9` | incremental-update + snapshot lifecycle proof through the real pipeline (fixtures) |
+| live crawl defect | `8e6b754` | GuardedTransport died on redirect hops (`RequestNotRead`) — found by the P2.0 crawl |
+| delta exactness | `94ecb92` | delta@1.2 ships every differing record: base + delta reproduces head |
+| P2.1 supersede | `41946c4` | supersede-by-new-version, dependency carry-over, review action, historical export |
+| P2.2 retrieval policy | `76225d2`, `2e7bc60` | CANDIDATE excluded unless asked; STALE/CONFLICTED/flagged labelled; `answer_version` in eval config |
+| P2.3 documents export | `8c82a33` | `documents.jsonl` (schema 1.5): self-contained evidence integrity, gate + delta + apply cover it |
+| P2.4 export apply | `23c13e7` | `kp export apply` rebuilds the head byte for byte and verifies against `head_files` (delta@1.3) |
+| P2.5 language | `ac59b22` | per-domain text-search configuration; no English assumption in core |
+| P2.6 / P2.7 designs | `0065f47` | ADR 0003 validator isolation (tier 0 implemented), ADR 0004 authentication (exposure guard implemented) |
+| P2.8 discovery | `4b016b1` | ADR 0005: scored, filtered candidates; opt-in recurring discovery; never auto-approved |
+| P2.10 second domain | `6c80f49` | synthetic `roboticslab` plugin through the whole pipeline |
+
+Awaiting approval (designed, not built): validator runner tiers 1–2 (ADR 0003), proxy/token authentication
+(ADR 0004), discovery auto-approval policy (ADR 0005). Still deferred by decision: media handling, PDF export,
+fuzzy source similarity, locator refresh after section reorders, quality dashboards.
