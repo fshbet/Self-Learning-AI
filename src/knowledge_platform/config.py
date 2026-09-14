@@ -92,6 +92,8 @@ class Settings(BaseSettings):
     eval_retrieval_k: int = 8
     snapshot_interval_hours: int = 0  # periodic full Canonical Knowledge Snapshot per domain (0 = off)
     snapshot_after_pipeline: bool = False  # export a snapshot after every pipeline run that added knowledge
+    discovery_interval_hours: int = 0  # recurring new-source discovery per domain (0 = off; candidates only, ADR 0005)
+    discovery_deny_hosts: str = ""  # comma-separated hosts never registered as candidates (in addition to the plugin's)
     log_level: str = "INFO"
 
     # Derived helpers -----------------------------------------------------
@@ -99,6 +101,9 @@ class Settings(BaseSettings):
 
     def model_post_init(self, __context: object) -> None:  # noqa: D401
         self.domain_dirs = [Path(p.strip()) for p in self.domains_path.split(",") if p.strip()]
+
+    def discovery_deny_hosts_list(self) -> list[str]:
+        return [h.strip().lower() for h in self.discovery_deny_hosts.split(",") if h.strip()]
 
 
 @lru_cache

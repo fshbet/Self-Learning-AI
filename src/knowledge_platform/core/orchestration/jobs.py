@@ -7,7 +7,6 @@ import uuid
 from collections.abc import Callable
 from datetime import timedelta
 from typing import Any
-from urllib.parse import urlsplit
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -15,7 +14,6 @@ from sqlalchemy.orm import Session
 from ...adapters import get_search
 from ...models import (
     Document,
-    DomainKeyword,
     EvaluationRun,
     Job,
     JobStatus,
@@ -28,11 +26,10 @@ from ...models import (
     utcnow,
 )
 from ..collection.collector import crawl_source
-from ..collection.normalize import canonicalize_url
 from ..evaluation.runner import run_evaluation
 from ..pipeline import ingest_document
 from ..plugins.registry import get_registry
-from ..runtime_config import eval_config, snapshot_config
+from ..runtime_config import discovery_config, eval_config, snapshot_config
 from .queue import enqueue
 
 log = logging.getLogger(__name__)
@@ -402,56 +399,17 @@ def reembed_job(session: Session, job: Job) -> dict[str, Any]:
 
 @handler("discover")
 def discover_job(session: Session, job: Job) -> dict[str, Any]:
-    """Web discovery (§9): run the domain's discovery queries and register candidate sources."""
+    """Web discovery (ADR 0005): scored, filtered candidate sources for the domain — never approved here."""
+    from ..collection.discovery import discover
+
     plugin = get_registry().get(job.payload["domain_id"])
     search = get_search()
     if search is None:
         return {"skipped": "no search provider configured"}
-    known_hosts = {
-        urlsplit(s.url).netloc.lower()
-        for s in session.execute(select(Source).where(Source.domain_id == plugin.id)).scalars()
-    }
-    user_keywords = list(
-        session.execute(
-            select(DomainKeyword.keyword).where(DomainKeyword.domain_id == plugin.id, DomainKeyword.enabled.is_(True))
-        ).scalars()
+    stats = discover(
+        session, plugin, search=search, queries=job.payload.get("queries"), limit=int(job.payload.get("limit", 10))
     )
-    queries = (
-        job.payload.get("queries") or (plugin.discovery_queries() + user_keywords) or [f"{plugin.name} documentation"]
-    )
-    added = 0
-    for q in queries:
-        try:
-            hits = search.search(q, limit=job.payload.get("limit", 10))
-        except Exception as exc:
-            log.warning("search failed for %r: %s", q, exc)
-            continue
-        for h in hits:
-            url = canonicalize_url(h.url)
-            if not url:
-                continue
-            host = urlsplit(url).netloc.lower()
-            if host in known_hosts:
-                continue
-            known_hosts.add(host)
-            session.add(
-                Source(
-                    domain_id=plugin.id,
-                    key=f"discovered:{host}",
-                    name=h.title[:200] or host,
-                    url=url,
-                    publisher=host,
-                    authority=30,
-                    status=SourceStatus.CANDIDATE,
-                    enabled=False,
-                    max_depth=1,
-                    max_pages=20,
-                    notes=f"Discovered via query: {q}\n{h.snippet[:300]}",
-                )
-            )
-            added += 1
-    session.flush()
-    return {"queries": len(queries), "candidates_added": added}
+    return stats.as_dict()
 
 
 # ----------------------------------------------------------------------------- scheduler
@@ -523,6 +481,35 @@ def schedule_due_snapshots(session: Session) -> int:
 
 def schedule_revalidations(session: Session) -> int:
     return enqueue_revalidations(session)
+
+
+def schedule_due_discovery(session: Session) -> int:
+    """Recurring new-source discovery (ADR 0005): off unless discovery.interval_hours > 0; one job per domain whose
+    last discovery run is older than the interval. Only candidates are added — approval stays with a person."""
+    hours = discovery_config()["interval_hours"]
+    if hours <= 0 or get_search() is None:
+        return 0
+    cutoff = utcnow() - timedelta(hours=hours)
+    count = 0
+    for plugin in get_registry().all():
+        if not plugin.discovery().queries:
+            continue
+        last = session.execute(
+            select(func.max(Run.started_at)).where(Run.domain_id == plugin.id, Run.kind == "discover")
+        ).scalar_one()
+        if last is not None and last > cutoff:
+            continue
+        run = start_run(session, domain_id=plugin.id, kind="discover", triggered_by="scheduler")
+        if enqueue(
+            session,
+            "discover",
+            {"domain_id": plugin.id},
+            run_id=run.id,
+            idempotency_key=f"discover:{plugin.id}",
+            priority=120,
+        ):
+            count += 1
+    return count
 
 
 def schedule_due_sources(session: Session) -> int:

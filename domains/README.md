@@ -44,6 +44,12 @@ sample_questions:                                                   # shown on t
 language: de                                                        # drives lexical search: de -> 'german'
 retrieval:
   text_search_config: german                                        # optional explicit PostgreSQL config
+discovery:                                                          # new-source discovery (ADR 0005)
+  queries: ["robot arm payload specification"]                      # `discovery_queries` still works as an alias
+  prefer_hosts: ["docs.vendor.example"]                             # +25 relevance, still needs approval
+  deny_hosts: ["content-farm.example"]                              # never registered
+  min_relevance: 20                                                 # floor for registering a candidate
+  max_candidates: 25                                                # per discovery run
 ```
 
 `role`: `foundation` | `dependent` | `example` | `neutral`; `polarity`: `positive` | `negative`. The declaration is

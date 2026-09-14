@@ -132,6 +132,16 @@ LANGUAGE_TEXT_SEARCH_CONFIGS: dict[str, str] = {
 }
 
 
+class DiscoverySpec(BaseModel):
+    """How new sources are looked for (ADR 0005). Candidates are scored, filtered and left for approval."""
+
+    queries: list[str] = Field(default_factory=list)  # search queries; `discovery_queries` is the legacy alias
+    prefer_hosts: list[str] = Field(default_factory=list)  # publishers the plugin author expects (+25 relevance)
+    deny_hosts: list[str] = Field(default_factory=list)  # never registered
+    min_relevance: int = Field(default=20, ge=0, le=100)  # below this a hit is not even registered
+    max_candidates: int = Field(default=25, ge=1, le=500)  # per discovery run
+
+
 class RetrievalSpec(BaseModel):
     """How the domain wants to be searched (P2.5). ``text_search_config`` names a PostgreSQL text-search
     configuration explicitly (e.g. ``german``, ``simple``); when absent it follows the manifest language."""
@@ -158,6 +168,7 @@ class Manifest(BaseModel):
     discovery_queries: list[str] = Field(default_factory=list)
     sample_questions: list[str] = Field(default_factory=list)  # shown on the Search & Ask page
     retrieval: RetrievalSpec = Field(default_factory=RetrievalSpec)
+    discovery: DiscoverySpec = Field(default_factory=DiscoverySpec)
 
     @field_validator("knowledge_types", mode="before")
     @classmethod
@@ -343,8 +354,15 @@ class DomainPlugin:
     def extraction_hints(self) -> str:
         return self.manifest.extraction_hints
 
+    def discovery(self) -> DiscoverySpec:
+        """Discovery settings; `discovery_queries` (legacy) and `discovery.queries` are merged."""
+        spec = self.manifest.discovery.model_copy()
+        merged = list(dict.fromkeys(list(spec.queries) + list(self.manifest.discovery_queries)))
+        spec.queries = merged
+        return spec
+
     def discovery_queries(self) -> list[str]:
-        return self.manifest.discovery_queries
+        return self.discovery().queries
 
     def sources(self) -> list[SourceSpec]:
         f = self.path / "sources.yaml"

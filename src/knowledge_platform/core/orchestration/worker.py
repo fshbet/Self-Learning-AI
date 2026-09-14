@@ -15,6 +15,7 @@ from . import jobs as _jobs  # noqa: F401  (registers handlers)
 from .jobs import (
     HANDLERS,
     finalize_run_if_complete,
+    schedule_due_discovery,
     schedule_due_evaluations,
     schedule_due_snapshots,
     schedule_due_sources,
@@ -92,6 +93,9 @@ class Worker:
                 k = schedule_due_snapshots(session)
                 if k:
                     log.info("scheduler enqueued %d snapshots", k)
+                d = schedule_due_discovery(session)
+                if d:
+                    log.info("scheduler enqueued %d discovery runs", d)
 
     # ------------------------------------------------------------------ loop
     def run_forever(self) -> None:

@@ -213,6 +213,12 @@ def snapshot_config() -> dict[str, Any]:
     }
 
 
+def discovery_config() -> dict[str, Any]:
+    env = get_settings()
+    o = _load_overrides()
+    return {"interval_hours": int(o.get("discovery.interval_hours", env.discovery_interval_hours))}
+
+
 def _env_base_url(env: Any, provider: str) -> str:
     return {
         "ollama": env.ollama_base_url,

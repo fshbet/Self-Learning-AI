@@ -274,6 +274,15 @@ interval is due, runs the golden set on the evaluation interval, revalidates fla
 **Settings → Export schedule** (`KP_SNAPSHOT_INTERVAL_HOURS`, `KP_SNAPSHOT_AFTER_PIPELINE`) — exports a full
 Canonical Knowledge Snapshot periodically or after every pipeline run that added knowledge.
 
+**Source monitoring vs new-source discovery** ([ADR 0005](docs/adr/0005-source-discovery.md)): the scheduler
+monitors the *approved* catalogue; it never trusts a site it found on its own. Discovery (`kp run discover`, or
+recurring with `KP_DISCOVERY_INTERVAL_HOURS` > 0 — off by default) runs the plugin's `discovery.queries` and your
+keywords through the search provider and registers unknown hosts as **candidates** with an explainable relevance
+score (queries hit, domain vocabulary in title/snippet, rank, preferred publishers; deny lists, host/canonical
+dedup and a relevance floor keep spam, duplicates and irrelevant sites out). A candidate is `community`-class with
+authority 30 and disabled until a person approves it on the Sources page; nothing discovered is ever exported as
+anything but `COMMUNITY` provenance.
+
 Operational metrics come from the tables the platform already keeps (jobs, runs, model calls, documents,
 snapshots): `GET /api/stats` carries an `ops` block, the dashboard's **Operations** card shows it and `kp ops
 [domain]` prints it — queue depth and age, jobs awaiting retry, **dead-letter** count by job type, jobs that needed
