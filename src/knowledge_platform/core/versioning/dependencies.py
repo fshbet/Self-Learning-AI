@@ -141,28 +141,88 @@ def dependencies_of(session: Session, item_id: uuid.UUID) -> list[tuple[Knowledg
     return [(r, k) for r, k in rows]
 
 
+MAX_PROPAGATION_DEPTH = 50  # safety cap; real graphs are a handful of hops deep
+
+
+def affected_by(session: Session, item_id: uuid.UUID) -> list[tuple[uuid.UUID, uuid.UUID, int]]:
+    """Every item that transitively depends on ``item_id`` (audit P1.7): (dependent id, parent id, hops).
+
+    Breadth-first over the propagating relations, so each item is reported once at its shortest distance;
+    the visited set makes cycles and diamonds safe, sorted expansion makes the order deterministic.
+    """
+    visited: set[uuid.UUID] = {item_id}
+    frontier: list[uuid.UUID] = [item_id]
+    out: list[tuple[uuid.UUID, uuid.UUID, int]] = []
+    hops = 0
+    while frontier and hops < MAX_PROPAGATION_DEPTH:
+        hops += 1
+        rows = session.execute(
+            select(KnowledgeRelation.from_item_id, KnowledgeRelation.to_item_id)
+            .where(KnowledgeRelation.to_item_id.in_(frontier), KnowledgeRelation.relation_type.in_(PROPAGATING))
+            .order_by(KnowledgeRelation.to_item_id, KnowledgeRelation.from_item_id)
+        ).all()
+        next_frontier: list[uuid.UUID] = []
+        for dependent, parent in rows:
+            if dependent in visited:
+                continue
+            visited.add(dependent)
+            next_frontier.append(dependent)
+            out.append((dependent, parent, hops))
+        frontier = sorted(next_frontier, key=str)
+    return out
+
+
 def mark_dependents(session: Session, item: KnowledgeItem, reason: str) -> int:
-    """Flag everything that depends on ``item`` (req. 17: B changed → find dependents → mark affected)."""
+    """Flag everything that depends on ``item`` — directly or through other items (req. 17, audit P1.7).
+
+    Only the *dependency* flag is touched: review flags (falsification, manual, quality) belong to a reviewer.
+    An item already flagged for this same root keeps its reason (no churn); its descendants are still visited.
+    """
     count = 0
-    for dep in dependents_of(session, item.id):
-        if ItemStatus(dep.status) in (ItemStatus.REJECTED, ItemStatus.SUPERSEDED):
+    root_tag = f"dependency {item.id}"
+    affected = affected_by(session, item.id)
+    if not affected:
+        return 0
+    items = {
+        k.id: k
+        for k in session.execute(
+            select(KnowledgeItem).where(KnowledgeItem.id.in_([d for d, _, _ in affected]))
+        ).scalars()
+    }
+    for dep_id, parent_id, hops in affected:
+        dep = items.get(dep_id)
+        if dep is None or ItemStatus(dep.status) in (ItemStatus.REJECTED, ItemStatus.SUPERSEDED):
             continue
+        if dep.needs_revalidation and (dep.revalidation_reason or "").startswith(root_tag):
+            continue
+        via = "" if hops == 1 else f" via {parent_id} ({hops} hops)"
         dep.needs_revalidation = True
-        dep.revalidation_reason = f"dependency {item.id} ({item.subject}): {reason}"[:500]
+        dep.revalidation_reason = f"{root_tag} ({item.subject}){via}: {reason}"[:500]
         count += 1
     if count:
         session.flush()
-        log.info("flagged %d dependents of %s for revalidation", count, item.id)
+        log.info("flagged %d dependents of %s for revalidation (transitive)", count, item.id)
     return count
 
 
+def _reaches(session: Session, start: uuid.UUID, target: uuid.UUID) -> bool:
+    """Is there a propagating path start -> ... -> target (i.e. is ``target`` on a cycle with ``start``)?"""
+    return any(d == target for d, _, _ in affected_by(session, start))
+
+
 def unresolved_dependencies(session: Session, item: KnowledgeItem) -> list[KnowledgeItem]:
-    """Dependencies that are not live (stale, conflicted, rejected, superseded)."""
-    return [
-        k
-        for r, k in dependencies_of(session, item.id)
-        if r.relation_type in PROPAGATING and ItemStatus(k.status) not in LIVE
-    ]
+    """Dependencies that are not settled: not live (stale, conflicted, rejected, superseded), or themselves still
+    awaiting revalidation — unless that dependency lies on a cycle back to ``item`` (then the flag alone must not
+    hold both hostage; its liveness decides)."""
+    out: list[KnowledgeItem] = []
+    for r, k in dependencies_of(session, item.id):
+        if r.relation_type not in PROPAGATING:
+            continue
+        if ItemStatus(k.status) not in LIVE:
+            out.append(k)
+        elif k.needs_revalidation and not _reaches(session, item.id, k.id):
+            out.append(k)
+    return out
 
 
 def relations_for_api(session: Session, item_id: uuid.UUID) -> dict[str, list[dict[str, Any]]]:

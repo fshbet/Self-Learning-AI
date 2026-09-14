@@ -197,8 +197,9 @@ knowledge fresh without pretending it was validated again.
 `knowledge_relations` holds edges between items (`depends_on`, `example_of`, `derived_from`, `related_to`,
 `supersedes`, `contradicts`). Structural edges are derived automatically — examples, procedures, best practices and
 limitations depend on the definitions/facts about the same subject — and can be added by hand (`POST
-/api/knowledge/{id}/relations`). When an item becomes stale, superseded, rejected or conflicted, every dependent is
-flagged `needs_revalidation` with the reason; the `revalidate_item` job re-runs validators, scoring and conflict
+/api/knowledge/{id}/relations`). When an item becomes stale, superseded, rejected or conflicted, every dependent —
+direct or **transitive** (A → B → C → D; diamonds and cycles are safe, expansion is deterministic, the reason records
+the root and the number of hops) — is flagged `needs_revalidation`; the `revalidate_item` job re-runs validators, scoring and conflict
 detection and clears the flag only when all dependencies are live again. Flagged items appear on the Review page
 ("Needs revalidation") and are re-queued by the scheduler; snapshots export the edges as `relationships.jsonl`.
 
