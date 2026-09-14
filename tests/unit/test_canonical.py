@@ -29,14 +29,17 @@ def test_integrity_hash_excludes_manifest_and_is_order_independent():
 
 
 def test_provenance_rules():
-    assert derive_provenance([_Src("plugin", 95)]) == "OFFICIAL"
+    # provenance follows the *declared* class of the most authoritative source; authority never implies official
+    assert derive_provenance([_Src("plugin", 95, "official")]) == "OFFICIAL"
+    assert derive_provenance([_Src("plugin", 95)]) == "EXTERNAL"  # undeclared: external, however authoritative
     assert derive_provenance([_Src("plugin", 60)]) == "EXTERNAL"
     assert derive_provenance([_Src("discovered", 30)]) == "COMMUNITY"
-    # a URL added by a user is still external/official content; USER is reserved for authored knowledge
+    # a URL added by a user is still external content unless classified; USER is reserved for authored knowledge
     assert derive_provenance([_Src("user", 70)]) == "EXTERNAL"
-    assert derive_provenance([_Src("user", 95)]) == "OFFICIAL"
+    assert derive_provenance([_Src("user", 95)]) == "EXTERNAL"
     assert derive_provenance([_Src("user", 70, "organization")]) == "ORGANIZATION"
-    assert derive_provenance([_Src("user", 70), _Src("plugin", 95)]) == "OFFICIAL"
+    assert derive_provenance([_Src("user", 70), _Src("plugin", 95, "official")]) == "OFFICIAL"
+    assert derive_provenance([_Src("plugin", 85, "external"), _Src("plugin", 80, "official")]) == "EXTERNAL"
     assert derive_provenance([]) == "DERIVED"
     assert derive_polarity("limitation") == "negative" and derive_polarity("fact") == "positive"
 

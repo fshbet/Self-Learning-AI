@@ -1,5 +1,8 @@
 # Seed source catalog for the Power BI domain (§7, §8).
 # authority: 0-100 (official documentation ≈ 95, recognised expert sources ≈ 85, community ≈ 50)
+# source_class: who stands behind the source — official (vendor / standards body) | external (reputable third
+# party) | community (forums, blogs, Q&A) | organization (internal). It is provenance, never derived from
+# authority: an expert third party can be highly authoritative and still not official.
 # permissions record what we believe the terms allow; verify before enabling "train"/"redistribute".
 sources:
   - key: ms-learn-dax
@@ -8,6 +11,7 @@ sources:
     publisher: Microsoft
     source_type: web
     authority: 95
+    source_class: official
     license: CC BY 4.0 (Microsoft Learn docs)
     permissions: {read: true, store: true, process: true, train: false, redistribute: false}
     crawl_frequency_hours: 168
@@ -21,6 +25,7 @@ sources:
     url: https://learn.microsoft.com/en-us/power-bi/transform-model/
     publisher: Microsoft
     authority: 95
+    source_class: official
     license: CC BY 4.0 (Microsoft Learn docs)
     crawl_frequency_hours: 168
     max_depth: 2
@@ -33,6 +38,7 @@ sources:
     url: https://learn.microsoft.com/en-us/power-bi/guidance/
     publisher: Microsoft
     authority: 95
+    source_class: official
     license: CC BY 4.0 (Microsoft Learn docs)
     crawl_frequency_hours: 168
     max_depth: 2
@@ -45,6 +51,7 @@ sources:
     url: https://learn.microsoft.com/en-us/powerquery-m/
     publisher: Microsoft
     authority: 95
+    source_class: official
     license: CC BY 4.0 (Microsoft Learn docs)
     crawl_frequency_hours: 336
     max_depth: 2
@@ -57,6 +64,7 @@ sources:
     url: https://learn.microsoft.com/en-us/power-bi/connect-data/
     publisher: Microsoft
     authority: 95
+    source_class: official
     license: CC BY 4.0 (Microsoft Learn docs)
     crawl_frequency_hours: 168
     max_depth: 2
@@ -69,6 +77,7 @@ sources:
     url: https://learn.microsoft.com/en-us/power-bi/admin/
     publisher: Microsoft
     authority: 95
+    source_class: official
     license: CC BY 4.0 (Microsoft Learn docs)
     crawl_frequency_hours: 168
     max_depth: 2
@@ -81,6 +90,7 @@ sources:
     url: https://learn.microsoft.com/en-us/fabric/security/service-admin-row-level-security
     publisher: Microsoft
     authority: 95
+    source_class: official
     license: CC BY 4.0 (Microsoft Learn docs)
     crawl_frequency_hours: 168
     max_depth: 1
@@ -93,6 +103,7 @@ sources:
     url: https://learn.microsoft.com/en-us/rest/api/power-bi/
     publisher: Microsoft
     authority: 90
+    source_class: official
     license: CC BY 4.0 (Microsoft Learn docs)
     crawl_frequency_hours: 336
     max_depth: 2
@@ -105,6 +116,7 @@ sources:
     url: https://dax.guide/
     publisher: SQLBI
     authority: 85
+    source_class: external
     license: All rights reserved — read/process only
     permissions: {read: true, store: true, process: true, train: false, redistribute: false}
     crawl_frequency_hours: 336
@@ -117,6 +129,7 @@ sources:
     url: https://www.sqlbi.com/articles/
     publisher: SQLBI
     authority: 85
+    source_class: external
     license: All rights reserved — read/process only
     permissions: {read: true, store: true, process: true, train: false, redistribute: false}
     crawl_frequency_hours: 168
@@ -130,6 +143,7 @@ sources:
     url: https://powerbi.microsoft.com/en-us/blog/
     publisher: Microsoft
     authority: 80
+    source_class: official
     license: Microsoft terms — read/process only
     permissions: {read: true, store: true, process: true, train: false, redistribute: false}
     crawl_frequency_hours: 72

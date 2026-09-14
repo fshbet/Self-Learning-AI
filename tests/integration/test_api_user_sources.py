@@ -6,14 +6,14 @@ import uuid
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import delete
+from sqlalchemy import delete, select
 from tests.conftest import requires_db
 
 from knowledge_platform.api.app import app
 from knowledge_platform.core.domains import sync_domain
 from knowledge_platform.core.plugins.registry import get_registry
 from knowledge_platform.db import session_scope
-from knowledge_platform.models import DomainKeyword, Source
+from knowledge_platform.models import DomainKeyword, Source, utcnow
 
 pytestmark = requires_db
 
@@ -80,3 +80,48 @@ def test_user_source_lifecycle_and_plugin_protection():
     assert client.delete(f"/api/sources/{plugin_src['id']}").status_code == 409
     assert client.delete(f"/api/sources/{src['id']}").status_code == 204
     assert src["id"] not in {x["id"] for x in client.get(f"/api/sources?domain={DOMAIN}").json()}
+
+
+def test_sync_reclassifies_items_when_a_source_class_is_curated(monkeypatch):
+    """Curating a catalog class re-derives provenance of the items that source evidences (audit P1.8)."""
+    from knowledge_platform.models import Evidence, KnowledgeItem, Source
+
+    plugin = get_registry().get(DOMAIN)
+    spec = plugin.sources()[0]
+    with session_scope() as s:
+        sync_domain(s, plugin)
+        src = s.execute(select(Source).where(Source.domain_id == DOMAIN, Source.key == spec.key)).scalar_one()
+        src.source_class = "external"
+        item = KnowledgeItem(
+            domain_id=DOMAIN,
+            knowledge_type="fact",
+            subject="S",
+            predicate="p",
+            object="o",
+            statement="S p o (class test).",
+            status="SUPPORTED",
+            content_hash="sha256:classtest",
+            provenance="EXTERNAL",
+            first_discovered_at=utcnow(),
+        )
+        s.add(item)
+        s.flush()
+        s.add(
+            Evidence(
+                knowledge_item_id=item.id, source_id=src.id, evidence_type="extraction", excerpt="q", verified=True
+            )
+        )
+        item_id = item.id
+    try:
+        curated = spec.model_copy(update={"source_class": "official"})
+        monkeypatch.setattr(plugin, "sources", lambda: [curated])
+        with session_scope() as s:
+            out = sync_domain(s, plugin)
+            assert out["items_reclassified"] == 1
+            assert s.get(KnowledgeItem, item_id).provenance == "OFFICIAL"
+            assert s.execute(select(Source).where(Source.id == src.id)).scalar_one().source_class == "official"
+    finally:
+        with session_scope() as s:
+            s.execute(delete(KnowledgeItem).where(KnowledgeItem.id == item_id))
+        with session_scope() as s:
+            sync_domain(s, plugin)

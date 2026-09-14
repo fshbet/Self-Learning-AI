@@ -155,7 +155,7 @@ Every item records **how** it was obtained and **where** it came from (req. 8–
 | Field | Values | Meaning |
 |---|---|---|
 | `origin` | `DIRECT`, `EXPERIMENTALLY_VALIDATED`, `DERIVED`, `SYNTHESIZED` | stated verbatim by a source · plus passed a domain validator · derived/combined from other items (evidence chain via `derived_from` relations) |
-| `provenance` | `OFFICIAL`, `EXTERNAL`, `COMMUNITY`, `USER`, `ORGANIZATION`, `DERIVED` | from the *class* of the most authoritative source; `USER`/`ORGANIZATION` only for knowledge a person entered (Knowledge → **Add knowledge**) — a URL a user adds is still official/external content |
+| `provenance` | `OFFICIAL`, `EXTERNAL`, `COMMUNITY`, `USER`, `ORGANIZATION`, `DERIVED` | from the **declared class** of the most authoritative source (`source_class` in `sources.yaml` or the Sources editor — authority never implies *official*; undeclared sources are `external`, discovered ones `community`); `USER`/`ORGANIZATION` only for knowledge a person entered; `DERIVED` for derived/synthesized items. Curating a class re-derives the provenance of the items it evidences on the next `kp domains sync` |
 | `polarity` | `positive`, `negative` | negative = what does **not** work (`limitation`, `warning`, `anti_pattern`); searchable, exported as `negative.jsonl`, shown to the answer model as LIMITATION/WARNING blocks so limitations are stated, not inferred |
 | `details` | structured fields | examples: `expected_behavior`, `expected_result`, `common_mistake`, `validation_method`; negatives: `condition`, `workaround` |
 

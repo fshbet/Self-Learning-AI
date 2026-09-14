@@ -21,10 +21,10 @@ CLASS_TO_PROVENANCE = {
 
 
 def source_class_for(authority: int, origin: str = "plugin") -> str:
-    """Default class of a source when the catalog does not declare one."""
-    if origin == "discovered":
-        return "community"
-    return "official" if int(authority or 0) >= OFFICIAL_AUTHORITY else "external"
+    """Default class of a source when nobody declared one (audit P1.8). Authority never implies *official*:
+    a catalog or a user must say so. Discovered sites are community; everything else is external until curated."""
+    del authority  # kept in the signature for callers; deliberately unused
+    return "community" if origin == "discovered" else "external"
 
 
 def derive_provenance(sources: Iterable[Any]) -> str:
