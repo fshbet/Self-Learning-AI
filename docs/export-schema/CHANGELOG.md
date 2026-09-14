@@ -22,6 +22,14 @@ The JSON Schema files in this directory are generated with `kp export schema` fr
 `core/export/schema.py`; the same files are shipped inside every snapshot under `schema/`, and a test keeps the
 committed copy identical to the generated one.
 
+## 1.4 — 2026-09-14
+
+Additive.
+
+* `relation_type` vocabulary gains `compatible_under`: two items that both hold under different versions, scopes or
+  conditions (`details.verdict`, `details.conditions`, `details.rationale`) — a judged non-contradiction kept
+  structurally instead of being discarded.
+
 ## 1.3 — 2026-09-14
 
 Additive.

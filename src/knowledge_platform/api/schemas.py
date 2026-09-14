@@ -241,7 +241,9 @@ class KnowledgeDetail(KnowledgeOut):
 
 class RelationCreate(BaseModel):
     to_item_id: uuid.UUID
-    relation_type: str = Field(pattern="^(depends_on|example_of|derived_from|related_to|supersedes|contradicts)$")
+    relation_type: str = Field(
+        pattern="^(depends_on|example_of|derived_from|related_to|supersedes|contradicts|compatible_under)$"
+    )
 
 
 class KnowledgeCreate(BaseModel):

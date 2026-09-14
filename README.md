@@ -336,8 +336,11 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
   `SUPERSEDED`; every transition records actor and reason; illegal transitions are refused.
 * **Deduplication as agreement** — an identical or near-identical statement from a second source becomes extra evidence on the
   existing item (raising its verification level) rather than a duplicate.
-* **Contradictions are surfaced, not resolved silently** — same subject and predicate with a different object opens a conflict
-  for human review.
+* **Contradictions are surfaced, not resolved silently** — items about the same subject whose predicates share a core
+  ("supports" / "does not support": negation and negative polarity are recognised) and disagree are adjudicated by the
+  model; a real contradiction opens a conflict for human review, while `different_versions` / `different_scopes` /
+  `different_conditions` verdicts are kept structurally as `compatible_under` relations with the distinguishing
+  condition (recorded version mismatches are stored the same way without a model call).
 * **Change detection** — content hashes + ETag/If-Modified-Since; when a page changes, items whose quotes vanished become `STALE`.
   **Section-level delta**: every chunk's hash (heading path + text, plus the extractor prompt version) is stored on the
   document; on re-extraction only changed sections go to the model — unchanged sections keep their items and evidence.

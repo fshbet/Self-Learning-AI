@@ -16,7 +16,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-SCHEMA_VERSION = "1.3"  # see docs/export-schema/CHANGELOG.md; minor = additive, major = breaking
+SCHEMA_VERSION = "1.4"  # see docs/export-schema/CHANGELOG.md; minor = additive, major = breaking
 
 Origin = Literal["DIRECT", "DERIVED", "SYNTHESIZED", "EXPERIMENTALLY_VALIDATED"]
 Provenance = Literal["OFFICIAL", "EXTERNAL", "COMMUNITY", "USER", "ORGANIZATION", "DERIVED"]
@@ -380,6 +380,8 @@ def vocabulary() -> dict[str, Any]:
             "related_to": "informational link",
             "supersedes": "the item replaces the target",
             "contradicts": "the items disagree",
+            "compatible_under": "both hold under different versions, scopes or conditions; details.verdict and "
+            "details.conditions say which (a judged non-contradiction, kept structurally)",
         },
         "propagating_relations": ["depends_on", "example_of", "derived_from"],
         "verification_level": {

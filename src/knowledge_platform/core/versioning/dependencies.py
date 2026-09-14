@@ -24,7 +24,15 @@ from ...models import ItemStatus, KnowledgeItem, KnowledgeRelation
 
 log = logging.getLogger(__name__)
 
-RELATION_TYPES = ("depends_on", "example_of", "derived_from", "related_to", "supersedes", "contradicts")
+RELATION_TYPES = (
+    "depends_on",
+    "example_of",
+    "derived_from",
+    "related_to",
+    "supersedes",
+    "contradicts",
+    "compatible_under",  # both true under different versions / scopes / conditions (details say which)
+)
 # relation types along which a change in the target invalidates the source
 PROPAGATING = ("depends_on", "example_of", "derived_from")
 LIVE = (ItemStatus.SUPPORTED, ItemStatus.VERIFIED)

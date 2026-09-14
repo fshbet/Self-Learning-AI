@@ -127,25 +127,33 @@ Answer the question using only the items above, citing them as [n]."""
 CONFLICT_SYSTEM = """You judge whether two knowledge statements about "{domain_name}" contradict each other.
 
 Definitions:
-- "contradict": both cannot be true at the same time for the same product version and conditions
-  (e.g. "X returns BLANK on error" vs "X returns 0 on error").
-- "different_conditions": both can be true under different versions, modes, products or scopes,
-  and the statements name or imply those conditions.
+- "contradict": both cannot be true at the same time for the same product version, scope and conditions
+  (e.g. "X returns BLANK on error" vs "X returns 0 on error"; "X supports Y" vs "X does not support Y").
+- "different_versions": both can be true because they describe different product versions or releases.
+- "different_scopes": both can be true because they describe different products, editions, modes or environments.
+- "different_conditions": both can be true under different explicit conditions (settings, inputs, states) that the
+  statements name or clearly imply.
 - "compatible": the statements describe different aspects, list different members of a set, or one is a
   refinement of the other (e.g. "X covers filter functions" and "X covers statistical functions").
 
-Be strict: only answer "contradict" when a careful reader would say the two statements disagree.
+Be strict: only answer "contradict" when a careful reader would say the two statements disagree. Two statements
+whose surface wording differs but that carry their own conditions are not a contradiction. When you answer
+different_versions / different_scopes / different_conditions, name the distinguishing condition in "conditions".
 """
 
 CONFLICT_USER = """Statement A: {a}
 Statement B: {b}
 
-Answer with a verdict and a one-sentence rationale."""
+Answer with a verdict, the distinguishing conditions if any, and a one-sentence rationale."""
 
 CONFLICT_SCHEMA = {
     "type": "object",
     "properties": {
-        "verdict": {"type": "string", "enum": ["contradict", "different_conditions", "compatible"]},
+        "verdict": {
+            "type": "string",
+            "enum": ["contradict", "different_versions", "different_scopes", "different_conditions", "compatible"],
+        },
+        "conditions": {"type": "string"},
         "rationale": {"type": "string"},
     },
     "required": ["verdict", "rationale"],
