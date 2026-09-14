@@ -156,6 +156,35 @@ def test_transport_connects_to_the_validated_address_with_the_original_name(monk
     assert inner.requests[-1].url.host == "nowhere.test"
 
 
+class _Redirecting(httpx.BaseTransport):
+    """First hop answers 301 to another public name; the second hop answers 200."""
+
+    def __init__(self) -> None:
+        self.hosts: list[str] = []
+
+    def handle_request(self, request: httpx.Request) -> httpx.Response:
+        self.hosts.append(request.url.host)
+        if request.headers["Host"] == "old.test":
+            return httpx.Response(301, headers={"Location": "https://new.test/moved"}, request=request)
+        return httpx.Response(200, text="moved ok", request=request)
+
+
+def test_transport_pins_every_redirect_hop(monkeypatch):
+    """Redirect hops are built by httpx with an unread body stream; pinning them must not trip over that
+    (a live crawl of a redirecting blog died with RequestNotRead before this test existed)."""
+    from knowledge_platform.core.collection import fetcher as fetcher_mod
+    from knowledge_platform.core.collection.fetcher import GuardedTransport
+
+    table = {"old.test": "93.184.216.34", "new.test": "93.184.216.35"}
+    monkeypatch.setattr(fetcher_mod, "resolve_validated", lambda host: ([table[host]], None))
+    inner = _Redirecting()
+    client = httpx.Client(transport=GuardedTransport(inner), follow_redirects=True)
+    r = client.get("https://old.test/page")
+    assert r.status_code == 200 and r.text == "moved ok"
+    assert inner.hosts == ["93.184.216.34", "93.184.216.35"]  # both hops connected to validated addresses
+    assert str(r.url) == "https://new.test/moved"
+
+
 @respx.mock
 def test_literal_spelling_redirect_is_blocked_by_the_fetcher():
     respx.get("https://site.test/robots.txt").mock(return_value=httpx.Response(404))

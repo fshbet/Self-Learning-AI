@@ -62,8 +62,10 @@ class GuardedTransport(httpx.BaseTransport):
                 extensions = dict(request.extensions)
                 if request.url.scheme == "https":
                     extensions["sni_hostname"] = host
+                # redirect hops arrive with an unread body stream (httpx builds them that way): read it here,
+                # crawler bodies are empty or tiny, and `request.content` would raise RequestNotRead otherwise
                 pinned = httpx.Request(
-                    request.method, url, headers=headers, content=request.content, extensions=extensions
+                    request.method, url, headers=headers, content=request.read(), extensions=extensions
                 )
                 response = self._inner.handle_request(pinned)
                 response.request = request  # keep the logical URL for redirects / logging
