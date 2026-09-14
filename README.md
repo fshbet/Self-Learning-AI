@@ -355,7 +355,7 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 | `kp run extract <domain>` | extract documents that were fetched but not extracted |
 | `kp run discover <domain>` | web discovery → candidate sources (needs SearXNG: `docker compose --profile discovery up -d`) |
 | `kp eval run <domain> [--fail-on-regression]` / `kp eval list` | golden-set evaluation, regression detection |
-| `kp export snapshot <domain> [--out file.zip]` / `kp export delta <domain> [--base id]` / `kp export list` / `kp export verify <id>` | Canonical Knowledge Snapshots (full and delta) |
+| `kp export snapshot <domain> [--out file.zip]` / `kp export delta <domain> [--base id]` / `kp export list` / `kp export verify <id>` / `kp export apply <base> <delta> --out DIR` | Canonical Knowledge Snapshots (full and delta) |
 | `kp ops [domain]` | queue health, dead letters, model latency, storage, schedule |
 | `kp falsify <domain> [--limit 5] [--item id]` | active falsification with the open web (needs SearXNG) |
 | `kp autostart install/status/uninstall` | start the platform at logon (Task Scheduler / systemd / launchd) |
