@@ -378,6 +378,7 @@ class EvaluationResultOut(ORM):
     judge: dict[str, Any]
     passed: bool
     failure_causes: list[Any]
+    failure_class: str | None = None
     latency_ms: int
 
 

@@ -281,6 +281,7 @@ export type EvaluationResult = {
   judge: { correct?: boolean; supported_by_citations?: boolean; hallucinated_claims?: string[]; missing_points?: string[]; rationale?: string; error?: string };
   passed: boolean;
   failure_causes: string[];
+  failure_class: string | null;
   latency_ms: number;
 };
 

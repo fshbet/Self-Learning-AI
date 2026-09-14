@@ -22,7 +22,8 @@ class Answer:
     answer: str
     citations: list[dict[str, Any]] = field(default_factory=list)
     retrieved: list[dict[str, Any]] = field(default_factory=list)
-    insufficient: bool = False
+    insufficient: bool = False  # not grounded: no citation resolved (UI warning)
+    no_results: bool = False  # retrieval returned nothing at all (a genuine abstention, see evaluation)
 
 
 _DETAIL_LABELS = {
@@ -86,6 +87,7 @@ def answer_question(
             question=question,
             answer="The knowledge repository does not contain verified information relevant to this question yet.",
             insufficient=True,
+            no_results=True,
         )
     system = ANSWER_SYSTEM.format(domain_name=plugin.name)
     user = ANSWER_USER.format(question=question, items=_format_items(results))

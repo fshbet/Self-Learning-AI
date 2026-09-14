@@ -68,13 +68,48 @@ def check_must_not_contain(answer: str, forbidden: list[str]) -> dict[str, Any]:
     return {"ok": not hits, "detail": f"forbidden phrases present: {hits}" if hits else "ok", "hits": hits}
 
 
-def is_abstention(answer: str, insufficient_flag: bool) -> bool:
+ABSTENTION_MAX_CHARS = 400  # an answer that declines *and then keeps going* is an answer, not an abstention
+
+
+def is_abstention(answer: str, no_results: bool) -> bool:
+    """A genuine abstention: nothing was retrieved at all, or the answer is a short decline.
+
+    ``no_results`` must mean "retrieval returned nothing" — never "no citations" (audit P0.5): an answer written
+    from the model's own memory has no citations either, and that is an *uncited answer* to be judged, not an
+    abstention. A decline followed by a substantive answer (> ABSTENTION_MAX_CHARS) is treated as an answer.
+    """
     a = _norm(answer)
-    return insufficient_flag or any(p in a for p in _ABSTAIN_PATTERNS)
+    if no_results:
+        return True
+    return any(p in a for p in _ABSTAIN_PATTERNS) and len(a) <= ABSTENTION_MAX_CHARS
 
 
-def check_abstention(answer: str, insufficient_flag: bool, expect_abstain: bool) -> dict[str, Any]:
-    abstained = is_abstention(answer, insufficient_flag)
+def answer_kind(answer: str, no_results: bool, cited_count: int) -> str:
+    """abstention | cited_answer | uncited_answer."""
+    if is_abstention(answer, no_results):
+        return "abstention"
+    return "cited_answer" if cited_count else "uncited_answer"
+
+
+def check_answer_kind(answer: str, no_results: bool, cited_count: int) -> dict[str, Any]:
+    kind = answer_kind(answer, no_results, cited_count)
+    return {"ok": True, "detail": kind.replace("_", " "), "kind": kind}
+
+
+def check_coverage(coverage: dict[str, Any] | None) -> dict[str, Any]:
+    """Pass-through of the coverage signal computed against the knowledge base (see runner._coverage):
+    does relevant knowledge exist at all? n/a when the question carries no topic, sources or concepts."""
+    if not coverage or coverage.get("value") is None:
+        return {
+            "ok": True,
+            "detail": "n/a (question has no topic, authoritative source or concept to check)",
+            "value": None,
+        }
+    return coverage
+
+
+def check_abstention(answer: str, no_results: bool, expect_abstain: bool) -> dict[str, Any]:
+    abstained = is_abstention(answer, no_results)
     ok = abstained == expect_abstain
     detail = (
         "correctly abstained"
@@ -108,7 +143,7 @@ def check_citations(cited: list[CitedItem], retrieved_ids: set[str], answer: str
 def check_retrieval_precision(retrieved: list[RetrievedItem], topic: str) -> dict[str, Any]:
     """Share of retrieved items filed under the question's topic (or its parent); n/a without a topic."""
     if not topic or not retrieved:
-        return {"ok": True, "detail": "n/a", "value": None}
+        return {"ok": True, "detail": "n/a", "value": None, "retrieved": len(retrieved)}
     top = topic.split("/")[0].lower()
     hits = sum(1 for r in retrieved if (r.topic or "").lower().startswith(top))
     value = hits / len(retrieved)
@@ -116,6 +151,7 @@ def check_retrieval_precision(retrieved: list[RetrievedItem], topic: str) -> dic
         "ok": value >= 0.5,
         "detail": f"{hits}/{len(retrieved)} retrieved items match topic '{topic}'",
         "value": value,
+        "retrieved": len(retrieved),
     }
 
 
@@ -196,14 +232,17 @@ def check_validators(cited: list[CitedItem]) -> dict[str, Any]:
 def run_all_checks(
     *,
     answer: str,
-    insufficient_flag: bool,
+    no_results: bool,
     question: Any,
     cited: list[CitedItem],
     retrieved: list[RetrievedItem],
+    coverage: dict[str, Any] | None = None,
 ) -> dict[str, dict[str, Any]]:
     retrieved_ids = {r.id for r in retrieved}
     checks: dict[str, dict[str, Any]] = {
-        "abstention": check_abstention(answer, insufficient_flag, question.expect_abstain),
+        "answer_kind": check_answer_kind(answer, no_results, len(cited)),
+        "abstention": check_abstention(answer, no_results, question.expect_abstain),
+        "coverage": check_coverage(coverage),
         "must_not_contain": check_must_not_contain(answer, question.must_not_contain),
         "retrieval_precision": check_retrieval_precision(retrieved, question.topic),
         "retrieval_recall": check_retrieval_recall(retrieved, question.authoritative_sources),
@@ -231,30 +270,71 @@ GATING_CHECKS = (
 )
 
 
+FAILURE_CLASSES = (
+    "expected_abstention",  # the question expects a decline and got one (a pass, recorded for the breakdown)
+    "coverage_failure",  # the knowledge base holds nothing relevant: nothing to retrieve, cite or answer with
+    "retrieval_failure",  # relevant knowledge exists but retrieval did not surface it
+    "uncited_answer",  # the model answered without citing any item (from its own memory)
+    "answer_generation_failure",  # relevant items were available/cited but the answer is wrong or non-compliant
+    "citation_failure",  # citations do not resolve to items with verified evidence
+    "validation_failure",  # cited examples failed a domain validator
+)
+
+
+def _covered(checks: dict[str, dict[str, Any]]) -> bool:
+    return bool(checks.get("coverage", {}).get("ok", True))
+
+
+def _retrieval_missed(checks: dict[str, dict[str, Any]]) -> bool:
+    """Nothing retrieved, the authoritative source missed, or mostly off-topic results."""
+    p = checks.get("retrieval_precision", {})
+    rec = checks.get("retrieval_recall", {}).get("value")
+    if p.get("retrieved") == 0:
+        return True
+    return rec == 0.0 or (p.get("value") is not None and p["value"] < 0.5)
+
+
 def failure_causes(checks: dict[str, dict[str, Any]], judge: dict[str, Any], expect_abstain: bool) -> list[str]:
-    """Structured failure analysis (req. 16): what went wrong, in terms an operator can act on."""
+    """Structured failure analysis (req. 16): what went wrong, in terms an operator can act on.
+
+    Coverage comes first (audit P0.6): when the knowledge base has nothing relevant, retrieval and answer causes
+    are noise. An uncited answer is reported as such (audit P0.5) and still gets the judge's findings.
+    """
     causes: list[str] = []
     c = checks
-    if not c["abstention"]["ok"]:
-        causes.append("abstained_unexpectedly" if not expect_abstain else "answered_instead_of_abstaining")
+    kind = c.get("answer_kind", {}).get("kind", "cited_answer")
+    covered = _covered(c)
     if expect_abstain:
+        if not c["abstention"]["ok"]:
+            causes.append("answered_instead_of_abstaining")
         return causes
-    if c["abstention"].get("abstained"):
-        # the answer declined: only retrieval explains why; concept/citation checks would be noise
+    if kind == "abstention":
+        if not covered:
+            return ["coverage_failure"]
+        causes.append("abstained_unexpectedly")
         if c.get("retrieval_recall", {}).get("value") == 0.0:
             causes.append("authoritative_source_not_retrieved")
         if c.get("retrieval_precision", {}).get("value") is not None and c["retrieval_precision"]["value"] < 0.5:
             causes.append("off_topic_retrieval")
         return causes
-    if c.get("citations") and c["citations"]["cited"] == 0:
-        causes.append("no_citations")
-    elif c.get("citations") and not c["citations"]["ok"]:
+    if kind == "uncited_answer":
+        causes.append("uncited_answer")
+        if not covered:
+            causes.append("coverage_failure")
+    if not covered and c.get("required_concepts") and not c["required_concepts"]["ok"]:
+        if "coverage_failure" not in causes:
+            causes.append("coverage_failure")
+    if kind == "cited_answer" and c.get("citations") and not c["citations"]["ok"]:
         causes.append("invalid_citations")
     if c.get("required_concepts") and not c["required_concepts"]["ok"]:
         causes.append("missing_concepts")
-    if c.get("retrieval_recall", {}).get("value") == 0.0:
+    if covered and c.get("retrieval_recall", {}).get("value") == 0.0:
         causes.append("authoritative_source_not_retrieved")
-    if c.get("retrieval_precision", {}).get("value") is not None and c["retrieval_precision"]["value"] < 0.5:
+    if (
+        covered
+        and c.get("retrieval_precision", {}).get("value") is not None
+        and c["retrieval_precision"]["value"] < 0.5
+    ):
         causes.append("off_topic_retrieval")
     if c.get("freshness") and not c["freshness"]["ok"]:
         causes.append("stale_cited_without_warning")
@@ -268,14 +348,44 @@ def failure_causes(checks: dict[str, dict[str, Any]], judge: dict[str, Any], exp
         causes.append("limitation_not_surfaced")
     if judge and judge.get("correct") is False:
         causes.append("judge_incorrect")
-    if judge and judge.get("supported_by_citations") is False:
+    if judge and judge.get("supported_by_citations") is False and kind == "cited_answer":
         causes.append("judge_unsupported")
     if judge and judge.get("hallucinated_claims"):
         causes.append("hallucination")
     return causes
 
 
+def failure_class(
+    checks: dict[str, dict[str, Any]], judge: dict[str, Any], expect_abstain: bool, passed: bool
+) -> str | None:
+    """One primary class per question (audit P0.5/P0.6): knowledge does not exist != retriever failed !=
+    model answered badly. ``None`` for an ordinary pass; ``expected_abstention`` for a correct decline."""
+    c = checks
+    kind = c.get("answer_kind", {}).get("kind", "cited_answer")
+    if passed:
+        return "expected_abstention" if expect_abstain else None
+    if expect_abstain:
+        return "answer_generation_failure"
+    if not _covered(c):
+        return "coverage_failure"
+    if kind == "abstention":
+        return "retrieval_failure" if _retrieval_missed(c) else "answer_generation_failure"
+    if kind == "uncited_answer":
+        return "uncited_answer"
+    if c.get("citations") and not c["citations"]["ok"]:
+        return "citation_failure"
+    if c.get("validators", {}).get("value") not in (None, 1.0):
+        return "validation_failure"
+    if _retrieval_missed(c) and c.get("required_concepts") and not c["required_concepts"]["ok"]:
+        return "retrieval_failure"
+    return "answer_generation_failure"
+
+
 SUGGESTED_ACTIONS = {
+    "coverage_failure": "The knowledge base holds nothing relevant to this question (no items under its topic, "
+    "authoritative source not crawled, concepts absent): crawl or add a source that covers it.",
+    "uncited_answer": "The model answered from its own memory without citing any item: tighten the answer prompt "
+    "and check whether relevant knowledge exists (see coverage).",
     "no_citations": "Knowledge base has no items for this question: add or crawl a source that covers it.",
     "authoritative_source_not_retrieved": "The authoritative page is not in the repository or not extracted: crawl it.",
     "off_topic_retrieval": "Retrieval returned unrelated topics: check taxonomy filing or add a more specific source.",

@@ -242,7 +242,11 @@ def eval_run(
         console.print(table)
         for r in ev.results:
             mark = "[green]PASS[/green]" if r.passed else "[red]FAIL[/red]"
-            console.print(f"  {mark} {r.question_id}: {', '.join(r.failure_causes) or 'ok'}")
+            klass = f" [{r.failure_class}]" if r.failure_class else ""
+            console.print(f"  {mark} {r.question_id}{klass}: {', '.join(r.failure_causes) or 'ok'}")
+        classes = ev.metrics.get("failure_classes") or {}
+        if classes:
+            console.print("  classes: " + ", ".join(f"{k} {v}" for k, v in sorted(classes.items())))
         if ev.regression:
             console.print(f"[red bold]REGRESSION detected[/red bold]: {ev.regression_details.get('metrics')}")
         for f in ev.findings:

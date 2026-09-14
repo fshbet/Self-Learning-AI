@@ -21,7 +21,19 @@ const METRICS: { key: string; label: string; higherIsBetter: boolean }[] = [
   { key: "version_correctness", label: "Version correctness", higherIsBetter: true },
   { key: "validator_success", label: "Validator success", higherIsBetter: true },
   { key: "negative_coverage", label: "Negative-knowledge coverage", higherIsBetter: true },
+  { key: "coverage", label: "Knowledge coverage", higherIsBetter: true },
+  { key: "uncited_rate", label: "Uncited answers", higherIsBetter: false },
 ];
+
+const CLASS_LABEL: Record<string, string> = {
+  expected_abstention: "expected abstention",
+  coverage_failure: "knowledge coverage",
+  retrieval_failure: "retrieval",
+  uncited_answer: "uncited answer",
+  answer_generation_failure: "answer generation",
+  citation_failure: "citations",
+  validation_failure: "validation",
+};
 
 function fmt(v: number | null | undefined): string {
   return v === null || v === undefined ? "—" : pct(v);
@@ -71,6 +83,7 @@ function ResultRow({ r, onSelect }: { r: EvaluationResult; onSelect: (id: string
           <div className="font-medium">{r.question}</div>
           <div className="muted text-xs mono mt-0.5">
             {r.question_id} · {r.latency_ms} ms · {r.citations.length} citation{r.citations.length === 1 ? "" : "s"}
+            {r.failure_class && <span className={`chip ml-1 ${r.passed ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300" : "bg-rose-500/15 text-rose-700 dark:text-rose-300"}`}>{CLASS_LABEL[r.failure_class] ?? r.failure_class}</span>}
             {r.failure_causes.length > 0 && <span className="text-rose-600"> · {r.failure_causes.join(", ")}</span>}
           </div>
         </div>

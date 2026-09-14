@@ -178,7 +178,22 @@ detection and clears the flag only when all dependencies are live again. Flagged
 Every domain plugin ships a golden question set (`evaluation.yaml`). The runner answers each question from the current
 knowledge base, applies mechanical checks (required concepts, citation validity, abstention, stale/conflict flagging,
 version, validators, negative-knowledge coverage, retrieval precision/recall) and an LLM judge (correctness, evidence support, hallucinated claims);
-a question passes only when both agree. Metrics and per-question results are stored, each run is compared with the
+a question passes only when both agree.
+
+Every result also carries one **primary failure class**, so a low score can be read correctly:
+
+| Class | Meaning |
+|---|---|
+| `expected_abstention` | the question expects a decline and got one (a pass) |
+| `coverage_failure` | the knowledge base holds nothing relevant (no live items under the question's topic, authoritative source never crawled, required concepts absent) — nothing to retrieve or cite |
+| `retrieval_failure` | relevant knowledge exists but retrieval did not surface it |
+| `uncited_answer` | the model answered from its own memory without citing any item; it is still judged for hallucinations and always fails |
+| `answer_generation_failure` | relevant items were available yet the answer is wrong, unsupported or non-compliant |
+| `citation_failure` / `validation_failure` | citations do not resolve to verified evidence / cited examples failed a validator |
+
+An abstention is recognised by its content (a short decline) or by empty retrieval — never by the mere absence of
+citations. Metrics add **coverage** (share of questions with relevant knowledge present) and **uncited rate**; the
+evaluator is never weakened to improve a score: missing knowledge counts as a failure, but as the right kind. Metrics and per-question results are stored, each run is compared with the
 previous run on the same dataset version, and a drop in accuracy or citation correctness beyond
 `KP_EVAL_REGRESSION_THRESHOLD` (default 5 points) flags a **regression** on the dashboard.
 

@@ -71,7 +71,7 @@ def test_failure_causes_and_metrics_and_regression():
     q = EvalQuestion(id="q1", question="?", required_concepts=["blank"], topic="DAX")
     checks = run_all_checks(
         answer="DIVIDE returns nothing special.",
-        insufficient_flag=False,
+        no_results=False,
         question=q,
         cited=[CitedItem(id="a", n=1, status="VERIFIED", evidence_verified=True, topic="DAX/Functions")],
         retrieved=[RetrievedItem(id="a", topic="DAX/Functions")],
@@ -104,7 +104,7 @@ def test_negative_questions_need_negative_knowledge_cited():
     q = EvalQuestion(id="n1", question="?", required_concepts=["not all"], negative=True, topic="DAX")
     positive_only = run_all_checks(
         answer="Not all functions exist everywhere.",
-        insufficient_flag=False,
+        no_results=False,
         question=q,
         cited=[CitedItem(id="a", n=1, status="VERIFIED", evidence_verified=True, topic="DAX")],
         retrieved=[RetrievedItem(id="a", topic="DAX")],
@@ -113,7 +113,7 @@ def test_negative_questions_need_negative_knowledge_cited():
     assert "limitation_not_surfaced" in failure_causes(positive_only, {}, False)
     with_negative = run_all_checks(
         answer="Not all functions exist everywhere.",
-        insufficient_flag=False,
+        no_results=False,
         question=q,
         cited=[CitedItem(id="b", n=1, status="VERIFIED", evidence_verified=True, topic="DAX", polarity="negative")],
         retrieved=[RetrievedItem(id="b", topic="DAX")],
@@ -127,9 +127,9 @@ def test_negative_questions_need_negative_knowledge_cited():
     # informational for ordinary questions, and a metric only over negative questions
     plain = EvalQuestion(id="p1", question="?", topic="DAX")
     assert (
-        run_all_checks(answer="x", insufficient_flag=False, question=plain, cited=[], retrieved=[])[
-            "negative_knowledge"
-        ]["value"]
+        run_all_checks(answer="x", no_results=False, question=plain, cited=[], retrieved=[])["negative_knowledge"][
+            "value"
+        ]
         is None
     )
     m = compute_metrics(

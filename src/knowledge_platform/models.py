@@ -480,6 +480,9 @@ class EvaluationResult(Base):
     judge: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)  # LLM judge verdict + rationale
     passed: Mapped[bool] = mapped_column(Boolean, default=False)
     failure_causes: Mapped[list[Any]] = mapped_column(JSON, default=list)
+    # primary class (audit P0.5/P0.6): expected_abstention | coverage_failure | retrieval_failure | uncited_answer
+    # | answer_generation_failure | citation_failure | validation_failure; NULL for an ordinary pass
+    failure_class: Mapped[str | None] = mapped_column(String(40))
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 

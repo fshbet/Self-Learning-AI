@@ -15,13 +15,13 @@ import uuid
 from collections import Counter
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from ... import __version__
 from ...adapters import get_embedder
 from ...config import get_settings
-from ...models import EvaluationResult, EvaluationRun, KnowledgeItem, RunStatus, utcnow
+from ...models import Document, EvaluationResult, EvaluationRun, KnowledgeItem, RunStatus, utcnow
 from ..extraction.chunker import CHUNKER_VERSION
 from ..extraction.prompts import JUDGE_SCHEMA, JUDGE_SYSTEM, JUDGE_USER, JUDGE_VERSION, PROMPT_VERSION
 from ..llm_service import call_json, model_for
@@ -34,6 +34,7 @@ from .checks import (
     CitedItem,
     RetrievedItem,
     failure_causes,
+    failure_class,
     run_all_checks,
 )
 
@@ -52,7 +53,9 @@ METRIC_KEYS = (
     "version_correctness",
     "validator_success",
     "negative_coverage",
+    "coverage",
     "unanswered_rate",
+    "uncited_rate",
 )
 REGRESSION_METRICS = ("accuracy", "citation_correctness")
 
@@ -84,6 +87,81 @@ def _item_facts(session: Session, ids: list[uuid.UUID]) -> dict[str, dict[str, A
             "statement": it.statement,
         }
     return out
+
+
+def _coverage(session: Session, plugin: DomainPlugin, q: EvalQuestion) -> dict[str, Any] | None:
+    """Does the knowledge base contain relevant knowledge for this question at all (audit P0.6)?
+
+    Three independent signals, each only when the question declares it: live items filed under the question's
+    exact topic, at least one of its authoritative sources crawled as a document, and *all* of its required
+    concepts appearing in live statements. Any positive signal = covered; none = coverage failure; no signals
+    declared = n/a. This is about *existence* of knowledge — retrieval quality is measured separately.
+    """
+    live = KnowledgeItem.status.in_(["SUPPORTED", "VERIFIED", "CONFLICTED", "STALE"])
+    signals: dict[str, Any] = {}
+    if q.topic:
+        top = q.topic.split("/")[0]
+        n_topic = session.execute(
+            select(func.count())
+            .select_from(KnowledgeItem)
+            .where(KnowledgeItem.domain_id == plugin.id, live, KnowledgeItem.topic.ilike(f"{q.topic}%"))
+        ).scalar_one()
+        n_branch = session.execute(
+            select(func.count())
+            .select_from(KnowledgeItem)
+            .where(KnowledgeItem.domain_id == plugin.id, live, KnowledgeItem.topic.ilike(f"{top}%"))
+        ).scalar_one()
+        # only the exact topic counts as coverage; the branch total is context (a whole area may be missing)
+        signals["topic_items"] = {"topic": n_topic, "branch": n_branch, "ok": n_topic > 0}
+    if q.authoritative_sources:
+        crawled = 0
+        for url in q.authoritative_sources:
+            key = url.split("#")[0].rstrip("/")
+            hit = session.execute(
+                select(func.count())
+                .select_from(Document)
+                .where(Document.domain_id == plugin.id, Document.url.ilike(f"{key}%"))
+            ).scalar_one()
+            crawled += 1 if hit else 0
+        signals["sources_crawled"] = {"crawled": crawled, "of": len(q.authoritative_sources), "ok": crawled > 0}
+    if q.required_concepts:
+        hits = 0
+        for concept in q.required_concepts:
+            found = session.execute(
+                select(func.count())
+                .select_from(KnowledgeItem)
+                .where(
+                    KnowledgeItem.domain_id == plugin.id,
+                    live,
+                    or_(
+                        KnowledgeItem.statement.ilike(f"%{concept}%"),
+                        KnowledgeItem.explanation.ilike(f"%{concept}%"),
+                        KnowledgeItem.subject.ilike(f"%{concept}%"),
+                    ),
+                )
+            ).scalar_one()
+            hits += 1 if found else 0
+        # required concepts are required: one of two present is a hint, not coverage
+        signals["concept_hits"] = {
+            "found": hits,
+            "of": len(q.required_concepts),
+            "ok": hits == len(q.required_concepts),
+        }
+    if not signals:
+        return None
+    positives = sum(1 for v in signals.values() if v["ok"])
+    covered = positives > 0
+    detail = "; ".join(
+        f"{k}: {v.get('topic', v.get('crawled', v.get('found')))}"
+        + (f"/{v['of']}" if "of" in v else (f" (+{v['branch']} in branch)" if "branch" in v else ""))
+        for k, v in signals.items()
+    )
+    return {
+        "ok": covered,
+        "detail": ("relevant knowledge present — " if covered else "no relevant knowledge in the base — ") + detail,
+        "value": positives / len(signals),
+        "signals": signals,
+    }
 
 
 def _judge(
@@ -163,12 +241,20 @@ def evaluate_question(session: Session, plugin: DomainPlugin, q: EvalQuestion, *
         for c in ans.citations
     ]
     checks = run_all_checks(
-        answer=ans.answer, insufficient_flag=ans.insufficient, question=q, cited=cited, retrieved=retrieved
+        answer=ans.answer,
+        no_results=ans.no_results,
+        question=q,
+        cited=cited,
+        retrieved=retrieved,
+        coverage=_coverage(session, plugin, q),
     )
 
     judge: dict[str, Any] = {}
-    if not q.expect_abstain and cited:
+    # every real answer is judged — cited or not (audit P0.5): an uncited answer must not escape as an abstention
+    if not q.expect_abstain and checks["answer_kind"]["kind"] != "abstention":
         cited_texts = [f"[{c['n']}] {facts.get(c['id'], {}).get('statement', c['statement'])}" for c in ans.citations]
+        if not cited_texts:  # uncited answer: the judge sees what *was* retrieved and can name the invented claims
+            cited_texts = [f"(retrieved, not cited) {r['statement']}" for r in ans.retrieved]
         judge = _judge(session, plugin, q, ans.answer, cited_texts)
 
     gating_ok = all(checks[name]["ok"] for name in GATING_CHECKS if name in checks)
@@ -180,6 +266,7 @@ def evaluate_question(session: Session, plugin: DomainPlugin, q: EvalQuestion, *
         )
         passed = gating_ok and judge_ok
     causes = failure_causes(checks, judge, q.expect_abstain) if not passed else []
+    klass = failure_class(checks, judge, q.expect_abstain, passed)
 
     return EvaluationResult(
         question_id=q.id,
@@ -192,6 +279,7 @@ def evaluate_question(session: Session, plugin: DomainPlugin, q: EvalQuestion, *
         judge=judge,
         passed=passed,
         failure_causes=causes,
+        failure_class=klass,
         latency_ms=int((time.perf_counter() - started) * 1000),
     )
 
@@ -234,6 +322,13 @@ def compute_metrics(results: list[EvaluationResult], questions: list[EvalQuestio
         "validator_success": _rate([val(r, "validators") for r in answerable]),
         "negative_coverage": _rate([val(r, "negative_knowledge") for r in answerable if by_id[r.question_id].negative]),
         "unanswered_rate": _rate([1.0 if r.checks["abstention"].get("abstained") else 0.0 for r in answerable]),
+        "uncited_rate": _rate(
+            [1.0 if r.checks.get("answer_kind", {}).get("kind") == "uncited_answer" else 0.0 for r in answerable]
+        ),
+        "coverage": _rate(
+            [ok(r, "coverage") if r.checks.get("coverage", {}).get("value") is not None else None for r in answerable]
+        ),
+        "failure_classes": dict(Counter(r.failure_class for r in results if r.failure_class)),
         "mean_latency_ms": int(sum(r.latency_ms for r in results) / len(results)) if results else 0,
         "failure_causes": dict(Counter(c for r in results for c in r.failure_causes)),
     }
