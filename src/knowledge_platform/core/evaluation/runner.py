@@ -23,7 +23,7 @@ from ...adapters import get_embedder
 from ...config import get_settings
 from ...models import Document, EvaluationResult, EvaluationRun, KnowledgeItem, RunStatus, utcnow
 from ..extraction.chunker import CHUNKER_VERSION
-from ..extraction.prompts import JUDGE_SCHEMA, JUDGE_SYSTEM, JUDGE_USER, JUDGE_VERSION, PROMPT_VERSION
+from ..extraction.prompts import ANSWER_VERSION, JUDGE_SCHEMA, JUDGE_SYSTEM, JUDGE_USER, JUDGE_VERSION, PROMPT_VERSION
 from ..llm_service import call_json, model_for
 from ..plugins.base import DomainPlugin, EvalQuestion
 from ..quality.scoring import SCORING_RULE_VERSION
@@ -203,6 +203,7 @@ def _config_snapshot(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
         "models": {"extract": model_for("extract"), "answer": model_for("answer"), "judge": model_for("reason")},
         "embedding": get_embedder().identity,
         "prompt_version": PROMPT_VERSION,
+        "answer_version": ANSWER_VERSION,
         "judge_version": JUDGE_VERSION,
         "chunker_version": CHUNKER_VERSION,
         "scoring_rule_version": SCORING_RULE_VERSION,

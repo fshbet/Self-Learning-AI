@@ -101,6 +101,9 @@ def extract_schema(knowledge_types: list[str]) -> dict[str, Any]:
     }
 
 
+# answer prompt + retrieval policy version: recorded in every evaluation's config so a change here is never mistaken
+# for a change in knowledge (1.1: caution labels for stale/conflicted/flagged items, CANDIDATE excluded by default)
+ANSWER_VERSION = "answer@1.1"
 ANSWER_SYSTEM = """You are an assistant that answers questions about "{domain_name}".
 Use ONLY the knowledge items provided below.
 
