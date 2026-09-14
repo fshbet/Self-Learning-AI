@@ -297,9 +297,15 @@ in your browser. Two checks keep other sites away from `http://127.0.0.1:8010/ap
   or `Sec-Fetch-Site: cross-site` — is answered `403` before it reaches a route. Requests without a browser origin
   (curl, `kp`, server-to-server) are unaffected.
 
-Outbound, the **SSRF guard** (below) keeps the crawler off internal addresses, and validators are static checks that
-never execute crawled content. If you expose the API beyond localhost, put an authenticating reverse proxy in front of
-it and add its origin to `KP_ALLOWED_ORIGINS`.
+Outbound, the **SSRF guard** (below) keeps the crawler off internal addresses. Validators declare whether they are
+`static` (pure checks, run in the worker) or `executing` (evaluate content): executing validators are refused
+in-process and only ever run through the isolated runner designed in
+[ADR 0003](docs/adr/0003-validator-isolation.md) — until it exists they are skipped and the skip is recorded on the
+item. The boundary only holds on loopback: `kp serve` **refuses** to bind to any other address unless you name
+what authenticates — `KP_AUTH_MODE=proxy` (an authenticating reverse proxy in front, its origin in
+`KP_ALLOWED_ORIGINS`) — or explicitly accept an unauthenticated network API with `KP_INSECURE_EXPOSE=true`.
+[ADR 0004](docs/adr/0004-authentication.md) has the threat model for local vs LAN/remote use and the design of the
+optional authentication layer (not implemented).
 
 ## Active falsification (optional)
 

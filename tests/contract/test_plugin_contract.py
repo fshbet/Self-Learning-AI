@@ -57,3 +57,64 @@ def test_powerbi_validators():
     assert m.applies_to({"code": "let Source = 1 in Source"})
     assert m.validate({"code": "let Source = 1 in Source"}).passed
     assert not m.validate({"code": "let Source = 1"}).passed
+
+
+def test_executing_validators_are_refused_in_process(tmp_path):
+    """ADR 0003 tier 0: a validator that declares it executes content never runs inside the worker; the skip is
+    recorded on the item so scoring cannot mistake 'not run' for 'passed'."""
+    from types import SimpleNamespace
+
+    from knowledge_platform.core import pipeline as pipeline_mod
+    from knowledge_platform.core.plugins.base import ValidationResult, Validator
+
+    calls: list[str] = []
+
+    class Static(Validator):
+        name, version = "static-check", "1.0"
+
+        def applies_to(self, item):
+            return True
+
+        def validate(self, item):
+            calls.append("static")
+            return ValidationResult(validator=self.name, version=self.version, passed=True, details={}, message="ok")
+
+    class Executing(Validator):
+        name, version, kind = "runs-code", "1.0", "executing"
+
+        def applies_to(self, item):
+            return True
+
+        def validate(self, item):
+            calls.append("executing")  # must never happen
+            return ValidationResult(validator=self.name, version=self.version, passed=True, details={}, message="ran")
+
+    plugin = SimpleNamespace(validators=lambda: [Static(), Executing()])
+    item = SimpleNamespace(
+        id="x",
+        statement="s",
+        subject="a",
+        predicate="b",
+        object="c",
+        knowledge_type="fact",
+        code="1+1",
+        details={},
+        product_version=None,
+        topic="",
+        tags=[],
+        explanation="",
+        evidence=[],
+        validator_versions={},
+        origin="DIRECT",
+        polarity="positive",
+    )
+    monkey = pipeline_mod.item_as_dict
+    pipeline_mod.item_as_dict = lambda it: {"code": it.code, "statement": it.statement}
+    try:
+        ran = pipeline_mod.run_validators(None, item, plugin)
+    finally:
+        pipeline_mod.item_as_dict = monkey
+    assert ran == 1 and calls == ["static"]
+    assert item.validator_versions["static-check"] == "1.0"
+    assert item.validator_versions["runs-code"]["skipped"].startswith("executing validators need")
+    assert all(e.details["validator"] != "runs-code" for e in item.evidence)

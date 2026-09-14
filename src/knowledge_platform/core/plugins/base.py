@@ -235,13 +235,20 @@ class ValidationResult:
 class Validator(ABC):
     """A domain validator tests a knowledge item rather than judging it (§20).
 
-    ``applies_to`` decides cheaply whether the validator is relevant; ``validate``
-    must be side-effect free. Validators that execute code must do so in a
-    sandbox — the core will not enforce that for you.
+    ``applies_to`` decides cheaply whether the validator is relevant; ``validate`` must be side-effect free.
+
+    ``kind`` declares the isolation the validator needs (ADR 0003):
+
+    * ``static`` — a pure function of the payload: no I/O, no subprocesses, never executes item content. Runs in
+      the worker process.
+    * ``executing`` — evaluates content (DAX, Python, SQL, simulations). The core refuses to run it in-process; it
+      only ever runs through the isolated validator runner, and is skipped (recorded as skipped) until that runner
+      exists. Declaring ``static`` for a validator that executes content is a contract violation.
     """
 
     name: str = "abstract"
     version: str = "0.0.0"
+    kind: str = "static"  # static | executing
 
     def applies_to(self, item: dict[str, Any]) -> bool:
         return False

@@ -1,5 +1,6 @@
 """Browser-origin boundary of the local API (audit P0.1). No database needed: refusals happen before any route."""
 
+import pytest
 from fastapi.testclient import TestClient
 
 from knowledge_platform.api.app import app
@@ -58,3 +59,17 @@ def test_reads_and_non_browser_clients_are_unaffected():
     # no Origin header at all (curl, kp CLI, scripts): the guard does not interfere — the route decides
     r = client.post("/api/domains/reload")
     assert r.status_code != 403
+
+
+def test_exposure_guard_only_allows_non_loopback_binds_with_a_named_layer():
+    """ADR 0004: the local boundary holds on loopback only; anything else must name what authenticates."""
+    from knowledge_platform.api.security import ExposureError, check_exposure
+
+    assert check_exposure("127.0.0.1") is None and check_exposure("localhost") is None
+    assert check_exposure("::1") is None and check_exposure("127.0.0.2") is None
+    with pytest.raises(ExposureError):
+        check_exposure("0.0.0.0", auth_mode="none", insecure_expose=False)
+    with pytest.raises(ExposureError):
+        check_exposure("192.168.1.20", auth_mode="none", insecure_expose=False)
+    assert "reverse proxy" in check_exposure("0.0.0.0", auth_mode="proxy", insecure_expose=False)
+    assert "INSECURE" in check_exposure("0.0.0.0", auth_mode="none", insecure_expose=True)

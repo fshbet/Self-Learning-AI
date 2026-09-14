@@ -593,7 +593,16 @@ def worker() -> None:
 @app.command()
 def serve(host: str | None = None, port: int | None = None, reload: bool = False) -> None:
     """Start the API (and the embedded worker unless disabled)."""
+    from .api.security import ExposureError, check_exposure
+
     s = get_settings()
+    try:
+        warning = check_exposure(host or s.api_host)
+    except ExposureError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=2) from exc
+    if warning:
+        console.print(f"[yellow]{warning}[/yellow]")
     uvicorn.run(
         "knowledge_platform.api.app:app",
         host=host or s.api_host,

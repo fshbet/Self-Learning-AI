@@ -73,3 +73,12 @@ sources:
     source_class: external
     mirror_of: vendor-docs
 ```
+
+## Validators and the isolation boundary
+
+A validator declares `kind = "static"` (default) or `kind = "executing"`. Static validators are pure functions of
+the item payload (no I/O, no subprocesses, nothing executed) and run inside the worker; executing validators —
+anything that evaluates DAX, Python, SQL, simulations or calculations — are refused in-process and only ever run
+through the isolated validator runner described in `docs/adr/0003-validator-isolation.md`. Until that runner
+exists they are skipped and the skip is recorded on the item (`validator_versions`), so an item is never scored by
+a validator that did not run.

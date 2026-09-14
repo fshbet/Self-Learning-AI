@@ -210,7 +210,7 @@ export type KnowledgeDetail = Knowledge & {
   effective_date: string | null;
   needs_revalidation: boolean;
   revalidation_reason: string | null;
-  validator_versions: Record<string, string>;
+  validator_versions: Record<string, string | { version: string; skipped: string }>;
   quality_factors: Record<string, unknown>;
   scoring_rule_version: string;
   content_hash: string;

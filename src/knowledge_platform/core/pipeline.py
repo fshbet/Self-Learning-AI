@@ -281,6 +281,12 @@ def run_validators(session: Session, item: KnowledgeItem, plugin: DomainPlugin) 
     payload = item_as_dict(item)
     versions = dict(item.validator_versions or {})
     for v in plugin.validators():
+        if getattr(v, "kind", "static") != "static":
+            # ADR 0003: content-executing validators never run inside the worker process. Until the isolated
+            # runner exists they are skipped — and the skip is recorded so "not run" can never read as "passed".
+            log.warning("validator %s is %r: skipped (no isolated runner configured)", v.name, v.kind)
+            versions[v.name] = {"version": v.version, "skipped": f"{v.kind} validators need the isolated runner"}
+            continue
         try:
             if not v.applies_to(payload):
                 continue

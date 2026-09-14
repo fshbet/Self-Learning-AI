@@ -78,6 +78,10 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8010
     allowed_origins: str = ""  # extra browser origins allowed to use the API (comma-separated), see api/security.py
+    # exposure guard (ADR 0004): binding beyond loopback requires naming the layer that authenticates —
+    # "proxy" (an authenticating reverse proxy in front) — or an explicit KP_INSECURE_EXPOSE=true. "none" = local mode.
+    auth_mode: Literal["none", "proxy"] = "none"
+    insecure_expose: bool = False
     embedded_worker: bool = True
     worker_poll_seconds: float = 2.0
     scheduler_enabled: bool = True

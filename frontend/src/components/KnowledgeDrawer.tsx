@@ -269,7 +269,7 @@ export default function KnowledgeDrawer({ id, onClose }: { id: string | null; on
             <KV k="Scoring rule" v={item.scoring_rule_version} mono />
             <KV k="Provenance / origin" v={`${item.provenance} · ${item.origin} · ${item.polarity}`} />
             {Object.keys(item.validator_versions ?? {}).length > 0 && (
-              <KV k="Validators" v={Object.entries(item.validator_versions).map(([k, v]) => `${k}@${v}`).join(", ")} mono />
+              <KV k="Validators" v={Object.entries(item.validator_versions).map(([k, v]) => (typeof v === "string" ? `${k}@${v}` : `${k}@${v.version} (skipped: ${v.skipped})`)).join(", ")} mono />
             )}
             <KV k="Embedding" v={item.embedding_model ?? "—"} mono />
             <KV k="Content hash" v={item.content_hash} mono />

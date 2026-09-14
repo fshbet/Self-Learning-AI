@@ -25,6 +25,41 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from ..config import get_settings
 
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1", "[::1]"})
+
+
+class ExposureError(RuntimeError):
+    pass
+
+
+def check_exposure(host: str, *, auth_mode: str | None = None, insecure_expose: bool | None = None) -> str | None:
+    """The exposure guard (ADR 0004): the local boundary (origin checks, no login) is only sufficient on loopback.
+    Binding to any other address requires ``KP_AUTH_MODE=proxy`` (an authenticating reverse proxy in front) or the
+    explicit ``KP_INSECURE_EXPOSE=true``. Returns a warning to log, None when nothing needs saying; raises
+    ExposureError when serving must not start."""
+    s = get_settings()
+    mode = auth_mode if auth_mode is not None else s.auth_mode
+    insecure = s.insecure_expose if insecure_expose is None else insecure_expose
+    h = (host or "").strip().lower()
+    if h in LOOPBACK_HOSTS or h.startswith("127."):
+        return None
+    if mode == "proxy":
+        return (
+            f"serving on {host} behind an authenticating reverse proxy (KP_AUTH_MODE=proxy): make sure nothing "
+            "else can reach this port and the proxy's origin is in KP_ALLOWED_ORIGINS"
+        )
+    if insecure:
+        return (
+            f"INSECURE: serving on {host} without authentication (KP_INSECURE_EXPOSE=true) — anyone who can reach "
+            "this port can read and change everything"
+        )
+    raise ExposureError(
+        f"refusing to serve on {host}: the local security boundary (same-origin checks, no login) only holds on "
+        "127.0.0.1. Put an authenticating reverse proxy in front and set KP_AUTH_MODE=proxy, or set "
+        "KP_INSECURE_EXPOSE=true if you really want an unauthenticated API on the network (see docs/adr/0004)."
+    )
+
+
 DEV_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")  # vite dev server (proxies /api)
 
 
