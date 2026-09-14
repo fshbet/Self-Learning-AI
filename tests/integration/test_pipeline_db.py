@@ -382,9 +382,30 @@ def test_snapshot_is_reproducible_verifiable_and_gated(plugin, fake_providers):
         # conflicts from the earlier test are exported, with both sides retained
         conflicts = json.loads(read_file(a, "conflicts.json").decode())
         assert conflicts and conflicts[0]["status"] == "OPEN"
-        # integrity verification and zip packaging
+        # the contract ships with the data and the stored files satisfy it (audit P1.1)
+        assert m["export_schema_version"] == SCHEMA_VERSION and m["database_schema_version"]
+        assert {"schema/knowledge.schema.json", "schema/ai_knowledge.schema.json", "schema/vocabulary.json"} <= set(
+            m["files"]
+        )
+        assert m["gate"]["schema_files_ok"] is True
+        shipped = json.loads(read_file(a, "schema/knowledge.schema.json").decode())
+        assert shipped["x-export-schema-version"] == SCHEMA_VERSION and shipped["x-snapshot-file"] == "knowledge.jsonl"
+        # integrity verification (hashes + schema) and zip packaging
         v = verify_snapshot(a)
-        assert v["ok"], v
+        assert v["ok"] and v["schema_checked"] and v["schema_problems"] == [], v
+        # a stored record that no longer satisfies the shipped schema is reported, and the hash mismatch too
+        from knowledge_platform.adapters import get_object_store
+
+        store = get_object_store()
+        key = f"{a.object_prefix}/ai/knowledge.jsonl"
+        original = store.get(key)
+        assert b'"usage":"' in original
+        store.put(key, original.replace(b'"usage":"', b'"usage":"trust-', 1), "application/json")
+        broken = verify_snapshot(a)
+        assert not broken["ok"] and "ai/knowledge.jsonl" in broken["mismatched"]
+        assert any("usage" in p for p in broken["schema_problems"])
+        store.put(key, original, "application/json")
+        assert verify_snapshot(a)["ok"]
         with zipfile.ZipFile(io.BytesIO(zip_snapshot(a))) as zf:
             names = zf.namelist()
             assert any(n.endswith("/manifest.json") for n in names) and any(

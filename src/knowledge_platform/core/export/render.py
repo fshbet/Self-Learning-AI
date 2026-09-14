@@ -353,7 +353,9 @@ def readme(manifest: Manifest) -> str:
             f"# {manifest.plugin_name} — Canonical Knowledge Snapshot",
             "",
             f"- Domain: `{manifest.domain}` · plugin {manifest.plugin_version} · platform {manifest.platform_version}",
-            f"- Schema: {manifest.schema_version} · id, version, timestamp and integrity hash: see `manifest.json`",
+            f"- Export schema: {manifest.export_schema_version} (`schema/`; minor = additive, major = breaking; "
+            "independent of the platform, database and plugin versions) · id, version, timestamp and integrity "
+            "hash: see `manifest.json`",
             "",
             "## What this is",
             "",
@@ -391,6 +393,8 @@ def readme(manifest: Manifest) -> str:
             "| `ai/index.json` | navigation index: taxonomy → item ids, counts, subjects, recommended filters |",
             "| `ai/knowledge.md` | the same knowledge grouped by taxonomy for reading or long-context ingestion |",
             "| `knowledge.html` | human-readable rendering |",
+            "| `schema/*.schema.json`, `schema/vocabulary.json` | the export contract: JSON Schema (draft 2020-12) "
+            "for every file above and the meaning of every controlled value; validate against these |",
             "",
             "## Consuming it (AI systems)",
             "",

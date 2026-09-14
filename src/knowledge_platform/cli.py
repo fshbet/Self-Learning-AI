@@ -369,6 +369,21 @@ def export_list(domain: str | None = typer.Argument(None)) -> None:
         console.print(table)
 
 
+@export_app.command("schema")
+def export_schema(out: Path = typer.Option(Path("docs/export-schema"), help="directory for the schema files")) -> None:
+    """Write the export contract (JSON Schema per snapshot file + vocabulary) — the same files every snapshot
+    ships under schema/. The committed copy under docs/export-schema is kept identical by a test."""
+    from .core.export.canonical import dumps_canonical
+    from .core.export.schema import EXPORT_SCHEMA_VERSION, schema_files
+
+    out.mkdir(parents=True, exist_ok=True)
+    for path, doc in schema_files().items():
+        target = out / Path(path).name
+        target.write_text(dumps_canonical(doc) + "\n", encoding="utf-8")
+        console.print(f"wrote {target}")
+    console.print(f"export schema version {EXPORT_SCHEMA_VERSION}")
+
+
 @export_app.command("verify")
 def export_verify(snapshot_id: str) -> None:
     """Recompute file hashes and the integrity hash of a stored snapshot."""

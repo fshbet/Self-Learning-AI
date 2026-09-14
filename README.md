@@ -94,6 +94,7 @@ powerbi-knowledge-v5/
 ├── ai/index.json        navigation index: taxonomy → ids, subjects → ids, counts, recommended filters
 ├── ai/knowledge.md      the same knowledge grouped by taxonomy (long-context ingestion / reading)
 ├── knowledge.html · README.md
+├── schema/              the export contract: JSON Schema (draft 2020-12) per file + vocabulary.json
 └── ext/                 optional plugin-provided files (DomainPlugin.export_extensions)
 ```
 
@@ -110,6 +111,13 @@ statement, explanation, code, structured details (expected result, common mistak
 (negative records say what does *not* work), `validated_by`, `dependencies` and `citations` (documents with
 url/title/section/excerpt, or the person/organisation that provided the knowledge). The snapshot README spells out
 the consumption steps; `ai/index.json` lets an agent navigate by taxonomy or subject without reading everything.
+
+**The export contract is formal and versioned independently** (`manifest.export_schema_version`, currently 1.2;
+`platform_version`, `database_schema_version` and `plugin_version` are separate fields). Every snapshot ships the
+JSON Schemas it satisfies under `schema/` and is validated against them at build time and on `verify`; the same
+files are committed under [`docs/export-schema/`](docs/export-schema/) with a
+[changelog](docs/export-schema/CHANGELOG.md) — minor versions only add, major versions break — and `kp export schema`
+regenerates them (a test keeps the copy in sync).
 
 **Trust state travels with the export** (schema 1.1): every knowledge record carries `needs_review` / `review_kind` /
 `review_reason`, `needs_revalidation` / `revalidation_reason` and an `evidence_status` summary (verified, unverified,

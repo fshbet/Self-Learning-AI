@@ -16,7 +16,7 @@ from collections import defaultdict
 from typing import Any
 
 from pydantic import ValidationError
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session, selectinload
 
 from ... import PLUGIN_API_VERSION, __version__
@@ -40,7 +40,9 @@ from ..runtime_config import effective_config
 from .canonical import dumps_canonical, integrity_hash, iso, jsonl, sha256_bytes
 from .render import RENDER_VERSION, ai_index, ai_markdown, ai_record, markdown_to_html, readme
 from .schema import (
+    SCHEMA_TARGETS,
     SCHEMA_VERSION,
+    AIKnowledgeRecord,
     ChangelogRecord,
     ConflictRecord,
     EvidenceRecord,
@@ -49,7 +51,9 @@ from .schema import (
     Manifest,
     RelationshipRecord,
     SourceRecord,
+    schema_files,
 )
+from .validate import validate_files
 
 log = logging.getLogger(__name__)
 
@@ -411,6 +415,11 @@ def build_snapshot(session: Session, plugin: DomainPlugin, *, created_by: str = 
         data = gather(session, plugin)
         gate = run_gate(data)
         files = _render_files(snap, plugin, data, gate)
+        # every rendered file must satisfy the schema it ships with (audit P1.1)
+        problems = validate_files(files)
+        if problems:
+            raise ExportGateError([f"schema-file: {p}" for p in problems])
+        gate["schema_files_ok"] = True
         store = get_object_store()
         digests: dict[str, str] = {}
         sizes: dict[str, int] = {}
@@ -421,6 +430,7 @@ def build_snapshot(session: Session, plugin: DomainPlugin, *, created_by: str = 
             digests[path] = sha256_bytes(content)
             sizes[path] = len(content)
         manifest = _manifest(snap, plugin, data, gate, digests, sizes, files)
+        manifest.database_schema_version = _database_schema_version(session)
         manifest_bytes = dumps_canonical(manifest).encode("utf-8")
         store.put(f"{prefix}/manifest.json", manifest_bytes, "application/json")
         snap.manifest = json.loads(manifest_bytes)
@@ -439,6 +449,13 @@ def build_snapshot(session: Session, plugin: DomainPlugin, *, created_by: str = 
     snap.finished_at = utcnow()
     session.flush()
     return snap
+
+
+def _database_schema_version(session: Session) -> str | None:
+    try:
+        return session.execute(text("select version_num from alembic_version")).scalar_one_or_none()
+    except Exception:  # not an alembic-managed database (tests, foreign engines)
+        return None
 
 
 def _render_files(snap: Snapshot, plugin: DomainPlugin, data: dict[str, Any], gate: dict[str, Any]) -> dict[str, bytes]:
@@ -472,7 +489,10 @@ def _render_files(snap: Snapshot, plugin: DomainPlugin, data: dict[str, Any], ga
         "conflicts.json": dumps_canonical([c.model_dump() for c in data["conflicts"]]).encode("utf-8"),
         "changelog.jsonl": jsonl(data["changelog"]),
         "ai/knowledge.jsonl": jsonl(
-            ai_record(k, ev_by_item.get(k.id, []), sorted(set(rel_by_item.get(k.id, [])))) for k in data["knowledge"]
+            AIKnowledgeRecord.model_validate(
+                ai_record(k, ev_by_item.get(k.id, []), sorted(set(rel_by_item.get(k.id, []))))
+            ).model_dump()
+            for k in data["knowledge"]
         ),
         "ai/index.json": dumps_canonical(ai_index(data["knowledge"], data["glossary"])).encode("utf-8"),
     }
@@ -489,6 +509,9 @@ def _render_files(snap: Snapshot, plugin: DomainPlugin, data: dict[str, Any], ga
     counts, status_counts = _counts(data)
     provisional.counts, provisional.status_counts = counts, status_counts
     files["README.md"] = readme(provisional).encode("utf-8")
+    # the contract travels with the data: JSON Schemas + vocabulary (audit P1.1)
+    for path, doc in schema_files().items():
+        files[path] = dumps_canonical(doc).encode("utf-8")
     return files
 
 
@@ -564,25 +587,48 @@ def read_file(snap: Snapshot, path: str) -> bytes:
     return get_object_store().get(f"{snap.object_prefix}/{path}")
 
 
-def verify_snapshot(snap: Snapshot) -> dict[str, Any]:
-    """Recompute every file hash and the integrity hash; report mismatches."""
+def verify_snapshot(snap: Snapshot, *, validate_schema: bool = True) -> dict[str, Any]:
+    """Recompute every file hash and the integrity hash; report mismatches. With ``validate_schema`` every
+    stored file is also validated against the JSON Schemas stored in the snapshot itself (audit P1.1)."""
     store = get_object_store()
     manifest = snap.manifest or {}
     mismatched: list[str] = []
     digests: dict[str, str] = {}
+    contents: dict[str, bytes] = {}
     for path, meta in (manifest.get("files") or {}).items():
         try:
             data = store.get(f"{snap.object_prefix}/{path}")
         except Exception:
             mismatched.append(f"{path}: missing")
             continue
+        contents[path] = data
         digest = sha256_bytes(data)
         digests[path] = digest
         if digest != meta.get("sha256"):
             mismatched.append(path)
     recomputed = integrity_hash(digests)
     ok = not mismatched and recomputed == manifest.get("integrity_hash")
-    return {"ok": ok, "mismatched": mismatched, "recomputed": recomputed, "expected": manifest.get("integrity_hash")}
+    schema_problems: list[str] = []
+    if validate_schema and contents:
+        shipped = {
+            name: json.loads(contents[f"schema/{name}.schema.json"])
+            for name in SCHEMA_TARGETS
+            if f"schema/{name}.schema.json" in contents
+        }
+        try:
+            manifest_bytes = store.get(f"{snap.object_prefix}/manifest.json")
+            contents["manifest.json"] = manifest_bytes
+        except Exception:
+            pass
+        schema_problems = validate_files(contents, schemas=shipped)
+    return {
+        "ok": ok and not schema_problems,
+        "mismatched": mismatched,
+        "recomputed": recomputed,
+        "expected": manifest.get("integrity_hash"),
+        "schema_problems": schema_problems,
+        "schema_checked": bool(validate_schema and contents),
+    }
 
 
 def zip_snapshot(snap: Snapshot) -> bytes:

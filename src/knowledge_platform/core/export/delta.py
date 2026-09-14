@@ -304,6 +304,7 @@ def build_delta_snapshot(
             sizes[path] = len(content)
         manifest = {
             "schema_version": SCHEMA_VERSION,
+            "export_schema_version": SCHEMA_VERSION,
             "delta_version": DELTA_VERSION,
             "snapshot_id": str(snap.id),
             "snapshot_version": snap.version,
