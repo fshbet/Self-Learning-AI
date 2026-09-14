@@ -379,3 +379,30 @@ and committed in order:
 Deliberately not built (per decisions D9/D10 and the requirement analysis): media handling (images, video,
 OCR) and PDF export. `sources.reliability_history` remains unused — the per-source reliability signal is the
 evaluation history plus the conflict/stale record, which the dashboard already exposes.
+
+## 16. Post-audit hardening (2026-09-14)
+
+The independent baseline audit (Functional beta; snapshot and plugin architecture "yes with conditions") led to
+the following, each with regression tests (139 tests, 82 % coverage):
+
+| Item | Commit | What changed |
+|---|---|---|
+| P0.1 local API origins | `f582d62` | CORS limited to own origins; Origin guard refuses cross-origin mutations |
+| P0.2 review flags | `3a615ca` | `needs_review` separate from `needs_revalidation`; falsification never auto-cleared; explicit dismiss + review log |
+| P0.3 trust state in exports | `ddcc1c0` | flags + `evidence_status` exported; `usage: caution` and a `Caution:` first line for flagged items |
+| P0.4 delta evidence | `ac63291` | modified records carry `changes[id]` (changed fields, before/after); base + delta reproduces head files |
+| P0.5/0.6 evaluation | `73ed868` | uncited answers judged and classed; coverage signal; primary `failure_class`; coverage / uncited metrics |
+| P1.1/1.2 export schema | `ea10dc0` | JSON Schema + vocabulary shipped in every snapshot, validated at build/verify; `export_schema_version` + changelog |
+| P1.3 derived knowledge | `8a8921f` | DERIVED/SYNTHESIZED entry with premises + rationale; no fabricated quote; premise-bound scoring |
+| P1.4 freshness | `a53b06e` | `last_source_checked_at` / `last_content_changed_at`; unchanged crawls confirm, never re-verify |
+| P1.5 type semantics | `c88ee63` | plugin-declared polarity/role/labels; core vocabulary assumptions removed |
+| P1.6 contradictions | `6b8d247` | polarity-aware pairing; `compatible_under` relations keep qualified verdicts |
+| P1.7 propagation | `a38463a` | transitive, cycle-safe, deterministic; chains settle in dependency order |
+| P1.8 source classes | `0e1580d` | curated `source_class`; authority never implies official; re-derivation on sync |
+| P1.9 independence | `91c3d71` | fingerprint + rel=canonical mirrors, declared `mirror_of`, copied-excerpt rule |
+| P1.10 netguard | `4d100e2` | literal canonicalisation, TTL DNS cache, resolve-once/connect-to-validated-IP transport |
+| P1.11 tests | `7b50779` | queue/worker/scheduler/CLI behaviour tests |
+
+Still deferred by decision: media handling, PDF export, fuzzy source similarity. P2 candidates (not started):
+`kp export apply`, `documents.jsonl`, supersede-by-new-version, locator refresh, language-aware FTS, excluding
+CANDIDATE items from answers, coverage/evidence/verification-quality dashboards.
