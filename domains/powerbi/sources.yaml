@@ -151,3 +151,83 @@ sources:
     max_pages: 25
     allow_patterns: ["powerbi\\.microsoft\\.com/en-us/blog/"]
     deny_patterns: ["\\?", "/page/", "/category/", "/tag/"]
+
+  # --- P2.0 coverage: areas the seed catalog did not reach (visualization, service, developer/API,
+  #     troubleshooting, Fabric, enterprise capacities). Same publisher and terms as the sections above.
+  - key: ms-learn-powerbi-create-reports
+    name: Microsoft Learn — Power BI reports & visualizations
+    url: https://learn.microsoft.com/en-us/power-bi/create-reports/
+    publisher: Microsoft
+    authority: 95
+    source_class: official
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 168
+    max_depth: 2
+    max_pages: 60
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/power-bi/create-reports/", "learn\\.microsoft\\.com/en-us/power-bi/visuals/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-powerbi-collaborate-share
+    name: "Microsoft Learn — Power BI Service: workspaces, apps, sharing"
+    url: https://learn.microsoft.com/en-us/power-bi/collaborate-share/
+    publisher: Microsoft
+    authority: 95
+    source_class: official
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 168
+    max_depth: 2
+    max_pages: 50
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/power-bi/collaborate-share/", "learn\\.microsoft\\.com/en-us/power-bi/consumer/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-powerbi-developer
+    name: Microsoft Learn — Power BI developer (embedded analytics, APIs, visuals)
+    url: https://learn.microsoft.com/en-us/power-bi/developer/
+    publisher: Microsoft
+    authority: 95
+    source_class: official
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 336
+    max_depth: 2
+    max_pages: 50
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/power-bi/developer/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-powerbi-support
+    name: Microsoft Learn — Power BI troubleshooting & support
+    url: https://learn.microsoft.com/en-us/power-bi/support/
+    publisher: Microsoft
+    authority: 95
+    source_class: official
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 168
+    max_depth: 2
+    max_pages: 40
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/power-bi/support/", "learn\\.microsoft\\.com/en-us/power-bi/troubleshoot/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-fabric-fundamentals
+    name: Microsoft Learn — Microsoft Fabric fundamentals
+    url: https://learn.microsoft.com/en-us/fabric/fundamentals/
+    publisher: Microsoft
+    authority: 95
+    source_class: official
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 168
+    max_depth: 2
+    max_pages: 40
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/fabric/fundamentals/", "learn\\.microsoft\\.com/en-us/fabric/get-started/"]
+    deny_patterns: ["\\?"]
+
+  - key: ms-learn-fabric-enterprise
+    name: "Microsoft Learn — Fabric enterprise: capacities, licensing, performance"
+    url: https://learn.microsoft.com/en-us/fabric/enterprise/
+    publisher: Microsoft
+    authority: 95
+    source_class: official
+    license: CC BY 4.0 (Microsoft Learn docs)
+    crawl_frequency_hours: 168
+    max_depth: 2
+    max_pages: 40
+    allow_patterns: ["learn\\.microsoft\\.com/en-us/fabric/enterprise/", "learn\\.microsoft\\.com/en-us/power-bi/enterprise/"]
+    deny_patterns: ["\\?"]
