@@ -434,7 +434,7 @@ the following, each with regression tests (139 tests, 82 % coverage):
 | guards | `1344ef6` | no regeneration on abstention / uncited answers; validator-failed label + penalty; single-scan document frequencies; frozen P2 prompt |
 | stage 12 observability | `900e12a` | `/api/search` signals + explanation, `/api/ask` mode/plan/regeneration/timings, Search & Ask page, `kp ask --explain` |
 | phase 8 tests | `5ba350f` | 14 DB-backed regression/adversarial cases; roboticslab retrieval from plugin declarations; `type_match` signal; plugin cues first |
-| stage 11 + report | `docs/reports/p3/final-report.md` | runs A/B/C/D (`scripts/p3_compare.py`), failure decomposition, performance, second-domain validation |
+| stage 11 + report | `fc6407c`, `9a16f27` | runs A/B/C/D (`scripts/p3_compare.py`), failure decomposition, performance, second-domain validation |
 
 Awaiting approval (designed, not built): validator runner tiers 1–2 (ADR 0003), proxy/token authentication
 (ADR 0004), discovery auto-approval policy (ADR 0005). Still deferred by decision: media handling, PDF export,
