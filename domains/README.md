@@ -44,6 +44,12 @@ sample_questions:                                                   # shown on t
 language: de                                                        # drives lexical search: de -> 'german'
 retrieval:
   text_search_config: german                                        # optional explicit PostgreSQL config
+  synonyms:                                                         # lexical variants the corpus uses (ADR 0006)
+    payload: [lifting capacity, load rating]                        #   query "lifting capacity" also searches "payload"
+  intent_cues:                                                      # extra regex cues per core intent, tried first
+    limitation: ['\bhazards?\b']                                  #   "which hazard ..." is a limitation question here
+  intent_types:                                                     # optional: which types an intent prefers
+    limitation: [hazard, safety_rule]                               #   (default: derived from roles / polarity)
 discovery:                                                          # new-source discovery (ADR 0005)
   queries: ["robot arm payload specification"]                      # `discovery_queries` still works as an alias
   prefer_hosts: ["docs.vendor.example"]                             # +25 relevance, still needs approval
@@ -54,6 +60,15 @@ discovery:                                                          # new-source
 
 `role`: `foundation` | `dependent` | `example` | `neutral`; `polarity`: `positive` | `negative`. The declaration is
 exported in every snapshot's `glossary.json` (`knowledge_type_specs`), so consumers read the same semantics.
+
+**Retrieval behaviour (ADR 0006).** Query analysis, ranking, expansion and the answer plan are domain-independent;
+everything a domain knows about its own vocabulary comes from `retrieval.*`: `synonyms` (declared lexical
+variants — the core never guesses them), `intent_cues` (regexes added to the core's intent classifier, tried
+before the core defaults so a domain can say "which hazard" is a limitation question), `intent_types` (override of
+the knowledge types an intent prefers; the default is derived from the declared roles and polarity). Entities are
+the query n-grams filed as subjects in the domain's live knowledge plus identifier-looking tokens; a question that
+names a declared knowledge type ("which hazard", "limitations of") prefers items of that type. Every ranking
+contribution is recorded per item and shown on the Search & Ask page ("why did this rank here?").
 
 **Language / search behaviour.** The core does not assume English. Lexical retrieval uses the PostgreSQL
 text-search configuration the plugin declares (`retrieval.text_search_config`) or, when absent, the one derived

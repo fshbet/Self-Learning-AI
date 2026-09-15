@@ -493,17 +493,26 @@ def run_evaluation(
         session.flush()
         return ev
 
-    baseline = session.execute(
-        select(EvaluationRun)
-        .where(
-            EvaluationRun.domain_id == plugin.id,
-            EvaluationRun.dataset_version == dataset_version,
-            EvaluationRun.status == RunStatus.DONE,
-            EvaluationRun.id != ev.id,
-        )
-        .order_by(EvaluationRun.finished_at.desc())
-        .limit(1)
-    ).scalar_one_or_none()
+    # the regression baseline is the latest finished run of the *same answer mode* (a P2-mode run is not a
+    # regression of a P3-mode one); runs recorded before modes existed count as p3
+    baseline = next(
+        (
+            run
+            for run in session.execute(
+                select(EvaluationRun)
+                .where(
+                    EvaluationRun.domain_id == plugin.id,
+                    EvaluationRun.dataset_version == dataset_version,
+                    EvaluationRun.status == RunStatus.DONE,
+                    EvaluationRun.id != ev.id,
+                )
+                .order_by(EvaluationRun.finished_at.desc())
+                .limit(50)
+            ).scalars()
+            if (run.config or {}).get("answer_mode", "p3") == mode
+        ),
+        None,
+    )
 
     try:
         for q in questions:

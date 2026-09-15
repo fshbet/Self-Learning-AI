@@ -220,7 +220,7 @@ def eval_run(
     domain: str,
     question: list[str] = typer.Option(None, "--question", "-q", help="limit to question id(s)"),
     fail_on_regression: bool = typer.Option(False, help="exit with code 2 when a regression is detected"),
-    mode: str = typer.Option("p3", help="answer mode: p2 (baseline) | p3-retrieval | p3 (ADR 0006)"),
+    mode: str = typer.Option("p3", help="answer mode: p2 (baseline) | p3-retrieval | p3-plan (no regeneration) | p3"),
 ) -> None:
     """Run the domain's golden questions against the current knowledge base and store the results."""
     from .core.evaluation.runner import METRIC_KEYS, run_evaluation
@@ -687,7 +687,7 @@ def search(
 def ask(
     domain: str,
     question: str,
-    mode: str = typer.Option("p3", help="answer mode: p2 (baseline) | p3-retrieval | p3 (ADR 0006)"),
+    mode: str = typer.Option("p3", help="answer mode: p2 (baseline) | p3-retrieval | p3-plan (no regeneration) | p3"),
     explain: bool = typer.Option(False, help="show the plan, completeness, regeneration, timings and ranking reasons"),
 ) -> None:
     """Grounded answer with citations."""

@@ -423,6 +423,19 @@ the following, each with regression tests (139 tests, 82 % coverage):
 | P2.0 / P2.9 live run | `f87bbc3`, `82fe99b`, `9b1a4e0` | 186-document crawl (6,100 items), machine-restart recovery, defects found live: silent loss of failed sections, ILIKE subjects, revalidation churn |
 | P2.11 report | `docs/reports/p2/final-report.md` | recovery, growth, evaluation (coverage 0.45→1.0, citation 0.55→1.0, accuracy unchanged), stability, snapshot v18 + delta v20 + apply verified |
 
+### 16.2 P3 — retrieval and answer intelligence (ADR 0006, 2026-09-15)
+
+| Item | Commit | What |
+|---|---|---|
+| diagnosis + offline harness | `9478f8d` | `docs/reports/p3/diagnosis.md`; `kp eval retrieval` (concept recall@K, precision, MRR, authoritative hit) |
+| stages 1–2 query analysis | `fa79bf9` | normalisation, hyphen/compound variants, plugin synonyms, lexemes, entities, deterministic intent |
+| stages 3–6 retrieval | `f70ea96` | vector + weighted-OR lexical + rare-term + entity channels; explainable ranking; diversity; bounded expansion |
+| stages 7–10 answers | `5409510` | 12-item context with source/authority/excerpt, deterministic plan, lexeme-space completeness, one targeted regeneration |
+| guards | `1344ef6` | no regeneration on abstention / uncited answers; validator-failed label + penalty; single-scan document frequencies; frozen P2 prompt |
+| stage 12 observability | `900e12a` | `/api/search` signals + explanation, `/api/ask` mode/plan/regeneration/timings, Search & Ask page, `kp ask --explain` |
+| phase 8 tests | `5ba350f` | 14 DB-backed regression/adversarial cases; roboticslab retrieval from plugin declarations; `type_match` signal; plugin cues first |
+| stage 11 + report | `docs/reports/p3/final-report.md` | runs A/B/C/D (`scripts/p3_compare.py`), failure decomposition, performance, second-domain validation |
+
 Awaiting approval (designed, not built): validator runner tiers 1–2 (ADR 0003), proxy/token authentication
 (ADR 0004), discovery auto-approval policy (ADR 0005). Still deferred by decision: media handling, PDF export,
 fuzzy source similarity, locator refresh after section reorders, quality dashboards.

@@ -26,7 +26,8 @@ from .search import SearchResult, hybrid_search, resolve_text_search_config
 # p2 = two-channel retrieval, 8 items, plain prompt (the P2 baseline, kept reproducible)
 # p3-retrieval = ADR 0006 retrieval and context, plain prompt (measures retrieval alone)
 # p3 = retrieval + plan + completeness check + one targeted regeneration
-MODES = ("p2", "p3-retrieval", "p3")
+# p3-plan = retrieval + plan + completeness check, no regeneration (evaluation run C)
+MODES = ("p2", "p3-retrieval", "p3-plan", "p3")
 CONTEXT_K = 12  # items handed to the model in p3 mode (p2 kept 8)
 MAX_CONTEXT_CHARS = 14000
 
@@ -177,7 +178,8 @@ def answer_question(
             k=limit or CONTEXT_K,
             include_candidates=include_candidates,
             regenerate=regenerate and mode == "p3",
-            planned=mode == "p3",
+            planned=mode in ("p3", "p3-plan"),
+            mode_name=mode,
         )
     limit = limit or 8
     results = [
@@ -257,6 +259,7 @@ def _answer_p3(
     include_candidates: bool,
     regenerate: bool,
     planned: bool = True,
+    mode_name: str = "p3",
 ) -> Answer:
     import time
 
@@ -274,7 +277,7 @@ def _answer_p3(
             retrieved=[],
             insufficient=True,
             no_results=True,
-            mode="p3" if planned else "p3-retrieval",
+            mode=mode_name,
             retrieval=r.summary(),
             timings_ms={**timings, "total": int((time.perf_counter() - t0) * 1000)},
         )
@@ -347,7 +350,7 @@ def _answer_p3(
         citations=citations,
         retrieved=retrieved,
         insufficient=not cited,
-        mode="p3" if planned else "p3-retrieval",
+        mode=mode_name,
         plan=plan.as_dict(),
         completeness=completeness,
         regeneration=regeneration,

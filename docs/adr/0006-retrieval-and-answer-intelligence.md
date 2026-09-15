@@ -1,6 +1,7 @@
 # ADR 0006 — Retrieval and answer intelligence (P3)
 
-Status: **proposed — awaiting approval before implementation** · Date: 2026-09-15
+Status: **accepted and implemented** (approved 2026-09-15; commits `9478f8d` … see `docs/reports/p3/final-report.md`) · Date: 2026-09-15
+Deviations from the design as approved are listed in the final report (§2 *Architecture changes*).
 Diagnosis: `docs/reports/p3/diagnosis.md` · Baseline: `docs/reports/p3/retrieval-baseline-k8.json`
 
 ## Problem

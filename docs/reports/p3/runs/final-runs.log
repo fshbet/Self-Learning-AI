@@ -1,0 +1,27 @@
+=== p2
+  FAIL refresh-incremental-01 : missing_concepts
+  FAIL security-rls-01 : missing_concepts
+  FAIL m-folding-01 : judge_incorrect, judge_unsupported, hallucination
+  FAIL gateway-01 : judge_incorrect, judge_unsupported, hallucination
+  PASS abstain-01 : ok
+  PASS negative-divide-01: ok
+  PASS negative-versions-01: ok
+  FAIL visual-calc-01 : missing_concepts
+  classes: answer_generation_failure 6, expected_abstention 1, 
+retrieval_failure 2
+REGRESSION detected: {'accuracy': {'baseline': 0.75, 'current': 0.3333, 
+'delta': -0.4167}, 'citation_correctness': {'baseline': 1.0, 'current': 1.0, 
+'delta': 0.0}}
+  missing_concepts (6): Extracted items lack a required concept: review the 
+source page's extraction.
+  hallucination (4): Answer invented claims: tighten the answer prompt; 
+consider a stronger answer model.
+  judge_incorrect (3): Answer disagrees with the reference: inspect cited items
+vs. expected answer (one is wrong).
+  judge_unsupported (3): Answer contains claims beyond the citations: tighten 
+the answer prompt or add knowledge.
+  authoritative_source_not_retrieved (1): The authoritative page is not in the 
+repository or not extracted: crawl it.
+  off_topic_retrieval (1): Retrieval returned unrelated topics: check taxonomy 
+filing or add a more specific source.
+=== p3-retrieval

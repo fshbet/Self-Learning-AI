@@ -263,7 +263,7 @@ export type RetrievalSummary = {
   channels: Record<string, number>;
   timings_ms: Record<string, number>;
 };
-export type AskMode = "p2" | "p3-retrieval" | "p3";
+export type AskMode = "p2" | "p3-retrieval" | "p3-plan" | "p3";
 
 export type RetrievedRow = {
   n: number;

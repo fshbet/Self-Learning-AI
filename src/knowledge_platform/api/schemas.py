@@ -326,7 +326,7 @@ class AskRequest(BaseModel):
     domain: str
     question: str = Field(min_length=3, max_length=2000)
     limit: int | None = Field(default=None, ge=1, le=20, description="context size; the mode's default when unset")
-    mode: str = Field(default="p3", pattern="^(p2|p3-retrieval|p3)$")
+    mode: str = Field(default="p3", pattern="^(p2|p3-retrieval|p3-plan|p3)$")
 
 
 class AskResponse(BaseModel):

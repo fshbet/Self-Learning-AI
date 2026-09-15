@@ -48,6 +48,7 @@ function renderAnswer(text: string, onCite: (n: number) => void): ReactNode[] {
 
 const MODE_LABEL: Record<AskMode, string> = {
   p3: "planned (P3)",
+  "p3-plan": "planned, no regeneration",
   "p3-retrieval": "retrieval only",
   p2: "baseline (P2)",
 };
@@ -203,7 +204,7 @@ function HowItWasMade({ data }: { data: AskResponse }) {
   const [open, setOpen] = useState(false);
   const { plan, completeness, regeneration, retrieval, timings_ms: t } = data;
   const missing = new Set([...(completeness?.missing_must ?? []), ...(completeness?.missing_should ?? [])].map((c) => c.key));
-  const isPlanned = data.mode === "p3";
+  const isPlanned = data.mode === "p3" || data.mode === "p3-plan";
   const score = completeness?.score;
   return (
     <div className="mt-3 border-t border-line pt-2 text-xs">
