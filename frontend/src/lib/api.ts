@@ -236,14 +236,63 @@ export type SearchHit = {
   lex_rank: number | null;
   similarity: number | null;
   evidence: Evidence[];
+  /** ranking contributions by name (ADR 0006); empty for p2 retrieval */
+  signals: Record<string, number>;
+  /** human-readable reasons: "why did this rank here?" */
+  explanation: string[];
+};
+
+export type PlanConcept = { term: string; key: string; aliases?: string[]; evidence: number[]; kind: "must" | "should" };
+export type AnswerPlan = { intent: string | null; entities: string[]; must_cover: PlanConcept[]; should_cover: PlanConcept[]; notes: string[] };
+export type Completeness = { ok: boolean; score: number | null; missing_must: PlanConcept[]; missing_should: PlanConcept[]; planned: number };
+export type Regeneration = {
+  triggered: boolean;
+  reason?: string;
+  missing?: string[];
+  evidence?: number[];
+  accepted?: boolean;
+  before?: { score: number | null; citations: number[] };
+  after?: { score: number | null; citations: number[] };
+  latency_ms?: number;
+};
+export type RetrievalSummary = {
+  version: string;
+  stage: string;
+  analysis: { intent: string | null; entities: { canonical: string; kind: string; weight?: number; common?: boolean }[]; lexemes?: string[]; variants?: string[] };
+  candidates: number;
+  channels: Record<string, number>;
+  timings_ms: Record<string, number>;
+};
+export type AskMode = "p2" | "p3-retrieval" | "p3";
+
+export type RetrievedRow = {
+  n: number;
+  id: string;
+  statement: string;
+  status: string;
+  confidence: number;
+  topic: string;
+  score: number;
+  trust_notes?: string[];
+  signals?: Record<string, number>;
+  explanation?: string[];
+  expanded_from?: string | null;
 };
 
 export type AskResponse = {
   question: string;
   answer: string;
   citations: { n: number; id: string; statement: string; status: string; confidence: number; topic: string }[];
-  retrieved: { n: number; id: string; statement: string; status: string; confidence: number; topic: string; score: number; trust_notes?: string[] }[];
+  retrieved: RetrievedRow[];
   insufficient: boolean;
+  no_results: boolean;
+  mode: AskMode;
+  plan: AnswerPlan | null;
+  completeness: Completeness | null;
+  regeneration: Regeneration | null;
+  retrieval: RetrievalSummary | null;
+  timings_ms: Record<string, number>;
+  llm_calls: number;
 };
 
 export type Run = {
@@ -497,10 +546,10 @@ export const api = {
   conflicts: (domain?: string, status = "OPEN") => request<Conflict[]>(`/conflicts${qs({ domain, status })}`),
   resolveConflict: (id: string, body: { keep: string; resolution?: string; reviewer?: string }) =>
     request<Conflict>(`/conflicts/${id}/resolve`, { method: "POST", body: JSON.stringify(body) }),
-  search: (domain: string, q: string, limit = 10, includeCandidates = false) =>
-    request<SearchHit[]>(`/search${qs({ domain, q, limit, include_candidates: includeCandidates })}`),
-  ask: (domain: string, question: string, limit = 8) =>
-    request<AskResponse>("/ask", { method: "POST", body: JSON.stringify({ domain, question, limit }) }),
+  search: (domain: string, q: string, limit = 10, includeCandidates = false, retrieval: "pipeline" | "p2" = "pipeline") =>
+    request<SearchHit[]>(`/search${qs({ domain, q, limit, include_candidates: includeCandidates, retrieval })}`),
+  ask: (domain: string, question: string, mode: AskMode = "p3", limit?: number) =>
+    request<AskResponse>("/ask", { method: "POST", body: JSON.stringify({ domain, question, mode, limit: limit ?? null }) }),
   topics: (domain: string) => request<TopicCount[]>(`/topics${qs({ domain })}`),
   runs: (domain?: string, limit = 20) => request<Run[]>(`/runs${qs({ domain, limit })}`),
   run: (id: string) => request<Run>(`/runs/${id}`),

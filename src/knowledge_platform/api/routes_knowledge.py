@@ -13,6 +13,7 @@ from ..core.orchestration.queue import enqueue
 from ..core.pipeline import rescore
 from ..core.plugins.registry import get_registry
 from ..core.retrieval.answer import answer_question
+from ..core.retrieval.retrieve import pipeline_search
 from ..core.retrieval.search import hybrid_search
 from ..core.verification.review_flags import resolve_review
 from ..core.versioning.dependencies import add_relation, relations_for_api
@@ -423,11 +424,20 @@ def search(
     q: str,
     limit: int = Query(10, ge=1, le=50),
     include_candidates: bool = Query(False, description="also return CANDIDATE items (marked as unverified)"),
+    retrieval: str = Query(
+        "pipeline", pattern="^(pipeline|p2)$", description="pipeline (ADR 0006) | p2 (two-channel RRF)"
+    ),
     db: Session = Depends(get_db),
 ) -> list[SearchHitOut]:
-    if domain not in get_registry():
+    reg = get_registry()
+    if domain not in reg:
         raise HTTPException(404, f"unknown domain {domain}")
-    results = hybrid_search(db, domain_id=domain, query=q, limit=limit, include_candidates=include_candidates)
+    if retrieval == "p2":
+        results = hybrid_search(db, domain_id=domain, query=q, limit=limit, include_candidates=include_candidates)
+    else:
+        results = pipeline_search(
+            db, domain_id=domain, query=q, limit=limit, include_candidates=include_candidates, plugin=reg.get(domain)
+        )
     outs = _to_out(db, [r.item for r in results])
     hits = []
     for r, o in zip(results, outs, strict=True):
@@ -439,6 +449,8 @@ def search(
                 lex_rank=r.lex_rank,
                 similarity=r.similarity,
                 evidence=_evidence_out(db, r.item.evidence[:3]),
+                signals={k: round(v, 5) for k, v in (r.signals or {}).items()},
+                explanation=list(r.explanation or []),
             )
         )
     db.commit()  # llm/embedding accounting rows
@@ -450,7 +462,7 @@ def ask(body: AskRequest, db: Session = Depends(get_db)) -> AskResponse:
     reg = get_registry()
     if body.domain not in reg:
         raise HTTPException(404, f"unknown domain {body.domain}")
-    ans = answer_question(db, reg.get(body.domain), body.question, limit=body.limit)
+    ans = answer_question(db, reg.get(body.domain), body.question, limit=body.limit, mode=body.mode)
     db.commit()
     return AskResponse(**ans.__dict__)
 

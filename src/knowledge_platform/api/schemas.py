@@ -317,12 +317,16 @@ class SearchHitOut(BaseModel):
     lex_rank: int | None
     similarity: float | None
     evidence: list[EvidenceOut] = Field(default_factory=list)
+    # ADR 0006: every ranking contribution and the human-readable reasons ("why did this rank above that?")
+    signals: dict[str, float] = Field(default_factory=dict)
+    explanation: list[str] = Field(default_factory=list)
 
 
 class AskRequest(BaseModel):
     domain: str
     question: str = Field(min_length=3, max_length=2000)
-    limit: int = Field(default=8, ge=1, le=20)
+    limit: int | None = Field(default=None, ge=1, le=20, description="context size; the mode's default when unset")
+    mode: str = Field(default="p3", pattern="^(p2|p3-retrieval|p3)$")
 
 
 class AskResponse(BaseModel):
@@ -331,6 +335,14 @@ class AskResponse(BaseModel):
     citations: list[dict[str, Any]]
     retrieved: list[dict[str, Any]]
     insufficient: bool
+    no_results: bool = False
+    mode: str = "p3"
+    plan: dict[str, Any] | None = None
+    completeness: dict[str, Any] | None = None
+    regeneration: dict[str, Any] | None = None
+    retrieval: dict[str, Any] | None = None
+    timings_ms: dict[str, int] = Field(default_factory=dict)
+    llm_calls: int = 0
 
 
 # ----------------------------------------------------------------------------- runs / jobs

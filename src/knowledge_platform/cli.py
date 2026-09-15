@@ -6,6 +6,7 @@ import json
 import logging
 import shutil
 from pathlib import Path
+from typing import Any
 
 import typer
 import uvicorn
@@ -683,17 +684,51 @@ def search(
 
 
 @app.command()
-def ask(domain: str, question: str) -> None:
+def ask(
+    domain: str,
+    question: str,
+    mode: str = typer.Option("p3", help="answer mode: p2 (baseline) | p3-retrieval | p3 (ADR 0006)"),
+    explain: bool = typer.Option(False, help="show the plan, completeness, regeneration, timings and ranking reasons"),
+) -> None:
     """Grounded answer with citations."""
     from .core.plugins.registry import get_registry
     from .core.retrieval.answer import answer_question
     from .db import session_scope
 
     with session_scope() as session:
-        ans = answer_question(session, get_registry().get(domain), question)
+        ans = answer_question(session, get_registry().get(domain), question, mode=mode)
     console.print(ans.answer)
     for c in ans.citations:
         console.print(f"  [{c['n']}] ({c['status']}, {c['confidence']:.2f}) {c['statement'][:120]}")
+    if explain:
+        _print_answer_explanation(ans)
+
+
+def _print_answer_explanation(ans: Any) -> None:
+    """The answer's own account: what was planned, what was covered, what was regenerated, and why each item
+    ranked where it did (ADR 0006 observability)."""
+    console.rule("[bold]how this answer was made")
+    console.print(f"mode {ans.mode} · {ans.llm_calls} model call(s) · timings ms: {ans.timings_ms}")
+    if ans.retrieval:
+        a = ans.retrieval.get("analysis") or {}
+        console.print(
+            f"intent {a.get('intent')} · entities {[e['canonical'] for e in a.get('entities', [])]} · "
+            f"candidates {ans.retrieval.get('candidates')} {ans.retrieval.get('channels')}"
+        )
+    if ans.plan:
+        must = [f"{c['term']} {c['evidence']}" for c in ans.plan.get("must_cover", [])]
+        should = [f"{c['term']} {c['evidence']}" for c in ans.plan.get("should_cover", [])]
+        console.print(f"plan · must: {must or '-'} · should: {should or '-'} · notes: {ans.plan.get('notes') or '-'}")
+    if ans.completeness:
+        comp = ans.completeness
+        missing = [c["term"] for c in comp.get("missing_must", []) + comp.get("missing_should", [])]
+        console.print(f"completeness {comp.get('score')} (ok={comp.get('ok')}) · missing: {missing or '-'}")
+    if ans.regeneration:
+        console.print(f"regeneration: {ans.regeneration}")
+    table = Table("n", "score", "status", "why", show_lines=False)
+    for r in ans.retrieved:
+        table.add_row(str(r["n"]), f"{r['score']:.4f}", r["status"], "; ".join(r.get("explanation") or []) or "-")
+    console.print(table)
 
 
 if __name__ == "__main__":
