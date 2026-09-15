@@ -44,6 +44,7 @@ W = {
     "conflicted": -0.004,
     "needs_review": -0.004,
     "needs_revalidation": -0.002,
+    "validator_failed": -0.004,  # a domain validator rejected the item's example / claim
 }
 _WORD = re.compile(r"[a-z0-9][a-z0-9+#.-]*")
 
@@ -273,6 +274,12 @@ def score_candidates(
                 why.append("flagged for review")
             if it.needs_revalidation:
                 sig["needs_revalidation"] = W["needs_revalidation"]
+            if any(
+                getattr(e, "evidence_type", "") == "validator" and not (getattr(e, "details", None) or {}).get("passed")
+                for e in it.evidence
+            ):
+                sig["validator_failed"] = W["validator_failed"]
+                why.append("a domain validator rejected it")
         total = sum(v for k2, v in sig.items() if k2 not in ("vector", "lexical", "rare-terms"))
         out.append(Scored(candidate=c, score=round(total, 6), signals=sig, explanation=why))
     out.sort(key=lambda s: (-s.score, str(s.item.id)))

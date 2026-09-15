@@ -9,7 +9,13 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from ...models import ItemStatus, KnowledgeItem
-from ..extraction.prompts import ANSWER_SYSTEM, ANSWER_USER, ANSWER_USER_PLANNED, REGENERATE_USER
+from ..extraction.prompts import (
+    ANSWER_SYSTEM,
+    ANSWER_SYSTEM_P2,
+    ANSWER_USER,
+    ANSWER_USER_PLANNED,
+    REGENERATE_USER,
+)
 from ..llm_service import call_text
 from ..plugins.base import DomainPlugin
 from .plan import build_plan, check_completeness, format_plan
@@ -25,6 +31,25 @@ CONTEXT_K = 12  # items handed to the model in p3 mode (p2 kept 8)
 MAX_CONTEXT_CHARS = 14000
 
 _CITE = re.compile(r"\[(\d+)\]")
+_DECLINES = (
+    "does not contain",
+    "do not contain",
+    "not enough",
+    "insufficient",
+    "no verified information",
+    "does not cover",
+    "not covered",
+    "cannot answer",
+    "no information",
+    "not available in the knowledge",
+    "not possible to determine",
+    "not possible to answer",
+)
+
+
+def looks_like_abstention(answer: str) -> bool:
+    a = " ".join((answer or "").lower().split())
+    return any(p in a for p in _DECLINES) and len(a) <= 400
 
 
 @dataclass
@@ -67,6 +92,15 @@ def trust_notes(it: KnowledgeItem) -> list[str]:
         notes.append(f"FLAGGED FOR REVIEW ({it.review_kind or 'manual'}): {it.review_reason or 'no reason given'}")
     if it.needs_revalidation:
         notes.append("AWAITING REVALIDATION: a dependency changed")
+    failed = [
+        e.details.get("validator")
+        for e in (it.evidence or [])
+        if e.evidence_type == "validator" and not e.details.get("passed")
+    ]
+    if failed:
+        notes.append(
+            f"VALIDATION FAILED ({', '.join(str(f) for f in failed)}): the example did not pass the domain check"
+        )
     return notes
 
 
@@ -178,7 +212,7 @@ def answer_question(
             insufficient=True,
             no_results=True,
         )
-    system = ANSWER_SYSTEM.format(domain_name=plugin.name)
+    system = ANSWER_SYSTEM_P2.format(domain_name=plugin.name)
     user = ANSWER_USER.format(question=question, items=_format_items(results, plugin))
     text = call_text(purpose="answer", system=system, user=user, session=session)
     cited = sorted({int(m) for m in _CITE.findall(text) if 0 < int(m) <= len(results)})
@@ -267,7 +301,12 @@ def _answer_p3(
     llm_calls = 1
     completeness = check_completeness(session, config, text_, plan)
     regeneration: dict[str, Any] | None = None
-    if regenerate and not completeness["ok"]:
+    cited1 = {int(m) for m in _CITE.findall(text_) if 0 < int(m) <= len(results)}
+    if regenerate and not completeness["ok"] and (looks_like_abstention(text_) or not cited1):
+        # an answer that declined, or cites nothing, is not "incomplete": the evidence did not fit the question.
+        # Regenerating here would push the model to answer from unrelated items (seen on the abstention case).
+        regeneration = {"triggered": False, "reason": "answer abstained or cited nothing; not regenerated"}
+    elif regenerate and not completeness["ok"]:
         missing = completeness["missing_must"] + completeness["missing_should"]
         # only concepts the evidence actually supports can be asked for — they all carry item numbers by construction
         supported = [m for m in missing if m["evidence"]]
@@ -281,8 +320,9 @@ def _answer_p3(
             llm_calls += 1
             after = check_completeness(session, config, text2, plan)
             cited2 = {int(m) for m in _CITE.findall(text2) if 0 < int(m) <= len(results)}
-            cited1 = {int(m) for m in _CITE.findall(text_) if 0 < int(m) <= len(results)}
-            accepted = bool(cited2) and (after["score"] or 0) > (completeness["score"] or 0)
+            # accepted only when strictly more complete, still cited, and not an echo of the instruction
+            echoed = "supported by the items but incomplete" in text2.lower() or "previous answer" in text2.lower()
+            accepted = bool(cited2) and (after["score"] or 0) > (completeness["score"] or 0) and not echoed
             regeneration = {
                 "triggered": True,
                 "reason": "missing planned concepts supported by the evidence",

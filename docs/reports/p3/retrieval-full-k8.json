@@ -13,7 +13,7 @@
     "authoritative_hit_rate": 0.5,
     "expected_concept_hit_rate": 0.7895,
     "questions_fully_covered": 7,
-    "mean_latency_ms": 535.1818
+    "mean_latency_ms": 1061.1818
   },
   "results": [
     {
@@ -259,7 +259,7 @@
         "context transition": 2
       },
       "failure_reason": "'context transition' in corpus (2) but not in pool-50; authoritative source not in pool (not crawled or not retrievable)",
-      "latency_ms": 809
+      "latency_ms": 1019
     },
     {
       "id": "dax-divide-01",
@@ -277,7 +277,7 @@
           "id": "59c876ba-782d-4a0c-9d6d-216dc42e89e0",
           "score": 0.07004,
           "vec_rank": 5,
-          "lex_rank": 54,
+          "lex_rank": 50,
           "subject": "DIVIDE",
           "knowledge_type": "definition",
           "topic": "DAX/Functions",
@@ -471,7 +471,7 @@
           "id": "2183d88b-c717-4cf3-adf1-743b1f54749e",
           "score": 0.0428,
           "vec_rank": 8,
-          "lex_rank": 8,
+          "lex_rank": 9,
           "subject": "Concatenation operator (&)",
           "knowledge_type": "definition",
           "topic": "",
@@ -507,7 +507,7 @@
         "alternate result": 2
       },
       "failure_reason": "ok",
-      "latency_ms": 456
+      "latency_ms": 741
     },
     {
       "id": "model-star-01",
@@ -608,7 +608,7 @@
           "id": "a6e335d4-63ac-48a7-b256-dcf43dce05ea",
           "score": 0.05868,
           "vec_rank": 4,
-          "lex_rank": 39,
+          "lex_rank": 38,
           "subject": "Power BI modeling technique",
           "knowledge_type": "best_practice",
           "topic": "Data Modeling/Star schema",
@@ -668,7 +668,7 @@
           "id": "e646dd80-35dd-458b-ae84-4d1a0c6bf661",
           "score": 0.0571,
           "vec_rank": 5,
-          "lex_rank": 38,
+          "lex_rank": 39,
           "subject": "Power BI semantic models",
           "knowledge_type": "best_practice",
           "topic": "Data Modeling/Star schema",
@@ -765,7 +765,7 @@
         "dimension table": 62
       },
       "failure_reason": "ok",
-      "latency_ms": 561
+      "latency_ms": 1101
     },
     {
       "id": "model-bidi-01",
@@ -891,7 +891,7 @@
           "id": "cf8738fd-17e8-4cbf-8070-a3f38fa42d02",
           "score": 0.04854,
           "vec_rank": 11,
-          "lex_rank": 18,
+          "lex_rank": 17,
           "subject": "Bi-directional relationships",
           "knowledge_type": "limitation",
           "topic": "Data Modeling/Bidirectional filtering",
@@ -920,7 +920,7 @@
           "id": "e8cab773-1314-4639-b978-0e5214b21cdb",
           "score": 0.04674,
           "vec_rank": 7,
-          "lex_rank": 17,
+          "lex_rank": 18,
           "subject": "Bi-directional relationships",
           "knowledge_type": "best_practice",
           "topic": "Data Modeling/Bidirectional filtering",
@@ -1011,7 +1011,7 @@
         "performance": 140
       },
       "failure_reason": "'ambiguity' at rank 20 (> K=8)",
-      "latency_ms": 438
+      "latency_ms": 1309
     },
     {
       "id": "refresh-incremental-01",
@@ -1278,7 +1278,7 @@
         "query folding": 16
       },
       "failure_reason": "'query folding' at rank 20 (> K=8)",
-      "latency_ms": 445
+      "latency_ms": 854
     },
     {
       "id": "security-rls-01",
@@ -1525,14 +1525,14 @@
       "first_expected_rank": 2,
       "concept_first_rank": {
         "roles": 2,
-        "DAX filter": 48
+        "DAX filter": null
       },
       "concept_in_corpus": {
         "roles": 58,
         "DAX filter": 7
       },
-      "failure_reason": "'DAX filter' at rank 48 (> K=8)",
-      "latency_ms": 652
+      "failure_reason": "'DAX filter' in corpus (7) but not in pool-50",
+      "latency_ms": 1518
     },
     {
       "id": "m-folding-01",
@@ -1773,7 +1773,7 @@
         "native query": 4
       },
       "failure_reason": "ok",
-      "latency_ms": 456
+      "latency_ms": 823
     },
     {
       "id": "gateway-01",
@@ -1933,7 +1933,7 @@
           "id": "f2f4421a-fa1b-4e22-9159-9a80cc1e79c9",
           "score": 0.05629,
           "vec_rank": 6,
-          "lex_rank": 13,
+          "lex_rank": 14,
           "subject": "Standard on-premises data gateway",
           "knowledge_type": "best_practice",
           "topic": "Gateways and Refresh",
@@ -2026,7 +2026,7 @@
         "on-premises": 87
       },
       "failure_reason": "ok",
-      "latency_ms": 439
+      "latency_ms": 1012
     },
     {
       "id": "negative-divide-01",
@@ -2204,7 +2204,7 @@
           "id": "b37bdbde-af3c-4bbc-bcb9-c81651da6a3c",
           "score": 0.04171,
           "vec_rank": 8,
-          "lex_rank": 25,
+          "lex_rank": 23,
           "subject": "MOD",
           "knowledge_type": "definition",
           "topic": "DAX/Functions",
@@ -2230,7 +2230,7 @@
           "id": "16439284-5d8a-4477-ba34-618b38fa0007",
           "score": 0.03823,
           "vec_rank": 7,
-          "lex_rank": 12,
+          "lex_rank": 11,
           "subject": "0",
           "knowledge_type": "definition",
           "topic": "DAX",
@@ -2263,7 +2263,7 @@
         "BLANK": 71
       },
       "failure_reason": "ok",
-      "latency_ms": 428
+      "latency_ms": 835
     },
     {
       "id": "negative-versions-01",
@@ -2503,7 +2503,7 @@
         "not all": 16
       },
       "failure_reason": "ok",
-      "latency_ms": 666
+      "latency_ms": 1623
     },
     {
       "id": "visual-calc-01",
@@ -2755,7 +2755,7 @@
         "NEXT": 70
       },
       "failure_reason": "ok",
-      "latency_ms": 537
+      "latency_ms": 838
     }
   ]
 }

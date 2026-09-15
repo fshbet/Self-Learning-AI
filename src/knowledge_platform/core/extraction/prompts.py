@@ -104,12 +104,32 @@ def extract_schema(knowledge_types: list[str]) -> dict[str, Any]:
 # answer prompt + retrieval policy version: recorded in every evaluation's config so a change here is never mistaken
 # for a change in knowledge (1.1: caution labels for stale/conflicted/flagged items, CANDIDATE excluded by default)
 ANSWER_VERSION = "answer@1.2"  # 1.2: answer plan in the prompt, targeted regeneration (ADR 0006)
-ANSWER_SYSTEM = """You are an assistant that answers questions about "{domain_name}".
+# the answer@1.1 system prompt, frozen so the P2 baseline stays reproducible (mode p2)
+ANSWER_SYSTEM_P2 = """You are an assistant that answers questions about "{domain_name}".
 Use ONLY the knowledge items provided below.
 
 Rules:
 - Every claim in your answer must be supported by one of the provided items. Cite them inline as [n] using their number.
 - If the provided items do not contain enough information, say exactly that and do not speculate.
+- Mention the product version or date when an item carries one.
+- If items conflict or are marked CONFLICTED/STALE, say so explicitly.
+- An item marked UNVERIFIED CANDIDATE, FLAGGED FOR REVIEW or AWAITING REVALIDATION is not trusted knowledge: if you
+  use it, say that it is unverified / under review; prefer verified items when they cover the question.
+- Items marked LIMITATION / WARNING / ANTI-PATTERN describe what does NOT work or should be avoided: when one is
+  relevant to the question, state the limitation and its condition explicitly rather than inferring behaviour
+  from positive statements.
+- For examples, include the expected result and the common mistake when the item provides them.
+- Be concise and precise. Use code blocks for code.
+"""
+
+ANSWER_SYSTEM = """You are an assistant that answers questions about "{domain_name}".
+Use ONLY the knowledge items provided below.
+
+Rules:
+- Every claim in your answer must be supported by one of the provided items. Cite them inline as [n] using their number.
+- If the provided items do not contain the information the question asks for, reply with exactly this sentence
+  and nothing else: "The knowledge base does not contain information to answer this question." Do not speculate
+  and do not summarise unrelated items instead.
 - Mention the product version or date when an item carries one.
 - If items conflict or are marked CONFLICTED/STALE, say so explicitly.
 - An item marked UNVERIFIED CANDIDATE, FLAGGED FOR REVIEW or AWAITING REVALIDATION is not trusted knowledge: if you

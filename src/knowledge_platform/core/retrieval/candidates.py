@@ -17,6 +17,7 @@ import re
 import threading
 import time
 from dataclasses import dataclass, field
+from typing import Any
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session, selectinload
@@ -102,22 +103,29 @@ def term_document_frequencies(
         with _df_lock:
             _df_cache[total_key] = (now + DF_TTL_SECONDS, total)
     out: dict[str, int] = {}
-    tsv = tsv_expr(config)  # the plain expression: indexed for English, a sequential scan otherwise
+    missing: list[str] = []
     for lex in lexemes[:12]:
-        key = (domain_id, config, lex)
         with _df_lock:
-            hit = _df_cache.get(key)
+            hit = _df_cache.get((domain_id, config, lex))
         if hit and hit[0] > now:
             out[lex] = hit[1]
-            continue
-        sql = (
-            f"SELECT count(*) FROM knowledge_items WHERE domain_id = :d AND status = ANY(:st) "
-            f"AND {tsv} @@ to_tsquery('{config}', :q)"
+        else:
+            missing.append(lex)
+    if missing:
+        # one pass over the domain's items with a filtered count per term, instead of one scan per term
+        tsv = tsv_expr(config)  # the plain expression: indexed for English, a sequential scan otherwise
+        counts = ", ".join(
+            f"count(*) FILTER (WHERE {tsv} @@ to_tsquery('{config}', :q{i})) AS c{i}" for i in range(len(missing))
         )
-        df = int(session.execute(text(sql), {"d": domain_id, "st": statuses, "q": _tsquery([lex])}).scalar_one())
-        out[lex] = df
-        with _df_lock:
-            _df_cache[key] = (now + DF_TTL_SECONDS, df)
+        params: dict[str, Any] = {"d": domain_id, "st": statuses}
+        params.update({f"q{i}": _tsquery([lex]) for i, lex in enumerate(missing)})
+        row = session.execute(
+            text(f"SELECT {counts} FROM knowledge_items WHERE domain_id = :d AND status = ANY(:st)"), params
+        ).one()
+        for i, lex in enumerate(missing):
+            out[lex] = int(row[i] or 0)
+            with _df_lock:
+                _df_cache[(domain_id, config, lex)] = (now + DF_TTL_SECONDS, out[lex])
     return total, out
 
 
