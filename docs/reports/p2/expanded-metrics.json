@@ -1,0 +1,212 @@
+{
+  "queue": {
+    "by_status": {
+      "DONE": 250
+    },
+    "queued": 0,
+    "running": 0,
+    "failed_awaiting_retry": 0,
+    "dead_letter": 0,
+    "dead_by_type": {},
+    "jobs_retried": 2,
+    "oldest_queued_age_seconds": 0,
+    "job_duration_24h": {
+      "extract_document": {
+        "avg_ms": 199687,
+        "max_ms": 1433165,
+        "count": 203
+      },
+      "revalidate_item": {
+        "avg_ms": 32,
+        "max_ms": 46,
+        "count": 16
+      },
+      "crawl_source": {
+        "avg_ms": 17498,
+        "max_ms": 25258,
+        "count": 18
+      },
+      "evaluate": {
+        "avg_ms": 127146,
+        "max_ms": 127146,
+        "count": 1
+      }
+    }
+  },
+  "models": {
+    "window_hours": 24,
+    "by_purpose": {
+      "answer": {
+        "calls": 24,
+        "avg_ms": 6283,
+        "p95_ms": 8166,
+        "failed": 0
+      },
+      "extract": {
+        "calls": 1266,
+        "avg_ms": 19658,
+        "p95_ms": 50780,
+        "failed": 51
+      },
+      "reason": {
+        "calls": 159,
+        "avg_ms": 6011,
+        "p95_ms": 5485,
+        "failed": 0
+      }
+    },
+    "calls": 1449,
+    "failed": 51
+  },
+  "storage": {
+    "database_bytes": 87316147,
+    "documents": 186,
+    "document_bytes": 14824235,
+    "mirror_documents": 0,
+    "snapshots": 17,
+    "snapshot_bytes": 4416277,
+    "evidence_records": 6237,
+    "items_embedded": 6143
+  },
+  "schedule": {
+    "next_source_check": "2026-09-17T12:12:02.852003+00:00",
+    "sources_overdue": 0,
+    "evaluation_interval_hours": 24,
+    "last_evaluation": "2026-09-14T23:05:09.065942+00:00",
+    "next_evaluation": "2026-09-15T23:05:09.065942+00:00",
+    "snapshot_interval_hours": 0,
+    "last_snapshot": "2026-09-14T04:01:06.563786+00:00",
+    "next_snapshot": null,
+    "last_run": {
+      "kind": "evaluate",
+      "status": "DONE",
+      "started_at": "2026-09-14T23:05:08.720044+00:00"
+    }
+  },
+  "knowledge": {
+    "sources": {
+      "total": 18,
+      "active_enabled": 18,
+      "by_status": {
+        "ACTIVE": 18
+      }
+    },
+    "documents": {
+      "total": 186,
+      "by_status": {
+        "EXTRACTED": 181,
+        "FETCHED": 5
+      }
+    },
+    "knowledge_items": {
+      "total": 6143,
+      "by_status": {
+        "CONFLICTED": 4,
+        "REJECTED": 43,
+        "VERIFIED": 6096
+      },
+      "by_type": {
+        "limitation": 418,
+        "best_practice": 494,
+        "example": 575,
+        "definition": 1524,
+        "procedure": 910,
+        "warning": 27,
+        "fact": 2195
+      },
+      "by_area": {
+        "Power Query ": 332,
+        "Fabric integration": 1183,
+        "DAX": 1087,
+        "Troubleshooting": 100,
+        "(none)": 654,
+        "Power BI Service": 754,
+        "Gateways and Refresh": 503,
+        "Administration": 10,
+        "Security": 192,
+        "Data Modeling": 614,
+        "Visualization": 591,
+        "REST API": 123
+      },
+      "needs_review": 0,
+      "needs_revalidation": 4,
+      "negative": 466,
+      "derived_or_synthesized": 66,
+      "superseded": 0
+    },
+    "evidence": {
+      "total": 6237,
+      "verified": 6237,
+      "by_type": {
+        "extraction/supports": 6158,
+        "validator/validates": 79
+      }
+    },
+    "relationships": {
+      "total": 8400,
+      "by_type": {
+        "depends_on": 7280,
+        "compatible_under": 114,
+        "example_of": 1006
+      }
+    },
+    "conflicts": {
+      "OPEN": 2
+    },
+    "model_calls_total": {
+      "answer": {
+        "calls": 62,
+        "prompt_tokens": 54523,
+        "completion_tokens": 5467
+      },
+      "reason": {
+        "calls": 202,
+        "prompt_tokens": 62480,
+        "completion_tokens": 10857
+      },
+      "extract": {
+        "calls": 1272,
+        "prompt_tokens": 2213825,
+        "completion_tokens": 1359211
+      }
+    },
+    "last_evaluation": {
+      "id": "6b619f0a-5cae-4145-b6c5-00e47e3bb990",
+      "started_at": "2026-09-14T23:05:09.065942+00:00",
+      "dataset_version": "0.3.0",
+      "metrics": {
+        "questions": 12,
+        "passed": 5,
+        "accuracy": 0.4167,
+        "citation_correctness": 1.0,
+        "evidence_support": 0.8182,
+        "retrieval_precision": 0.8977,
+        "retrieval_recall": 0.5,
+        "hallucination_rate": 0.1818,
+        "abstention_correctness": 1.0,
+        "freshness_ok": 1.0,
+        "contradiction_handling": 1.0,
+        "version_correctness": null,
+        "validator_success": 1.0,
+        "negative_coverage": 1.0,
+        "unanswered_rate": 0.0,
+        "uncited_rate": 0.0,
+        "coverage": 1.0,
+        "failure_classes": {
+          "retrieval_failure": 2,
+          "answer_generation_failure": 5,
+          "expected_abstention": 1
+        },
+        "mean_latency_ms": 10554,
+        "failure_causes": {
+          "missing_concepts": 6,
+          "authoritative_source_not_retrieved": 1,
+          "judge_incorrect": 2,
+          "judge_unsupported": 2,
+          "hallucination": 2,
+          "off_topic_retrieval": 1
+        }
+      }
+    }
+  }
+}
