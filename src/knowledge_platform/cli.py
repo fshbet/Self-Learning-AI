@@ -219,6 +219,7 @@ def eval_run(
     domain: str,
     question: list[str] = typer.Option(None, "--question", "-q", help="limit to question id(s)"),
     fail_on_regression: bool = typer.Option(False, help="exit with code 2 when a regression is detected"),
+    mode: str = typer.Option("p3", help="answer mode: p2 (baseline) | p3-retrieval | p3 (ADR 0006)"),
 ) -> None:
     """Run the domain's golden questions against the current knowledge base and store the results."""
     from .core.evaluation.runner import METRIC_KEYS, run_evaluation
@@ -226,7 +227,9 @@ def eval_run(
     from .db import session_scope
 
     with session_scope() as session:
-        ev = run_evaluation(session, get_registry().get(domain), triggered_by="cli", question_ids=question or None)
+        ev = run_evaluation(
+            session, get_registry().get(domain), triggered_by="cli", question_ids=question or None, mode=mode
+        )
         session.flush()
         console.print(f"evaluation [bold]{ev.id}[/bold] {ev.status}  dataset v{ev.dataset_version}")
         if ev.error:

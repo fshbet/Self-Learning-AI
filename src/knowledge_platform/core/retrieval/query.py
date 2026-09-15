@@ -25,6 +25,10 @@ _VERSION = re.compile(r"\b(?:v(?:ersion)?\s*)?(\d{4}|\d+\.\d+(?:\.\d+)?)\b", re.
 # "bidirectional", "bi directional"); language-agnostic enough to live in core, extensible per plugin
 COMPOUND_PREFIXES = ("anti", "bi", "cross", "multi", "non", "semi")
 LIVE_STATUSES = (ItemStatus.SUPPORTED, ItemStatus.VERIFIED, ItemStatus.CONFLICTED, ItemStatus.STALE)
+# an n-gram that starts or ends with one of these is a fragment, not an entity ("data in", "for power")
+FUNCTION_WORDS = frozenset(
+    "a an the of in on for to by with and or is are was were be do does did what which how why when where".split()
+)
 
 # core intent vocabulary and default cues (English); a plugin extends or overrides per intent
 INTENTS = (
@@ -246,7 +250,15 @@ def detect_entities(session: Session, domain_id: str, query: str, *, max_ngram: 
         found[low] = Entity(text=grams[low], canonical=canonical, kind="subject", items=int(count))
     # multi-word n-grams that *open* a subject ("star schema" → "Star schema design"): the n-gram is the entity,
     # the items filed under those subjects count towards it
-    multi = [g for g in grams if " " in g and g not in found and len(g) >= 6]
+    multi = [
+        g
+        for g in grams
+        if " " in g
+        and g not in found
+        and len(g) >= 6
+        and g.split(" ")[0] not in FUNCTION_WORDS
+        and g.split(" ")[-1] not in FUNCTION_WORDS
+    ]
     if multi:
         prefix_rows = session.execute(
             select(func.lower(KnowledgeItem.subject), func.count())

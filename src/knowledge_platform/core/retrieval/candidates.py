@@ -21,7 +21,6 @@ from dataclasses import dataclass, field
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session, selectinload
 
-from ...adapters import get_embedder
 from ...models import KnowledgeItem
 from .query import QueryAnalysis
 from .search import tsv_expr
@@ -154,7 +153,9 @@ def _tsquery(lexemes: list[str]) -> str:
 
 
 def vector_candidates(session: Session, *, domain_id: str, query: str, statuses: list[str], pool: int) -> list[tuple]:
-    embedder = get_embedder()
+    from . import search  # resolved at call time: tests and adapters swap the embedder on the search module
+
+    embedder = search.get_embedder()
     vec = embedder.embed_one(query)
     return session.execute(
         text(_VEC_SQL),

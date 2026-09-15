@@ -27,7 +27,8 @@ from ..extraction.prompts import ANSWER_VERSION, JUDGE_SCHEMA, JUDGE_SYSTEM, JUD
 from ..llm_service import call_json, model_for
 from ..plugins.base import DomainPlugin, EvalQuestion
 from ..quality.scoring import SCORING_RULE_VERSION
-from ..retrieval.answer import answer_question
+from ..retrieval.answer import CONTEXT_K, answer_question
+from ..retrieval.retrieve import RETRIEVAL_VERSION
 from .checks import (
     GATING_CHECKS,
     SUGGESTED_ACTIONS,
@@ -188,7 +189,7 @@ def _judge(
         return {"error": str(exc)[:300], "version": JUDGE_VERSION}
 
 
-def _config_snapshot(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
+def _config_snapshot(session: Session, plugin: DomainPlugin, mode: str = "p3") -> dict[str, Any]:
     s = get_settings()
     counts = dict(
         session.execute(
@@ -208,6 +209,9 @@ def _config_snapshot(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
         "chunker_version": CHUNKER_VERSION,
         "scoring_rule_version": SCORING_RULE_VERSION,
         "retrieval_k": s.eval_retrieval_k,
+        "answer_mode": mode,
+        "retrieval_version": RETRIEVAL_VERSION if mode.startswith("p3") else "retrieval@1.0",
+        "context_k": CONTEXT_K if mode.startswith("p3") else s.eval_retrieval_k,
         "knowledge_counts": {str(k): v for k, v in counts.items()},
     }
 
@@ -215,9 +219,11 @@ def _config_snapshot(session: Session, plugin: DomainPlugin) -> dict[str, Any]:
 # ----------------------------------------------------------------------------- per question
 
 
-def evaluate_question(session: Session, plugin: DomainPlugin, q: EvalQuestion, *, k: int) -> EvaluationResult:
+def evaluate_question(
+    session: Session, plugin: DomainPlugin, q: EvalQuestion, *, k: int, mode: str = "p3"
+) -> EvaluationResult:
     started = time.perf_counter()
-    ans = answer_question(session, plugin, q.question, limit=k)
+    ans = answer_question(session, plugin, q.question, limit=k if mode == "p2" else None, mode=mode)
     facts = _item_facts(session, [uuid.UUID(r["id"]) for r in ans.retrieved])
     retrieved = [
         RetrievedItem(
@@ -258,6 +264,19 @@ def evaluate_question(session: Session, plugin: DomainPlugin, q: EvalQuestion, *
             cited_texts = [f"(retrieved, not cited) {r['statement']}" for r in ans.retrieved]
         judge = _judge(session, plugin, q, ans.answer, cited_texts)
 
+    # the answerer's own account (plan, completeness, regeneration, timings): informational, never gating
+    checks["answer_meta"] = {
+        "ok": True,
+        "detail": f"mode {ans.mode}; {ans.llm_calls} model call(s)"
+        + (f"; regenerated ({ans.regeneration.get('reason')})" if (ans.regeneration or {}).get("triggered") else ""),
+        "mode": ans.mode,
+        "plan": ans.plan,
+        "completeness": ans.completeness,
+        "regeneration": ans.regeneration,
+        "retrieval": ans.retrieval,
+        "timings_ms": ans.timings_ms,
+        "llm_calls": ans.llm_calls,
+    }
     gating_ok = all(checks[name]["ok"] for name in GATING_CHECKS if name in checks)
     if q.expect_abstain:
         passed = gating_ok
@@ -333,7 +352,81 @@ def compute_metrics(results: list[EvaluationResult], questions: list[EvalQuestio
         "mean_latency_ms": int(sum(r.latency_ms for r in results) / len(results)) if results else 0,
         "failure_causes": dict(Counter(c for r in results for c in r.failure_causes)),
     }
+    # --- P3 (ADR 0006): reported separately, additive to the metrics above; `accuracy` keeps its definition
+    metrics["factual_accuracy"] = _rate(
+        [
+            1.0
+            if (
+                r.judge.get("correct")
+                and r.judge.get("supported_by_citations")
+                and r.checks.get("citations", {}).get("ok")
+                and r.checks.get("must_not_contain", {}).get("ok", True)
+            )
+            else 0.0
+            for r in judged
+        ]
+    )
+    with_concepts = [r for r in answerable if by_id[r.question_id].required_concepts]
+    metrics["completeness"] = _rate([ok(r, "required_concepts") for r in with_concepts])
+    metrics["mrr"] = _rate([_first_concept_rank(r, by_id[r.question_id]) for r in with_concepts])
+    metrics["expected_concept_hit_rate"] = _rate(
+        [
+            1.0 if _concept_in_retrieved(r, c) else 0.0
+            for r in with_concepts
+            for c in by_id[r.question_id].required_concepts
+        ]
+    )
+    with_sources = [r for r in answerable if by_id[r.question_id].authoritative_sources]
+    metrics["authoritative_hit_rate"] = _rate(
+        [1.0 if (val(r, "retrieval_recall") or 0) > 0 else 0.0 for r in with_sources]
+    )
+    metas = [r.checks.get("answer_meta", {}) for r in answerable]
+    metrics["regeneration_rate"] = _rate(
+        [1.0 if (m.get("regeneration") or {}).get("triggered") else 0.0 for m in metas]
+    )
+    metrics["regeneration_accepted_rate"] = _rate(
+        [1.0 if (m.get("regeneration") or {}).get("accepted") else 0.0 for m in metas]
+    )
+    metrics["plan_completeness"] = _rate(
+        [
+            (m.get("completeness") or {}).get("score")
+            for m in metas
+            if (m.get("completeness") or {}).get("score") is not None
+        ]
+    )
+    metrics["answer_generation_failure_rate"] = _rate(
+        [1.0 if r.failure_class == "answer_generation_failure" else 0.0 for r in answerable]
+    )
+    metrics["llm_calls_per_question"] = _rate([float(m.get("llm_calls") or 1) for m in metas])
+    timing_keys = (
+        "analysis",
+        "candidates",
+        "ranking",
+        "diversity",
+        "expansion",
+        "context",
+        "generation",
+        "regeneration",
+        "total",
+    )
+    metrics["timings_ms"] = {
+        key: int(_rate([float(m["timings_ms"][key]) for m in metas if key in (m.get("timings_ms") or {})]) or 0)
+        for key in timing_keys
+    }
     return metrics
+
+
+def _concept_in_retrieved(r: EvaluationResult, concept: str) -> bool:
+    c = concept.lower()
+    return any(c in (row.get("statement") or "").lower() for row in (r.retrieved or []))
+
+
+def _first_concept_rank(r: EvaluationResult, q: EvalQuestion) -> float:
+    for row in r.retrieved or []:
+        text_ = (row.get("statement") or "").lower()
+        if any(c.lower() in text_ for c in q.required_concepts):
+            return 1.0 / int(row.get("n") or 1)
+    return 0.0
 
 
 def detect_regression(
@@ -376,6 +469,7 @@ def run_evaluation(
     triggered_by: str = "cli",
     run_id: uuid.UUID | None = None,
     question_ids: list[str] | None = None,
+    mode: str = "p3",
 ) -> EvaluationRun:
     settings = get_settings()
     questions = plugin.evaluation_set()
@@ -388,7 +482,7 @@ def run_evaluation(
         dataset_version=dataset_version,
         triggered_by=triggered_by,
         run_id=run_id,
-        config=_config_snapshot(session, plugin),
+        config=_config_snapshot(session, plugin, mode),
     )
     session.add(ev)
     session.commit()  # the run row is visible (RUNNING) while questions are evaluated
@@ -413,7 +507,7 @@ def run_evaluation(
 
     try:
         for q in questions:
-            result = evaluate_question(session, plugin, q, k=settings.eval_retrieval_k)
+            result = evaluate_question(session, plugin, q, k=settings.eval_retrieval_k, mode=mode)
             ev.results.append(result)
             session.commit()  # each result is visible while the run progresses
         ev.metrics = compute_metrics(ev.results, questions)

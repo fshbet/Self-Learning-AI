@@ -103,7 +103,7 @@ def extract_schema(knowledge_types: list[str]) -> dict[str, Any]:
 
 # answer prompt + retrieval policy version: recorded in every evaluation's config so a change here is never mistaken
 # for a change in knowledge (1.1: caution labels for stale/conflicted/flagged items, CANDIDATE excluded by default)
-ANSWER_VERSION = "answer@1.1"
+ANSWER_VERSION = "answer@1.2"  # 1.2: answer plan in the prompt, targeted regeneration (ADR 0006)
 ANSWER_SYSTEM = """You are an assistant that answers questions about "{domain_name}".
 Use ONLY the knowledge items provided below.
 
@@ -127,6 +127,34 @@ Knowledge items:
 {items}
 
 Answer the question using only the items above, citing them as [n]."""
+
+# answer@1.2: the deterministic plan (what the evidence supports and the question needs) precedes the instruction
+ANSWER_USER_PLANNED = """Question: {question}
+
+Knowledge items:
+{items}
+
+Plan (derived from the question and the items above):
+{plan}
+
+Answer the question using only the items above, citing them as [n]. Cover every point in the plan that the
+items support; do not add anything the items do not state."""
+
+REGENERATE_USER = """Question: {question}
+
+Knowledge items:
+{items}
+
+Your previous answer:
+{answer}
+
+It is supported by the items but incomplete. The items also establish the following points, which the answer
+does not cover:
+{missing}
+
+Rewrite the answer so that it also covers those points, citing the items given for each as [n]. Keep every claim
+and citation of the previous answer that is still correct, keep the same [n] numbering, and do not add anything
+the items do not state."""
 
 
 CONFLICT_SYSTEM = """You judge whether two knowledge statements about "{domain_name}" contradict each other.
