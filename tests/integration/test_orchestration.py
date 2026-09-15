@@ -8,7 +8,7 @@ from datetime import timedelta
 
 import pytest
 from sqlalchemy import delete, select
-from tests.conftest import requires_db
+from tests.conftest import jobs_since, requires_db
 
 from knowledge_platform.core import runtime_config
 from knowledge_platform.core.domains import sync_domain
@@ -32,6 +32,7 @@ from knowledge_platform.models import (
 )
 
 pytestmark = requires_db
+T0 = utcnow()  # jobs the tests create are newer than this; cleanups never touch older ones
 DOMAIN = "example"
 TYPE_OK, TYPE_FAIL, TYPE_FLAKY = "audit_ok", "audit_fail", "audit_flaky"
 calls: dict[str, list[int]] = {TYPE_OK: [], TYPE_FAIL: [], TYPE_FLAKY: []}
@@ -79,7 +80,10 @@ def clean(monkeypatch):
     yield
     with session_scope() as s:
         s.execute(
-            delete(Job).where(Job.type.in_([TYPE_OK, TYPE_FAIL, TYPE_FLAKY, "evaluate", "snapshot", "revalidate_item"]))
+            delete(Job).where(
+                Job.type.in_([TYPE_OK, TYPE_FAIL, TYPE_FLAKY, "evaluate", "snapshot", "revalidate_item"]),
+                jobs_since(T0),
+            )
         )
         s.execute(
             delete(Job).where(Job.type == "crawl_source", Job.payload["source_id"].as_string().in_(_source_ids(s)))
@@ -181,6 +185,14 @@ def test_run_is_finalised_with_aggregated_totals_and_status():
         assert s.get(Run, run2_id).status == RunStatus.FAILED
 
 
+def _queued_for(s, job_type: str, domain: str) -> int:
+    return sum(
+        1
+        for j in s.execute(select(Job).where(Job.type == job_type, Job.status == "QUEUED")).scalars()
+        if j.payload.get("domain_id") == domain
+    )
+
+
 def test_scheduler_enqueues_only_what_is_due():
     plugin = get_registry().get(DOMAIN)
     with session_scope() as s:
@@ -233,10 +245,13 @@ def test_scheduler_enqueues_only_what_is_due():
         s.flush()
     runtime_config.set_overrides({"eval.interval_hours": 1, "snapshot.interval_hours": 2})
     with session_scope() as s:
-        assert J.schedule_due_evaluations(s) == 1 and J.schedule_due_evaluations(s) == 0
-        assert J.schedule_due_snapshots(s) == 1 and J.schedule_due_snapshots(s) == 0
+        # other domains in the shared database may be due as well: assert on this domain and on idempotency
+        assert J.schedule_due_evaluations(s) >= 1 and J.schedule_due_evaluations(s) == 0
+        assert _queued_for(s, "evaluate", DOMAIN) == 1
+        assert J.schedule_due_snapshots(s) >= 1 and J.schedule_due_snapshots(s) == 0
+        assert _queued_for(s, "snapshot", DOMAIN) == 1
         # a fresh evaluation / snapshot pushes the next one past the interval
-        s.execute(delete(Job).where(Job.type.in_(["evaluate", "snapshot"])))
+        s.execute(delete(Job).where(Job.type.in_(["evaluate", "snapshot"]), jobs_since(T0)))
         s.add(
             EvaluationRun(
                 domain_id=DOMAIN,
@@ -253,7 +268,10 @@ def test_scheduler_enqueues_only_what_is_due():
             )
         )
         s.flush()
-        assert J.schedule_due_evaluations(s) == 0 and J.schedule_due_snapshots(s) == 0
+        J.schedule_due_evaluations(s)
+        J.schedule_due_snapshots(s)
+        assert _queued_for(s, "evaluate", DOMAIN) == 0 and _queued_for(s, "snapshot", DOMAIN) == 0
+        s.execute(delete(Job).where(Job.type.in_(["evaluate", "snapshot"]), jobs_since(T0)))
     runtime_config.set_overrides({"eval.interval_hours": 0, "snapshot.interval_hours": 0})
     with session_scope() as s:
         s.execute(delete(EvaluationRun).where(EvaluationRun.domain_id == DOMAIN))
@@ -265,10 +283,19 @@ def test_scheduler_enqueues_only_what_is_due():
         item = s.execute(select(KnowledgeItem).where(KnowledgeItem.domain_id == DOMAIN)).scalars().first()
         item.needs_review, item.review_kind, item.review_reason = True, "manual", "look"
         s.flush()
-        assert J.schedule_revalidations(s) == 0
+        J.schedule_revalidations(s)  # other domains may have flagged items of their own: scope to this item
+        queued_here = lambda: sum(  # noqa: E731
+            1
+            for j in s.execute(select(Job).where(Job.type == "revalidate_item", Job.status == "QUEUED")).scalars()
+            if j.payload.get("item_id") == str(item.id)
+        )
+        assert queued_here() == 0
         item.needs_revalidation, item.revalidation_reason = True, "dependency x: test"
         s.flush()
-        assert J.schedule_revalidations(s) == 1 and J.schedule_revalidations(s) == 0
+        J.schedule_revalidations(s)
+        assert queued_here() == 1
+        J.schedule_revalidations(s)
+        assert queued_here() == 1  # idempotent while queued
 
 
 def test_worker_housekeeping_runs_scheduler_and_requeue_on_their_intervals(monkeypatch):

@@ -7,7 +7,7 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select
-from tests.conftest import requires_db
+from tests.conftest import jobs_since, requires_db
 
 from knowledge_platform import adapters
 from knowledge_platform.api.app import app
@@ -22,9 +22,10 @@ from knowledge_platform.core.versioning.dependencies import add_relation, depend
 from knowledge_platform.core.versioning.lifecycle import transition
 from knowledge_platform.core.versioning.supersede import supersede, version_key
 from knowledge_platform.db import session_scope
-from knowledge_platform.models import ItemStatus, Job, KnowledgeItem, KnowledgeRelation
+from knowledge_platform.models import ItemStatus, Job, KnowledgeItem, KnowledgeRelation, utcnow
 
 pytestmark = requires_db
+T0 = utcnow()  # jobs the tests create are newer than this; cleanups never touch older ones
 client = TestClient(app)
 DOMAIN = "example"
 
@@ -52,7 +53,7 @@ def setup(monkeypatch):
     yield
     with session_scope() as s:
         s.execute(delete(KnowledgeItem).where(KnowledgeItem.domain_id == DOMAIN))
-        s.execute(delete(Job).where(Job.type == "revalidate_item"))
+        s.execute(delete(Job).where(Job.type == "revalidate_item", jobs_since(T0)))
 
 
 def _fact(subject, statement, obj, predicate="has", **kw):

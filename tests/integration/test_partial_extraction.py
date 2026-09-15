@@ -12,7 +12,7 @@ import httpx
 import pytest
 import respx
 from sqlalchemy import delete, select
-from tests.conftest import requires_db
+from tests.conftest import jobs_since, requires_db
 
 from knowledge_platform import adapters
 from knowledge_platform.adapters.embeddings.base import EmbeddingProvider
@@ -24,9 +24,10 @@ from knowledge_platform.core.orchestration.jobs import extract_document_job
 from knowledge_platform.core.pipeline import ingest_document
 from knowledge_platform.core.plugins.registry import load_plugin_dir
 from knowledge_platform.db import session_scope
-from knowledge_platform.models import Document, DocumentStatus, Domain, Job, KnowledgeItem, LLMCall, Source
+from knowledge_platform.models import Document, DocumentStatus, Domain, Job, KnowledgeItem, LLMCall, Source, utcnow
 
 pytestmark = requires_db
+T0 = utcnow()  # jobs the tests create are newer than this; cleanups never touch older ones
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "incremental"
 DOMAIN_ID = "itest-partial-" + uuid.uuid4().hex[:6]
 _CLAIM = re.compile(r"^([A-Z]+FN) (\w+) (.+?)\.")
@@ -117,7 +118,7 @@ def cleanup():
     with session_scope() as s:
         s.execute(delete(Domain).where(Domain.id == DOMAIN_ID))
         s.execute(delete(LLMCall).where(LLMCall.provider == "fake"))
-        s.execute(delete(Job).where(Job.idempotency_key.like("extract:%:partial%")))
+        s.execute(delete(Job).where(Job.idempotency_key.like("extract:%:partial%"), jobs_since(T0)))
 
 
 @respx.mock

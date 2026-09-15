@@ -48,3 +48,10 @@ def _drop_mocked_call_accounting():
             s.execute(delete(LLMCall).where(LLMCall.ok.is_(False), LLMCall.error.like("RESPX:%")))
     except Exception:
         pass
+
+
+def jobs_since(started_at):
+    """Filter for `delete(Job)` in cleanups: only jobs the tests created (never a live domain's history)."""
+    from knowledge_platform.models import Job
+
+    return Job.created_at >= started_at

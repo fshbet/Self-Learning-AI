@@ -7,7 +7,7 @@ import pytest
 import respx
 from fastapi.testclient import TestClient
 from sqlalchemy import delete, select
-from tests.conftest import requires_db
+from tests.conftest import jobs_since, requires_db
 
 from knowledge_platform import adapters
 from knowledge_platform.api.app import app
@@ -21,9 +21,10 @@ from knowledge_platform.core.plugins.registry import get_registry
 from knowledge_platform.core.verification import falsify
 from knowledge_platform.core.verification.review_flags import flag_for_review, resolve_review
 from knowledge_platform.db import session_scope
-from knowledge_platform.models import Job, KnowledgeItem
+from knowledge_platform.models import Job, KnowledgeItem, utcnow
 
 pytestmark = requires_db
+T0 = utcnow()  # jobs the tests create are newer than this; cleanups never touch older ones
 client = TestClient(app)
 DOMAIN = "example"
 
@@ -72,7 +73,7 @@ def setup(monkeypatch):
     yield
     with session_scope() as s:
         s.execute(delete(KnowledgeItem).where(KnowledgeItem.domain_id == DOMAIN))
-        s.execute(delete(Job).where(Job.type.in_(["revalidate_item", "falsify_item"])))
+        s.execute(delete(Job).where(Job.type.in_(["revalidate_item", "falsify_item"]), jobs_since(T0)))
 
 
 def _entry(kind, statement, obj):
@@ -225,7 +226,7 @@ def test_scheduler_does_not_churn_on_revalidations_a_reviewer_must_unblock(monke
         assert enqueue_revalidations(s, DOMAIN) == 0
         # ... but a person can still force it
         assert enqueue_revalidations(s, DOMAIN, force=True) == 1
-        s.execute(delete(Job).where(Job.type == "revalidate_item", Job.status == "QUEUED"))
+        s.execute(delete(Job).where(Job.type == "revalidate_item", Job.status == "QUEUED", jobs_since(T0)))
         # the dependency changed (the conflict was settled): revalidation is worthwhile again
         base = s.get(KnowledgeItem, base_id)
         transition(s, base, ItemStatus.VERIFIED, reason="reviewer settled the conflict", actor="human:bob")

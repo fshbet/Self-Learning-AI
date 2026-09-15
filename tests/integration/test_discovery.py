@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 from sqlalchemy import delete, select
-from tests.conftest import requires_db
+from tests.conftest import jobs_since, requires_db
 
 from knowledge_platform.adapters.search.base import SearchHit
 from knowledge_platform.core.collection.discovery import Candidate, discover, score_candidate, vocabulary_terms
@@ -14,9 +14,10 @@ from knowledge_platform.core.orchestration import jobs as jobs_mod
 from knowledge_platform.core.orchestration.jobs import schedule_due_discovery
 from knowledge_platform.core.plugins.registry import get_registry
 from knowledge_platform.db import session_scope
-from knowledge_platform.models import Job, Run, Source, SourceStatus
+from knowledge_platform.models import Job, Run, Source, SourceStatus, utcnow
 
 pytestmark = requires_db
+T0 = utcnow()  # jobs the tests create are newer than this; cleanups never touch older ones
 DOMAIN = "example"
 
 
@@ -38,7 +39,7 @@ def setup():
     yield
     with session_scope() as s:
         s.execute(delete(Source).where(Source.domain_id == DOMAIN, Source.origin == "discovered"))
-        s.execute(delete(Job).where(Job.type == "discover"))
+        s.execute(delete(Job).where(Job.type == "discover", jobs_since(T0)))
         s.execute(delete(Run).where(Run.kind == "discover", Run.triggered_by == "scheduler"))
 
 
