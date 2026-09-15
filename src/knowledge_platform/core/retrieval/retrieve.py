@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from ...models import ItemStatus
-from .candidates import Candidate, candidate_pool
+from .candidates import Candidate, candidate_pool, embed_query
 from .query import QueryAnalysis, analyze, lexemes
 from .rank import Scored, diversify, expand, score_candidates, source_facts
 from .search import DEFAULT_STATUSES, SearchResult, resolve_text_search_config
@@ -119,8 +119,11 @@ def retrieve(
         if include_candidates:
             statuses.append(ItemStatus.CANDIDATE.value)
     t1 = time.perf_counter()
+    embedded = embed_query(query)  # timed on its own: it includes any model swap on the local model server
+    timings["embedding"] = int((time.perf_counter() - t1) * 1000)
+    t1 = time.perf_counter()
     candidates = candidate_pool(
-        session, domain_id=plugin.id, analysis=analysis, config=config, statuses=statuses, pool=pool
+        session, domain_id=plugin.id, analysis=analysis, config=config, statuses=statuses, pool=pool, embedded=embedded
     )
     timings["candidates"] = int((time.perf_counter() - t1) * 1000)
     t2 = time.perf_counter()

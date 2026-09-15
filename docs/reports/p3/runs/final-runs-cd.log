@@ -1,0 +1,52 @@
+=== p3-plan
+| unanswered_rate        | 0.0%   |
+| uncited_rate           | 0.0%   |
+| mean_latency_ms        | 13355  |
++---------------------------------+
+  FAIL dax-calculate-01 : missing_concepts, authoritative_source_not_retrieved,
+hallucination
+  PASS dax-divide-01: ok
+  PASS model-star-01: ok
+  PASS model-bidi-01: ok
+  FAIL refresh-incremental-01 : missing_concepts
+  FAIL security-rls-01 : missing_concepts
+  PASS m-folding-01: ok
+  PASS gateway-01: ok
+  PASS abstain-01 : ok
+  PASS negative-divide-01: ok
+  PASS negative-versions-01: ok
+  PASS visual-calc-01: ok
+  classes: answer_generation_failure 2, expected_abstention 1, 
+retrieval_failure 1
+  missing_concepts (3): Extracted items lack a required concept: review the 
+source page's extraction.
+  authoritative_source_not_retrieved (1): The authoritative page is not in the 
+repository or not extracted: crawl it.
+  hallucination (1): Answer invented claims: tighten the answer prompt; 
+consider a stronger answer model.
+=== p3
+  FAIL model-star-01 : judge_incorrect, judge_unsupported, hallucination
+  PASS model-bidi-01: ok
+  FAIL refresh-incremental-01 : missing_concepts
+  FAIL security-rls-01 : missing_concepts
+  PASS m-folding-01: ok
+  PASS gateway-01: ok
+  PASS abstain-01 : ok
+  PASS negative-divide-01: ok
+  PASS negative-versions-01: ok
+  PASS visual-calc-01: ok
+  classes: answer_generation_failure 3, expected_abstention 1, 
+retrieval_failure 1
+REGRESSION detected: {'accuracy': {'baseline': 1.0, 'current': 0.6667, 'delta':
+-0.3333}, 'citation_correctness': {'baseline': 1.0, 'current': 1.0, 'delta': 
+0.0}}
+  missing_concepts (3): Extracted items lack a required concept: review the 
+source page's extraction.
+  hallucination (2): Answer invented claims: tighten the answer prompt; 
+consider a stronger answer model.
+  authoritative_source_not_retrieved (1): The authoritative page is not in the 
+repository or not extracted: crawl it.
+  judge_incorrect (1): Answer disagrees with the reference: inspect cited items
+vs. expected answer (one is wrong).
+  judge_unsupported (1): Answer contains claims beyond the citations: tighten 
+the answer prompt or add knowledge.

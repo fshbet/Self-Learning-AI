@@ -47,6 +47,7 @@ EVAL_ROWS = [
 ]
 TIMINGS = (
     "analysis",
+    "embedding",
     "candidates",
     "ranking",
     "diversity",
@@ -151,7 +152,7 @@ def main(ids: list[str]) -> None:
         (REPORTS / "comparison.json").write_text(
             json.dumps(out, default=str, indent=2) + "\n", encoding="utf-8", newline="\n"
         )
-        print("\n".join(lines))
+        print("\n".join(lines).encode("ascii", "replace").decode())
 
 
 if __name__ == "__main__":

@@ -140,7 +140,9 @@ def test_uncited_answer_is_judged_and_fails_as_uncited(monkeypatch):
     monkeypatch.setattr(
         runner,
         "answer_question",
-        lambda session, plugin, question, limit=None, mode="p3": Answer(question=question, answer=DECLINE, insufficient=True),
+        lambda session, plugin, question, limit=None, mode="p3": Answer(
+            question=question, answer=DECLINE, insufficient=True
+        ),
     )
     result = runner.evaluate_question(_NoSession(), None, Q, k=8)
     assert not judged and result.checks["answer_kind"]["kind"] == "abstention"

@@ -400,6 +400,7 @@ def compute_metrics(results: list[EvaluationResult], questions: list[EvalQuestio
     metrics["llm_calls_per_question"] = _rate([float(m.get("llm_calls") or 1) for m in metas])
     timing_keys = (
         "analysis",
+        "embedding",
         "candidates",
         "ranking",
         "diversity",

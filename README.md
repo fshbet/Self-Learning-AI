@@ -417,6 +417,14 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 * **Language independence** — lexical retrieval uses the text-search configuration the domain plugin declares or
   the one derived from its `language` (`simple` for anything PostgreSQL cannot stem, incl. multilingual corpora);
   the core assumes no language. See `domains/README.md`.
+* **Explainable retrieval and planned answers (ADR 0006)** — a question is analysed (normalisation, hyphen and
+  declared-synonym variants, entities filed in the domain, deterministic intent), candidates come from four channels
+  (vector, weighted lexical OR, rare terms, entity), and every ranked item carries its signals (entity match, concept
+  coverage, intent/type affinity, authority, verification, version, trust penalties) and the reasons in words. The
+  answer model gets 12 blocks with source, authority and excerpt plus a deterministic plan derived only from the
+  question and the evidence; a completeness check in lexeme space triggers at most one targeted regeneration, never
+  on abstentions. `kp ask --explain`, `kp eval run --mode p2|p3-retrieval|p3-plan|p3`, `kp eval retrieval` (offline
+  harness); the Search & Ask page shows "how this answer was made". Report: `docs/reports/p3/final-report.md`.
 * **Retrieval policy** — answers are built from VERIFIED / SUPPORTED items; STALE and CONFLICTED items are retrieved
   but labelled for the answer model (and the evaluator checks that the answer says so); items flagged for review or
   awaiting revalidation carry the same labels. CANDIDATE items are **excluded** from search and answers unless a caller
@@ -448,7 +456,7 @@ src/knowledge_platform/
     quality/     scoring · dedup
     verification/ conflicts
     versioning/  lifecycle (status machine, verification levels)
-    retrieval/   embeddings · hybrid search (RRF) · grounded answers
+    retrieval/   embeddings · query analysis · multi-channel candidates · explainable ranking · plan · grounded answers
     evaluation/  checks · runner (golden set, judge, metrics, regression, findings)
     export/      schema · canonical serialisation · snapshot builder + gate · renderers (AI + human)
     orchestration/ queue · jobs · worker · scheduler

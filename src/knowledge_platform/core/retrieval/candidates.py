@@ -160,14 +160,28 @@ def _tsquery(lexemes: list[str]) -> str:
     return " | ".join(dict.fromkeys(terms))
 
 
-def vector_candidates(session: Session, *, domain_id: str, query: str, statuses: list[str], pool: int) -> list[tuple]:
+def embed_query(query: str) -> tuple[list[float], str]:
+    """The query vector and the embedder identity. Timed separately by the caller: with a single local model
+    server this call carries the cost of swapping the embedding model back in after a generation call."""
     from . import search  # resolved at call time: tests and adapters swap the embedder on the search module
 
     embedder = search.get_embedder()
-    vec = embedder.embed_one(query)
+    return embedder.embed_one(query), embedder.identity
+
+
+def vector_candidates(
+    session: Session,
+    *,
+    domain_id: str,
+    query: str,
+    statuses: list[str],
+    pool: int,
+    embedded: tuple[list[float], str] | None = None,
+) -> list[tuple]:
+    vec, identity = embedded or embed_query(query)
     return session.execute(
         text(_VEC_SQL),
-        {"vec": str(vec), "emb": embedder.identity, "domain": domain_id, "statuses": statuses, "pool": pool},
+        {"vec": str(vec), "emb": identity, "domain": domain_id, "statuses": statuses, "pool": pool},
     ).all()
 
 
@@ -214,12 +228,15 @@ def candidate_pool(
     statuses: list[str],
     pool: int = 60,
     channels: tuple[str, ...] = ("vector", "lexical", "entity"),
+    embedded: tuple[list[float], str] | None = None,
 ) -> dict[str, Candidate]:
     """Union of the channels, keyed by item id, with each channel's rank/score recorded."""
     cands: dict[str, Candidate] = {}
     ids_needed: set[str] = set()
     vec_rows = (
-        vector_candidates(session, domain_id=domain_id, query=analysis.query, statuses=statuses, pool=pool)
+        vector_candidates(
+            session, domain_id=domain_id, query=analysis.query, statuses=statuses, pool=pool, embedded=embedded
+        )
         if "vector" in channels
         else []
     )

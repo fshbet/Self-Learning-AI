@@ -154,7 +154,9 @@ def test_exact_entity_match_beats_a_semantically_similar_wrong_concept():
         assert r.analysis.entities[0].kind == "identifier" and r.analysis.intent == "definition"
         assert _pos(r.selected, right) == 1 and _pos(r.selected, wrong) not in (None, 1)
         top = r.selected[0]
-        assert top.signals["entity_subject"] > 0 and "subject is the query entity 'FLUXCAP'" in " ".join(top.explanation)
+        assert top.signals["entity_subject"] > 0 and "subject is the query entity 'FLUXCAP'" in " ".join(
+            top.explanation
+        )
         assert "entity_subject" not in _by_id(r.selected, wrong).signals
         # the ranking explains itself: every contribution is recorded and the score is their sum
         assert abs(sum(top.signals.values()) - top.score) < 1e-6
@@ -185,7 +187,11 @@ def test_authority_is_a_signal_not_an_override():
         sel = _ranked(s, "How much latency does GRIDLINK add per hop?")
         assert _pos(sel, same_a) < _pos(sel, same_b)
         a, b = _by_id(sel, same_a), _by_id(sel, same_b)
-        assert a.signals["authority"] > b.signals["authority"] and a.signals.get("official") and not b.signals.get("official")
+        assert (
+            a.signals["authority"] > b.signals["authority"]
+            and a.signals.get("official")
+            and not b.signals.get("official")
+        )
         assert "source authority 95" in " ".join(a.explanation)
         # an authoritative but irrelevant page never beats a relevant secondary one
         sel = _ranked(s, "How many times does GRIDLINK retry a failed hop?")
@@ -271,7 +277,9 @@ def test_version_specific_knowledge_is_preferred_and_the_mismatch_is_recorded():
 def test_example_intent_expands_with_examples_and_negative_knowledge_is_kept():
     with session_scope() as s:
         _item(s, "FLUXCAP", "FLUXCAP stores charge for the drive train.", ktype="definition")
-        ex = _item(s, "FLUXCAP", "Charging FLUXCAP from the bench supply.", ktype="example", code="fluxcap charge --bench").id
+        ex = _item(
+            s, "FLUXCAP", "Charging FLUXCAP from the bench supply.", ktype="example", code="fluxcap charge --bench"
+        ).id
         neg = _item(s, "FLUXCAP", "FLUXCAP must not be charged above forty volts.", ktype="limitation").id
     with session_scope() as s:
         r = retrieve(s, get_registry().get(DOMAIN), "Show me an example of charging FLUXCAP", k=1)

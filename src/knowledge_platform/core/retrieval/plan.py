@@ -92,6 +92,10 @@ def _grams(positions: list[tuple[int, str]]) -> tuple[set[str], set[str]]:
     for pos, lexs in by_pos.items():
         for lx in lexs:
             for nxt in by_pos.get(pos + 1, []):
+                # a hyphenated token yields the compound and its parts at the same positions ("row-level" →
+                # 'row-level', 'row', 'level'): a pair where one side contains the other is an artefact, not a term
+                if lx in nxt or nxt in lx:
+                    continue
                 bi.add(f"{lx} {nxt}")
     return uni, bi
 
