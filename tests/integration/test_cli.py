@@ -74,3 +74,17 @@ def test_autostart_status_reports_without_installing():
 def test_sub_apps_show_help_without_arguments(cmd):
     result = runner.invoke(app, cmd)
     assert "Usage" in result.output
+
+
+@requires_db
+def test_offline_retrieval_evaluation_reports_per_question_evidence_ranks(tmp_path):
+    """P3 harness: measures retrieval alone on the golden set (no model), with a per-concept failure reason."""
+    out = tmp_path / "retrieval.json"
+    text = _run("eval", "retrieval", "powerbi", "--k", "5", "--out", str(out))
+    assert "concept_recall_at_k" in text
+    report = json.loads(out.read_text(encoding="utf-8"))
+    assert report["k"] == 5 and report["questions"] >= 1
+    for r in report["results"]:
+        assert len(r["top"]) <= 5 and r["failure_reason"]
+        for c in r["required_concepts"]:
+            assert c in r["concept_first_rank"] and c in r["concept_in_corpus"]

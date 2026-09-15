@@ -257,6 +257,43 @@ def eval_run(
         raise typer.Exit(code=2)
 
 
+@eval_app.command("retrieval")
+def eval_retrieval(
+    domain: str,
+    k: int = typer.Option(8, help="top-K handed to the answer model"),
+    pool: int = typer.Option(50, help="deeper candidate pool used to locate expected evidence"),
+    out: Path | None = typer.Option(None, help="write the full per-question report as JSON"),
+) -> None:
+    """Offline retrieval evaluation on the golden set (no model call): concept recall@K, precision@K, MRR,
+    authoritative-source hit rate and, per question, where the expected evidence ranks."""
+    from .core.evaluation.retrieval_eval import evaluate_retrieval
+    from .core.plugins.registry import get_registry
+    from .db import session_scope
+
+    with session_scope() as session:
+        report = evaluate_retrieval(session, get_registry().get(domain), k=k, pool=pool)
+    m = report["metrics"]
+    table = Table(
+        "question", "concept recall", "precision", "MRR", "auth hit", "first rank", "why", title=f"retrieval@{k}"
+    )
+    for r in report["results"]:
+        table.add_row(
+            r["id"],
+            "—" if r["concept_recall"] is None else f"{r['concept_recall']:.2f}",
+            "—" if r["precision"] is None else f"{r['precision']:.2f}",
+            "—" if r["mrr"] is None else f"{r['mrr']:.2f}",
+            "—" if r["authoritative_hit"] is None else str(r["authoritative_hit"]),
+            str(r["first_expected_rank"] or "—"),
+            r["failure_reason"][:70],
+        )
+    console.print(table)
+    console.print({k2: v for k2, v in m.items()})
+    if out:
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(report, indent=2, default=str) + "\n", encoding="utf-8")
+        console.print(f"wrote {out}")
+
+
 @eval_app.command("list")
 def eval_list(domain: str | None = typer.Argument(None), limit: int = 10) -> None:
     """Show recent evaluation runs and their headline metrics."""
