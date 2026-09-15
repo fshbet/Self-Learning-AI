@@ -420,6 +420,8 @@ the following, each with regression tests (139 tests, 82 % coverage):
 | P2.6 / P2.7 designs | `0065f47` | ADR 0003 validator isolation (tier 0 implemented), ADR 0004 authentication (exposure guard implemented) |
 | P2.8 discovery | `4b016b1` | ADR 0005: scored, filtered candidates; opt-in recurring discovery; never auto-approved |
 | P2.10 second domain | `6c80f49` | synthetic `roboticslab` plugin through the whole pipeline |
+| P2.0 / P2.9 live run | `f87bbc3`, `82fe99b`, `9b1a4e0` | 186-document crawl (6,100 items), machine-restart recovery, defects found live: silent loss of failed sections, ILIKE subjects, revalidation churn |
+| P2.11 report | `docs/reports/p2/final-report.md` | recovery, growth, evaluation (coverage 0.45→1.0, citation 0.55→1.0, accuracy unchanged), stability, snapshot v18 + delta v20 + apply verified |
 
 Awaiting approval (designed, not built): validator runner tiers 1–2 (ADR 0003), proxy/token authentication
 (ADR 0004), discovery auto-approval policy (ADR 0005). Still deferred by decision: media handling, PDF export,
