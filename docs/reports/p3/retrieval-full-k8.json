@@ -13,7 +13,7 @@
     "authoritative_hit_rate": 0.5,
     "expected_concept_hit_rate": 0.7895,
     "questions_fully_covered": 7,
-    "mean_latency_ms": 1061.1818
+    "mean_latency_ms": 1112.5455
   },
   "results": [
     {
@@ -48,7 +48,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "entity_subject": 0.007737,
             "concept_coverage": 0.02,
@@ -75,7 +74,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "entity_subject": 0.007737,
             "concept_coverage": 0.02,
@@ -102,7 +100,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.022222,
             "fusion": 0.022222,
             "entity_subject": 0.016,
             "concept_coverage": 0.02,
@@ -129,7 +126,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "entity_mention": 0.0032,
             "concept_coverage": 0.02,
@@ -156,7 +152,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.028571,
             "fusion": 0.028571,
             "entity_mention": 0.0032,
             "concept_coverage": 0.02,
@@ -183,7 +178,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.027273,
             "fusion": 0.027273,
             "entity_mention": 0.0032,
             "concept_coverage": 0.02,
@@ -209,7 +203,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.031579,
             "fusion": 0.031579,
             "entity_mention": 0.0032,
             "concept_coverage": 0.02,
@@ -222,7 +215,7 @@
           "id": "fc353094-e544-4f9f-bd63-74cef7f66587",
           "score": 0.05995,
           "vec_rank": 10,
-          "lex_rank": 78,
+          "lex_rank": 79,
           "subject": "DAX formula",
           "knowledge_type": "definition",
           "topic": "DAX/Functions",
@@ -234,7 +227,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.024,
             "fusion": 0.024,
             "entity_mention": 0.0032,
             "concept_coverage": 0.02,
@@ -259,7 +251,7 @@
         "context transition": 2
       },
       "failure_reason": "'context transition' in corpus (2) but not in pool-50; authoritative source not in pool (not crawled or not retrievable)",
-      "latency_ms": 1019
+      "latency_ms": 2553
     },
     {
       "id": "dax-divide-01",
@@ -277,7 +269,7 @@
           "id": "59c876ba-782d-4a0c-9d6d-216dc42e89e0",
           "score": 0.07004,
           "vec_rank": 5,
-          "lex_rank": 50,
+          "lex_rank": 53,
           "subject": "DIVIDE",
           "knowledge_type": "definition",
           "topic": "DAX/Functions",
@@ -291,7 +283,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.03,
             "fusion": 0.03,
             "entity_subject": 0.02,
             "concept_coverage": 0.007289,
@@ -306,7 +297,7 @@
           "id": "ecbe04f8-3c0e-4ecf-a0ea-e03d26689c4b",
           "score": 0.06429,
           "vec_rank": 2,
-          "lex_rank": 46,
+          "lex_rank": 48,
           "subject": "DIVIDE function",
           "knowledge_type": "definition",
           "topic": "DAX/Functions",
@@ -321,7 +312,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "entity_mention": 0.004,
             "concept_coverage": 0.01125,
@@ -348,7 +338,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "entity_mention": 0.004,
             "concept_coverage": 0.007289,
@@ -375,7 +364,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "entity_mention": 0.004,
             "concept_coverage": 0.007289,
@@ -402,7 +390,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.031579,
             "fusion": 0.031579,
             "entity_mention": 0.004,
             "concept_coverage": 0.007289,
@@ -429,7 +416,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.027273,
             "fusion": 0.027273,
             "entity_mention": 0.004,
             "concept_coverage": 0.009892,
@@ -457,7 +443,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.028571,
             "fusion": 0.028571,
             "concept_coverage": 0.007289,
             "intent_affinity": 0.006,
@@ -471,7 +456,7 @@
           "id": "2183d88b-c717-4cf3-adf1-743b1f54749e",
           "score": 0.0428,
           "vec_rank": 8,
-          "lex_rank": 9,
+          "lex_rank": 8,
           "subject": "Concatenation operator (&)",
           "knowledge_type": "definition",
           "topic": "",
@@ -483,7 +468,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.026087,
             "fusion": 0.026087,
             "concept_coverage": 0.003961,
             "intent_affinity": 0.006,
@@ -507,7 +491,7 @@
         "alternate result": 2
       },
       "failure_reason": "ok",
-      "latency_ms": 741
+      "latency_ms": 815
     },
     {
       "id": "model-star-01",
@@ -537,7 +521,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "entity_subject": 0.003404,
             "topic_affinity": 0.008,
@@ -553,7 +536,7 @@
           "id": "235c5e60-d34b-4433-8801-038561e8acbf",
           "score": 0.07545,
           "vec_rank": 2,
-          "lex_rank": 15,
+          "lex_rank": 16,
           "subject": "Star schema design",
           "knowledge_type": "fact",
           "topic": "Data Modeling/Star schema",
@@ -565,7 +548,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "entity_subject": 0.003404,
             "topic_affinity": 0.008,
@@ -593,7 +575,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "topic_affinity": 0.008,
             "concept_coverage": 0.006347,
@@ -608,7 +589,7 @@
           "id": "a6e335d4-63ac-48a7-b256-dcf43dce05ea",
           "score": 0.05868,
           "vec_rank": 4,
-          "lex_rank": 38,
+          "lex_rank": 39,
           "subject": "Power BI modeling technique",
           "knowledge_type": "best_practice",
           "topic": "Data Modeling/Star schema",
@@ -622,7 +603,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.031579,
             "fusion": 0.031579,
             "topic_affinity": 0.008,
             "concept_coverage": 0.006347,
@@ -652,7 +632,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.023077,
             "fusion": 0.023077,
             "entity_mention": 0.0024,
             "topic_affinity": 0.008,
@@ -668,7 +647,7 @@
           "id": "e646dd80-35dd-458b-ae84-4d1a0c6bf661",
           "score": 0.0571,
           "vec_rank": 5,
-          "lex_rank": 39,
+          "lex_rank": 38,
           "subject": "Power BI semantic models",
           "knowledge_type": "best_practice",
           "topic": "Data Modeling/Star schema",
@@ -680,7 +659,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.03,
             "fusion": 0.03,
             "topic_affinity": 0.008,
             "concept_coverage": 0.006347,
@@ -709,7 +687,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.028571,
             "fusion": 0.028571,
             "topic_affinity": 0.008,
             "concept_coverage": 0.006347,
@@ -739,7 +716,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.018182,
             "fusion": 0.018182,
             "entity_mention": 0.0024,
             "topic_affinity": 0.008,
@@ -765,7 +741,7 @@
         "dimension table": 62
       },
       "failure_reason": "ok",
-      "latency_ms": 1101
+      "latency_ms": 1195
     },
     {
       "id": "model-bidi-01",
@@ -797,7 +773,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "concept_coverage": 0.011511,
             "intent_affinity": 0.006,
@@ -825,7 +800,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "concept_coverage": 0.011511,
             "authority": 0.00475,
@@ -850,7 +824,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "concept_coverage": 0.011511,
             "authority": 0.00475,
@@ -877,7 +850,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.028571,
             "fusion": 0.028571,
             "topic_affinity": 0.008,
             "concept_coverage": 0.006058,
@@ -905,7 +877,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.023077,
             "fusion": 0.023077,
             "topic_affinity": 0.008,
             "concept_coverage": 0.004717,
@@ -934,7 +905,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.027273,
             "fusion": 0.027273,
             "topic_affinity": 0.008,
             "concept_coverage": 0.004717,
@@ -962,7 +932,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.03,
             "fusion": 0.03,
             "concept_coverage": 0.006058,
             "authority": 0.00475,
@@ -987,7 +956,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.024,
             "fusion": 0.024,
             "concept_coverage": 0.003408,
             "intent_affinity": 0.006,
@@ -1011,7 +979,7 @@
         "performance": 140
       },
       "failure_reason": "'ambiguity' at rank 20 (> K=8)",
-      "latency_ms": 1309
+      "latency_ms": 1123
     },
     {
       "id": "refresh-incremental-01",
@@ -1030,7 +998,7 @@
           "id": "befd423c-3a75-425a-83c5-5504752ffb33",
           "score": 0.08159,
           "vec_rank": 2,
-          "lex_rank": 6,
+          "lex_rank": 5,
           "subject": "RangeStart",
           "knowledge_type": "definition",
           "topic": "Power Query / M",
@@ -1044,7 +1012,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "entity_subject": 0.02,
             "concept_coverage": 0.013542,
@@ -1074,7 +1041,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.028571,
             "fusion": 0.028571,
             "entity_subject": 0.02,
             "concept_coverage": 0.017578,
@@ -1103,7 +1069,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "entity_subject": 0.016,
             "concept_coverage": 0.011073,
@@ -1118,7 +1083,7 @@
           "id": "38b14a17-21f3-43e7-b2f5-72df0c8c37b1",
           "score": 0.06724,
           "vec_rank": 9,
-          "lex_rank": 5,
+          "lex_rank": 6,
           "subject": "RangeEnd",
           "knowledge_type": "definition",
           "topic": "Power Query / M",
@@ -1132,7 +1097,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.025,
             "fusion": 0.025,
             "entity_subject": 0.016,
             "concept_coverage": 0.013495,
@@ -1162,7 +1126,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.031579,
             "fusion": 0.031579,
             "entity_mention": 0.004,
             "concept_coverage": 0.017578,
@@ -1192,7 +1155,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.03,
             "fusion": 0.03,
             "entity_mention": 0.004,
             "concept_coverage": 0.017578,
@@ -1222,7 +1184,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "entity_mention": 0.004,
             "concept_coverage": 0.02,
@@ -1251,7 +1212,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.027273,
             "fusion": 0.027273,
             "entity_mention": 0.004,
             "concept_coverage": 0.02,
@@ -1278,7 +1238,7 @@
         "query folding": 16
       },
       "failure_reason": "'query folding' at rank 20 (> K=8)",
-      "latency_ms": 854
+      "latency_ms": 701
     },
     {
       "id": "security-rls-01",
@@ -1308,7 +1268,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "entity_mention": 0.004,
             "topic_affinity": 0.008,
@@ -1338,7 +1297,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "entity_mention": 0.004,
             "topic_affinity": 0.008,
@@ -1366,7 +1324,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "entity_mention": 0.004,
             "topic_affinity": 0.008,
@@ -1394,7 +1351,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.015,
             "fusion": 0.015,
             "entity_subject": 0.02,
             "topic_affinity": 0.008,
@@ -1422,7 +1378,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.026087,
             "fusion": 0.026087,
             "entity_mention": 0.004,
             "concept_coverage": 0.012179,
@@ -1449,7 +1404,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.02069,
             "fusion": 0.02069,
             "entity_mention": 0.004,
             "topic_affinity": 0.008,
@@ -1477,7 +1431,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.03,
             "fusion": 0.03,
             "topic_affinity": 0.008,
             "concept_coverage": 0.00366,
@@ -1506,7 +1459,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.019355,
             "fusion": 0.019355,
             "entity_mention": 0.004,
             "topic_affinity": 0.008,
@@ -1525,14 +1477,14 @@
       "first_expected_rank": 2,
       "concept_first_rank": {
         "roles": 2,
-        "DAX filter": null
+        "DAX filter": 48
       },
       "concept_in_corpus": {
         "roles": 58,
         "DAX filter": 7
       },
-      "failure_reason": "'DAX filter' in corpus (7) but not in pool-50",
-      "latency_ms": 1518
+      "failure_reason": "'DAX filter' at rank 48 (> K=8)",
+      "latency_ms": 1360
     },
     {
       "id": "m-folding-01",
@@ -1561,7 +1513,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "entity_subject": 0.005579,
             "concept_coverage": 0.02,
@@ -1588,7 +1539,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.031579,
             "fusion": 0.031579,
             "entity_mention": 0.0024,
             "concept_coverage": 0.02,
@@ -1615,7 +1565,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "entity_subject": 0.005579,
             "concept_coverage": 0.02,
@@ -1641,7 +1590,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "entity_mention": 0.0024,
             "concept_coverage": 0.02,
@@ -1669,7 +1617,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.026087,
             "fusion": 0.026087,
             "entity_subject": 0.004485,
             "concept_coverage": 0.02,
@@ -1696,7 +1643,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.027273,
             "fusion": 0.027273,
             "entity_mention": 0.0024,
             "concept_coverage": 0.02,
@@ -1723,7 +1669,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.022222,
             "fusion": 0.022222,
             "entity_subject": 0.005579,
             "concept_coverage": 0.016297,
@@ -1750,7 +1695,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.015385,
             "fusion": 0.015385,
             "entity_mention": 0.0024,
             "concept_coverage": 0.02,
@@ -1773,7 +1717,7 @@
         "native query": 4
       },
       "failure_reason": "ok",
-      "latency_ms": 823
+      "latency_ms": 700
     },
     {
       "id": "gateway-01",
@@ -1804,7 +1748,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "entity_subject": 0.003621,
             "topic_affinity": 0.008,
@@ -1834,7 +1777,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "entity_subject": 0.003621,
             "concept_coverage": 0.013042,
@@ -1863,7 +1805,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "concept_coverage": 0.014969,
             "intent_affinity": 0.006,
@@ -1891,7 +1832,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.031579,
             "fusion": 0.031579,
             "concept_coverage": 0.014969,
             "intent_affinity": 0.006,
@@ -1919,7 +1859,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.03,
             "fusion": 0.03,
             "concept_coverage": 0.014969,
             "intent_affinity": 0.006,
@@ -1933,7 +1872,7 @@
           "id": "f2f4421a-fa1b-4e22-9159-9a80cc1e79c9",
           "score": 0.05629,
           "vec_rank": 6,
-          "lex_rank": 14,
+          "lex_rank": 13,
           "subject": "Standard on-premises data gateway",
           "knowledge_type": "best_practice",
           "topic": "Gateways and Refresh",
@@ -1947,7 +1886,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.028571,
             "fusion": 0.028571,
             "concept_coverage": 0.014969,
             "intent_affinity": 0.006,
@@ -1975,7 +1913,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.026087,
             "fusion": 0.026087,
             "entity_subject": 0.003621,
             "concept_coverage": 0.013042,
@@ -2004,7 +1941,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.025,
             "fusion": 0.025,
             "topic_affinity": 0.008,
             "concept_coverage": 0.013042,
@@ -2026,7 +1962,7 @@
         "on-premises": 87
       },
       "failure_reason": "ok",
-      "latency_ms": 1012
+      "latency_ms": 865
     },
     {
       "id": "negative-divide-01",
@@ -2055,7 +1991,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "entity_subject": 0.01,
             "concept_coverage": 0.010868,
@@ -2083,7 +2018,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "entity_subject": 0.02,
             "concept_coverage": 0.004874,
@@ -2111,7 +2045,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "entity_mention": 0.004,
             "concept_coverage": 0.009084,
@@ -2137,7 +2070,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.031579,
             "fusion": 0.031579,
             "entity_mention": 0.004,
             "concept_coverage": 0.010868,
@@ -2163,7 +2095,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.03,
             "fusion": 0.03,
             "entity_mention": 0.004,
             "concept_coverage": 0.004874,
@@ -2191,7 +2122,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.028571,
             "fusion": 0.028571,
             "concept_coverage": 0.009084,
             "authority": 0.00475,
@@ -2216,7 +2146,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.026087,
             "fusion": 0.026087,
             "entity_mention": 0.004,
             "concept_coverage": 0.004874,
@@ -2230,7 +2159,7 @@
           "id": "16439284-5d8a-4477-ba34-618b38fa0007",
           "score": 0.03823,
           "vec_rank": 7,
-          "lex_rank": 11,
+          "lex_rank": 12,
           "subject": "0",
           "knowledge_type": "definition",
           "topic": "DAX",
@@ -2242,7 +2171,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.027273,
             "fusion": 0.027273,
             "concept_coverage": 0.00421,
             "authority": 0.00475,
@@ -2263,7 +2191,7 @@
         "BLANK": 71
       },
       "failure_reason": "ok",
-      "latency_ms": 835
+      "latency_ms": 679
     },
     {
       "id": "negative-versions-01",
@@ -2294,7 +2222,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "entity_subject": 0.002789,
             "concept_coverage": 0.017703,
@@ -2323,7 +2250,6 @@
           ],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "entity_mention": 0.008,
             "concept_coverage": 0.014753,
@@ -2349,7 +2275,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.024,
             "fusion": 0.024,
             "entity_subject": 0.008,
             "concept_coverage": 0.008902,
@@ -2376,7 +2301,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.025,
             "fusion": 0.025,
             "entity_mention": 0.008,
             "concept_coverage": 0.006084,
@@ -2403,7 +2327,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "entity_subject": 0.002789,
             "concept_coverage": 0.005808,
@@ -2429,7 +2352,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.028571,
             "fusion": 0.028571,
             "entity_mention": 0.0064,
             "concept_coverage": 0.005808,
@@ -2455,7 +2377,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.026087,
             "fusion": 0.026087,
             "entity_subject": 0.008,
             "concept_coverage": 0.006575,
@@ -2481,7 +2402,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.03,
             "fusion": 0.03,
             "concept_coverage": 0.00447,
             "intent_affinity": 0.006,
@@ -2503,7 +2423,7 @@
         "not all": 16
       },
       "failure_reason": "ok",
-      "latency_ms": 1623
+      "latency_ms": 1558
     },
     {
       "id": "visual-calc-01",
@@ -2535,7 +2455,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.0375,
             "fusion": 0.0375,
             "entity_subject": 0.001116,
             "concept_coverage": 0.02,
@@ -2562,7 +2481,6 @@
           "concepts_present": [],
           "authoritative": true,
           "signals": {
-            "vector": 0.033333,
             "fusion": 0.033333,
             "entity_mention": 0.0072,
             "member": 0.006,
@@ -2590,7 +2508,6 @@
           "concepts_present": [],
           "authoritative": true,
           "signals": {
-            "vector": 0.031579,
             "fusion": 0.031579,
             "entity_mention": 0.0072,
             "member": 0.006,
@@ -2620,7 +2537,6 @@
           ],
           "authoritative": true,
           "signals": {
-            "vector": 0.027273,
             "fusion": 0.027273,
             "entity_mention": 0.0072,
             "member": 0.006,
@@ -2636,7 +2552,7 @@
           "id": "d988ec81-2656-4a79-8aa1-7ebbf1363149",
           "score": 0.06403,
           "vec_rank": 5,
-          "lex_rank": 12,
+          "lex_rank": 15,
           "subject": "Visual calculation",
           "knowledge_type": "fact",
           "topic": "DAX",
@@ -2648,7 +2564,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.03,
             "fusion": 0.03,
             "entity_mention": 0.0096,
             "concept_coverage": 0.011678,
@@ -2675,7 +2590,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.035294,
             "fusion": 0.035294,
             "entity_mention": 0.0072,
             "concept_coverage": 0.015261,
@@ -2700,7 +2614,6 @@
           "concepts_present": [],
           "authoritative": false,
           "signals": {
-            "vector": 0.028571,
             "fusion": 0.028571,
             "entity_subject": 0.001116,
             "concept_coverage": 0.02,
@@ -2729,7 +2642,6 @@
           ],
           "authoritative": true,
           "signals": {
-            "vector": 0.023077,
             "fusion": 0.023077,
             "entity_mention": 0.0072,
             "member": 0.006,
@@ -2755,7 +2667,7 @@
         "NEXT": 70
       },
       "failure_reason": "ok",
-      "latency_ms": 838
+      "latency_ms": 689
     }
   ]
 }

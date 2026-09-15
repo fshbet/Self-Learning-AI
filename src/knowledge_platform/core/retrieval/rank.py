@@ -32,6 +32,7 @@ W = {
     "entity_mention": 0.005,  # a query entity appears in the statement
     "concept_coverage": 0.020,  # idf-weighted share of the query's lexemes found in the item (its own lexemes)
     "intent_affinity": 0.006,  # knowledge type / polarity / role preferred by the intent
+    "type_match": 0.006,  # the question names the item's declared knowledge type ("which hazard", "limitations of")
     "member": 0.006,  # listing intent: the subject looks like an identifier (a member of the listed set)
     "topic_affinity": 0.008,  # filed under a taxonomy path whose name terms all occur in the query
     "authority": 0.005,  # max source authority 0–100 → 0–1
@@ -148,8 +149,11 @@ def score_candidates(
     sources: dict[Any, tuple[int, str]],
     rrf_k: int = RRF_K,
     stage: str = "full",
+    type_terms: dict[str, set[str]] | None = None,
 ) -> list[Scored]:
-    """``stage="rrf"`` reproduces the previous two-channel ranking for measurement; ``"full"`` adds the signals."""
+    """``stage="rrf"`` reproduces the previous two-channel ranking for measurement; ``"full"`` adds the signals.
+    ``type_terms`` maps each declared knowledge type to the lexemes of its name / label / prefix (computed by the
+    caller under the domain's text-search configuration) so a question that names a type can prefer it."""
     entity_weight = {e.canonical.lower(): e.weight for e in analysis.entities}
     entity_prefix = {e.canonical.lower(): e.weight for e in analysis.entities if e.kind == "prefix"}
     entity_texts = {e.canonical.lower(): e.weight for e in analysis.entities if not e.common}
@@ -192,17 +196,19 @@ def score_candidates(
             # quarter of its best lexical rank so a purely lexical hit can surface. (Plain RRF over three channels
             # rewarded "mediocre everywhere" over "excellent in one" and buried items ranked 3rd by vectors.)
             fused = 0.0
+            basis = "no channel rank"
             if c.vec_rank is not None:
                 fused = 1.0 / (FUSION_K + c.vec_rank)
-                sig["vector"] = round(W["fusion"] * fused, 6)
+                basis = f"vector rank {c.vec_rank}"
             else:
                 best = min((rk for rk in (c.lex_rank, c.rare_rank) if rk is not None), default=None)
                 if best is not None:
                     fused = 0.25 / (FUSION_K + best)
-                    sig["lexical"] = round(W["fusion"] * fused, 6)
+                    basis = f"lexical-only rank {best} at a quarter weight"
             sig["fusion"] = round(W["fusion"] * fused, 6)
         why.append(
             f"channels {'+'.join(c.channels) or 'none'} (vec #{c.vec_rank}, lex #{c.lex_rank}, rare #{c.rare_rank})"
+            + (f"; fused on {basis}" if stage != "rrf" else "")
         )
         if stage == "full":
             subj = (it.subject or "").strip().lower()
@@ -243,6 +249,10 @@ def score_candidates(
             if _affine(it, pref, plugin):
                 sig["intent_affinity"] = W["intent_affinity"]
                 why.append(f"{it.knowledge_type} suits intent '{analysis.intent}'")
+            named = query_lex & (type_terms or {}).get(it.knowledge_type, set())
+            if named:
+                sig["type_match"] = W["type_match"]
+                why.append(f"the question names its type ({', '.join(sorted(named))})")
             auth = max((sources.get(e.source_id, (0, ""))[0] for e in it.evidence), default=0)
             if auth:
                 sig["authority"] = round(W["authority"] * auth / 100.0, 6)
@@ -280,7 +290,7 @@ def score_candidates(
             ):
                 sig["validator_failed"] = W["validator_failed"]
                 why.append("a domain validator rejected it")
-        total = sum(v for k2, v in sig.items() if k2 not in ("vector", "lexical", "rare-terms"))
+        total = sum(sig.values())  # the score is exactly the sum of the recorded contributions
         out.append(Scored(candidate=c, score=round(total, 6), signals=sig, explanation=why))
     out.sort(key=lambda s: (-s.score, str(s.item.id)))
     return out

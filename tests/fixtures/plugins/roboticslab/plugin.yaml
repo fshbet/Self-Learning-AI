@@ -25,6 +25,12 @@ terminology:
 risk_classes:
   default: {description: General, min_verification_level: 1}
   safety: {description: Safety-relevant, min_verification_level: 2}
+retrieval:
+  # ADR 0006: lexical variants this lab uses for its own terms, declared here, never in the core
+  synonyms:
+    payload: [lifting capacity, load rating]
+  intent_cues:
+    limitation: ['\bhazards?\b', '\bdangers?\b']
 discovery:
   queries: ["ARM-7 robot arm specification"]
   prefer_hosts: ["docs.roboticslab.test"]

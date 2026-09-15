@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from ...models import ItemStatus
 from .candidates import Candidate, candidate_pool
-from .query import QueryAnalysis, analyze
+from .query import QueryAnalysis, analyze, lexemes
 from .rank import Scored, diversify, expand, score_candidates, source_facts
 from .search import DEFAULT_STATUSES, SearchResult, resolve_text_search_config
 
@@ -69,6 +69,24 @@ class Retrieval:
         }
 
 
+_type_lexeme_cache: dict[tuple[str, str], dict[str, set[str]]] = {}
+
+
+def type_lexemes(session: Session, plugin: Any, config: str) -> dict[str, set[str]]:
+    """Lexemes of each declared knowledge type's name, label and prefix ("hazard" → {hazard}), so a question
+    that names a type ("which hazard …") can prefer items of that type. Declared vocabulary only."""
+    key = (plugin.id, config)
+    hit = _type_lexeme_cache.get(key)
+    if hit is not None:
+        return hit
+    out: dict[str, set[str]] = {}
+    for spec in plugin.type_specs():
+        words = " ".join(w.replace("_", " ") for w in (spec.name, spec.label or "", spec.prefix or ""))
+        out[spec.name] = {lx for lx in lexemes(session, config, words) if len(lx) >= 3}
+    _type_lexeme_cache[key] = out
+    return out
+
+
 def retrieve(
     session: Session,
     plugin: Any,
@@ -108,7 +126,12 @@ def retrieve(
     t2 = time.perf_counter()
     sources = source_facts(session, plugin.id)
     ranked = score_candidates(
-        candidates, analysis, plugin=plugin, sources=sources, stage="rrf" if stage == "rrf" else "full"
+        candidates,
+        analysis,
+        plugin=plugin,
+        sources=sources,
+        stage="rrf" if stage == "rrf" else "full",
+        type_terms=type_lexemes(session, plugin, config),
     )
     timings["ranking"] = int((time.perf_counter() - t2) * 1000)
     t3 = time.perf_counter()

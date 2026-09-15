@@ -62,7 +62,10 @@ DEFAULT_INTENT_CUES: dict[str, list[str]] = {
     ],
     "comparison": [r"\b(difference|differ|versus|vs\.?|compared? (to|with)|instead of|rather than)\b"],
     "syntax": [r"\bsyntax\b", r"\bsignature\b", r"\bparameters?\b", r"\barguments?\b"],
-    "limitation": [r"\b(risks?|limitations?|restrictions?|caveats?|drawbacks?|cannot|can't|not (supported|allowed))\b"],
+    "limitation": [
+        r"\b(risks?|limitations?|restrictions?|caveats?|drawbacks?|pitfalls?|cannot|can't|not (supported|allowed))\b",
+        r"\b(must not|mustn't|should not|shouldn't|avoid)\b",
+    ],
     "configuration": [r"\b(setting|configuration|option|enable|disable)s?\b"],
     "architecture": [r"\b(architecture|design|schema|topology|components?)\b"],
     "conceptual": [
@@ -299,9 +302,6 @@ def detect_entities(session: Session, domain_id: str, query: str, *, max_ngram: 
 def classify_intent(query: str, cues: dict[str, list[str]] | None = None) -> tuple[str | None, list[str]]:
     """First intent whose cue matches, in a fixed priority order; unknown → None (no preference)."""
     q = normalize(query)
-    merged: dict[str, list[str]] = {k: list(v) for k, v in DEFAULT_INTENT_CUES.items()}
-    for k, v in (cues or {}).items():
-        merged.setdefault(k, []).extend(v)
     # specific intents before the generic "definition"/"conceptual" openers
     order = [
         "listing",
@@ -318,10 +318,13 @@ def classify_intent(query: str, cues: dict[str, list[str]] | None = None) -> tup
         "definition",
         "conceptual",
     ]
-    for intent in order:
-        matched = [c for c in merged.get(intent, []) if re.search(c, q)]
-        if matched:
-            return intent, matched
+    # the plugin's declared cues speak for its domain ("which hazard" is a limitation question in a safety
+    # manual, not a listing) and are tried first; the core defaults only decide when none of them matches
+    for table in ((cues or {}), DEFAULT_INTENT_CUES):
+        for intent in order:
+            matched = [c for c in table.get(intent, []) if re.search(c, q)]
+            if matched:
+                return intent, matched
     return None, []
 
 

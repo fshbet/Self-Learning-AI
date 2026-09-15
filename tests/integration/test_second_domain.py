@@ -31,6 +31,9 @@ from knowledge_platform.core.export.snapshot import build_snapshot, read_file
 from knowledge_platform.core.pipeline import ingest_document
 from knowledge_platform.core.plugins.registry import load_plugin_dir
 from knowledge_platform.core.retrieval.answer import answer_question
+from knowledge_platform.core.retrieval.plan import build_plan, check_completeness
+from knowledge_platform.core.retrieval.retrieve import RETRIEVAL_VERSION, retrieve
+from knowledge_platform.core.retrieval.search import resolve_text_search_config
 from knowledge_platform.core.versioning.dependencies import dependencies_of
 from knowledge_platform.db import session_scope
 from knowledge_platform.models import Document, Domain, ItemStatus, KnowledgeItem, LLMCall, Source
@@ -248,6 +251,39 @@ def test_evaluation_and_export_follow_the_plugin(plugin):
         examples = [json.loads(line) for line in read_file(snap, "examples.jsonl").decode().splitlines() if line]
         assert len(examples) == 1 and examples[0]["subject"] == "ARM-7"
         assert snap.manifest["generation"]["validators"] == ["simulate-motion@0.1", "units@1.0"]
+
+
+def test_retrieval_pipeline_works_from_the_plugin_declarations_alone(plugin):
+    """ADR 0006 in a second domain: entities, intent, synonyms, expansion and the answer plan come from the
+    corpus and the plugin's declarations — no Power BI assumption in the core."""
+    with session_scope() as s:
+        items = _items(s)
+        payload, hazard, demo = items["spec:payload"], items["hazard:at"], items["demo:pick"]
+        # a plugin-declared synonym: the question says "lifting capacity", the corpus says "payload"
+        r = retrieve(s, plugin, "What is the lifting capacity of ARM-7?", k=2)
+        assert any(e.canonical == "ARM-7" for e in r.analysis.entities)  # filed subject, found as an entity
+        assert "payload" in r.analysis.variants and "payload" in r.analysis.lexemes  # the declared synonym
+        assert r.selected[0].item.id == payload.id, [sc.item.statement for sc in r.selected]
+        assert "subject is the query entity 'ARM-7'" in " ".join(r.selected[0].explanation)
+        # a plugin-declared intent cue ("hazard") maps to the core limitation intent, which prefers the plugin's
+        # negative-polarity type and expands with it
+        r = retrieve(s, plugin, "Which hazard applies when ARM-7 moves at full speed?", k=2)
+        assert r.analysis.intent == "limitation" and r.selected[0].item.id == hazard.id
+        assert r.selected[0].signals["intent_affinity"] > 0
+        assert r.summary()["version"] == RETRIEVAL_VERSION
+        # example intent expands with the plugin's example-role type
+        r = retrieve(s, plugin, "Show me a demonstration example of ARM-7", k=1)
+        assert any(sc.item.id == demo.id for sc in r.selected)
+        # the plan is derived from the evidence: ARM-7 must be covered, and completeness accepts the synonym
+        config = resolve_text_search_config(s, plugin.text_search_config())
+        r = retrieve(s, plugin, "What is the lifting capacity of ARM-7?", k=3)
+        plan = build_plan(s, r.analysis, r.selected, config=config, plugin=plugin)
+        assert [c.term for c in plan.must_cover] == ["ARM-7"]
+        assert check_completeness(s, config, "ARM-7 lifts 5 kg at the flange [1].", plan)["missing_must"] == []
+        # the answer path in p3 mode carries the account of itself
+        ans = answer_question(s, plugin, "What is the payload limit of ARM-7?")
+        assert ans.mode == "p3" and ans.retrieval and ans.plan is not None and ans.timings_ms["total"] >= 0
+        assert ans.citations and "5 kg" in ans.answer
 
 
 @respx.mock
