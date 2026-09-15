@@ -118,7 +118,7 @@ def cleanup():
     with session_scope() as s:
         s.execute(delete(Domain).where(Domain.id == DOMAIN_ID))
         s.execute(delete(LLMCall).where(LLMCall.provider == "fake"))
-        s.execute(delete(Job).where(Job.idempotency_key.like("extract:%:partial%"), jobs_since(T0)))
+        s.execute(delete(Job).where(Job.type == "extract_document", jobs_since(T0)))  # the test's own jobs only
 
 
 @respx.mock

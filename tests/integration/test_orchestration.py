@@ -118,9 +118,9 @@ def test_queue_orders_by_priority_and_age_and_honours_idempotency():
         future.run_at = utcnow() + timedelta(minutes=5)  # not claimable yet
         ids = [high.id, mid.id, low.id]
         s.flush()
-        claimed = [claim(s, "audit").id for _ in range(3)]
+        claimed = [claim(s, "audit", [TYPE_OK]).id for _ in range(3)]
         assert claimed == ids  # priority first, never the future job
-        assert claim(s, "audit") is None
+        assert claim(s, "audit", [TYPE_OK]) is None
         for jid in claimed:
             s.get(Job, jid).status = JobStatus.DONE
         # a finished job frees its idempotency key for a new one
@@ -129,7 +129,7 @@ def test_queue_orders_by_priority_and_age_and_honours_idempotency():
 
 
 def test_worker_retries_with_backoff_then_dead_letters_and_recovers_stuck_jobs():
-    w = Worker(name="audit", scheduler=False)
+    w = Worker(name="audit", scheduler=False, job_types=[TYPE_OK, TYPE_FAIL, TYPE_FLAKY])
     with session_scope() as s:
         failing = enqueue(s, TYPE_FAIL, {}, max_attempts=2).id
         flaky = enqueue(s, TYPE_FLAKY, {}, max_attempts=3).id
@@ -163,7 +163,7 @@ def test_worker_retries_with_backoff_then_dead_letters_and_recovers_stuck_jobs()
 
 
 def test_run_is_finalised_with_aggregated_totals_and_status():
-    w = Worker(name="audit", scheduler=False)
+    w = Worker(name="audit", scheduler=False, job_types=[TYPE_OK, TYPE_FAIL, TYPE_FLAKY])
     with session_scope() as s:
         run = J.start_run(s, domain_id=DOMAIN, kind="audit", triggered_by="audit")
         enqueue(s, TYPE_OK, {"n": 2}, run_id=run.id)
@@ -320,7 +320,9 @@ def test_worker_housekeeping_runs_scheduler_and_requeue_on_their_intervals(monke
     assert ticks == {"sched": 2, "requeue": 2}
     # an unknown job type is a failure, not a crash of the worker loop
     with session_scope() as s:
-        jid = enqueue(s, "audit_unknown_type_" + uuid.uuid4().hex[:4], {}, max_attempts=1).id
+        unknown = "audit_unknown_type_" + uuid.uuid4().hex[:4]
+        jid = enqueue(s, unknown, {}, max_attempts=1).id
+    w.job_types = [unknown]  # claim only this job, whatever else the shared queue holds
     assert w.run_once() is True
     with session_scope() as s:
         j = s.get(Job, jid)

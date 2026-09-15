@@ -27,9 +27,10 @@ log = logging.getLogger(__name__)
 
 
 class Worker:
-    def __init__(self, *, name: str | None = None, scheduler: bool = True) -> None:
+    def __init__(self, *, name: str | None = None, scheduler: bool = True, job_types: list[str] | None = None) -> None:
         self.id = name or f"{socket.gethostname()}:{os.getpid()}:{threading.get_ident()}"
         self.scheduler = scheduler
+        self.job_types = job_types  # None = every job type (the embedded worker); a list = a dedicated worker
         self._stop = threading.Event()
         self._last_schedule = 0.0
         self._last_requeue = 0.0
@@ -41,7 +42,7 @@ class Worker:
     def run_once(self) -> bool:
         """Claim and execute one job. Returns False when the queue is empty."""
         with session_scope() as session:
-            job = claim(session, self.id)
+            job = claim(session, self.id, self.job_types)
             if job is None:
                 return False
             job_id, job_type, run_id = job.id, job.type, job.run_id
