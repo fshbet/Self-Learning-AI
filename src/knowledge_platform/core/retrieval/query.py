@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import Session
 
 from ...models import ItemStatus, KnowledgeItem
@@ -28,6 +28,7 @@ LIVE_STATUSES = (ItemStatus.SUPPORTED, ItemStatus.VERIFIED, ItemStatus.CONFLICTE
 
 # core intent vocabulary and default cues (English); a plugin extends or overrides per intent
 INTENTS = (
+    "listing",
     "definition",
     "procedure",
     "troubleshooting",
@@ -42,6 +43,11 @@ INTENTS = (
     "version",
 )
 DEFAULT_INTENT_CUES: dict[str, list[str]] = {
+    "listing": [
+        r"^which\b",
+        r"^what [a-z -]+ (are|is) (only )?(available|supported|included|allowed)",
+        r"\blist (of|the|all)\b",
+    ],
     "definition": [r"^what (is|are|does|do)\b", r"\bdefin(e|ition)\b", r"\bmean(s|ing)?\b"],
     "procedure": [r"^how (do|to|can|should)\b", r"\bsteps?\b", r"\bset ?up\b", r"\bcreate\b", r"\bconfigure\b"],
     "troubleshooting": [
@@ -69,6 +75,7 @@ DEFAULT_INTENT_CUES: dict[str, list[str]] = {
 }
 # which declared roles / polarities / conventional type names an intent prefers (plugin may override)
 DEFAULT_INTENT_TYPES: dict[str, dict[str, list[str]]] = {
+    "listing": {"types": ["fact", "limitation"]},
     "definition": {"roles": ["foundation"], "types": ["definition"]},
     "conceptual": {"roles": ["foundation"], "types": ["definition", "fact", "best_practice"]},
     "procedure": {"roles": ["dependent"], "types": ["procedure", "best_practice"]},
@@ -88,8 +95,9 @@ DEFAULT_INTENT_TYPES: dict[str, dict[str, list[str]]] = {
 class Entity:
     text: str  # as written in the query
     canonical: str  # the subject spelling in the knowledge base (or the query spelling)
-    kind: str  # subject | identifier
+    kind: str  # subject | identifier | prefix
     items: int = 0  # live items with this subject
+    aliases: list[str] = field(default_factory=list)  # declared synonyms / variants (lower-case), e.g. "rls"
 
     @property
     def weight(self) -> float:
@@ -98,10 +106,17 @@ class Entity:
         less specific it is (1 / (1 + log10(items)))."""
         import math
 
-        specificity = 1.0 / (1.0 + math.log10(max(self.items, 1)))
-        if self.kind == "identifier" or " " in self.text or "-" in self.text:
+        specificity = 1.0 / (1.0 + math.log2(max(self.items, 1)))
+        if self.kind == "identifier":  # CALCULATE, RangeStart: an identifier in a question *is* the entity
+            return max(specificity, 0.8)
+        if " " in self.text or "-" in self.text:
             return specificity
         return specificity * 0.5
+
+    @property
+    def common(self) -> bool:
+        """Too widespread to single anything out (the domain's own name, a generic word)."""
+        return self.weight < 0.2
 
 
 @dataclass
@@ -115,6 +130,7 @@ class QueryAnalysis:
     intent: str | None
     intent_cues: list[str] = field(default_factory=list)
     version: str | None = None
+    term_weights: dict[str, float] = field(default_factory=dict)  # idf per lexeme, filled by candidate generation
 
     def entity_names(self) -> set[str]:
         return {e.canonical.lower() for e in self.entities}
@@ -128,6 +144,7 @@ class QueryAnalysis:
             "intent": self.intent,
             "intent_cues": self.intent_cues,
             "version": self.version,
+            "term_weights": {k: round(v, 2) for k, v in self.term_weights.items()},
         }
 
 
@@ -227,6 +244,32 @@ def detect_entities(session: Session, domain_id: str, query: str, *, max_ngram: 
     found: dict[str, Entity] = {}
     for low, canonical, count in rows:
         found[low] = Entity(text=grams[low], canonical=canonical, kind="subject", items=int(count))
+    # multi-word n-grams that *open* a subject ("star schema" → "Star schema design"): the n-gram is the entity,
+    # the items filed under those subjects count towards it
+    multi = [g for g in grams if " " in g and g not in found and len(g) >= 6]
+    if multi:
+        prefix_rows = session.execute(
+            select(func.lower(KnowledgeItem.subject), func.count())
+            .where(
+                KnowledgeItem.domain_id == domain_id,
+                KnowledgeItem.status.in_([s.value for s in LIVE_STATUSES]),
+                or_(
+                    *[
+                        func.lower(KnowledgeItem.subject).like(g.replace("%", "").replace("_", " ") + " %")
+                        for g in multi
+                    ]
+                ),
+            )
+            .group_by(func.lower(KnowledgeItem.subject))
+        ).all()
+        for subj_low, count in prefix_rows:
+            for g in multi:
+                if subj_low.startswith(g + " "):
+                    ent = found.get(g)
+                    if ent is None:
+                        found[g] = Entity(text=grams[g], canonical=grams[g], kind="prefix", items=int(count))
+                    else:
+                        ent.items += int(count)
     identifiers = {t.lower(): t for t in toks if _UPPER.match(t) or _CAMEL.match(t)}
     # longer matches subsume shorter ones ("on-premises data gateway" over "gateway") — except identifiers
     # (CALCULATE stays an entity next to "CALCULATE function")
@@ -249,6 +292,7 @@ def classify_intent(query: str, cues: dict[str, list[str]] | None = None) -> tup
         merged.setdefault(k, []).extend(v)
     # specific intents before the generic "definition"/"conceptual" openers
     order = [
+        "listing",
         "limitation",
         "comparison",
         "example",
@@ -282,6 +326,14 @@ def analyze(
     variants = lexical_variants(query, synonyms)
     lex = lexemes(session, text_search_config, " ".join([query, *variants]))
     entities = detect_entities(session, domain_id, query)
+    for ent in entities:  # declared synonyms are other names of the same entity
+        for term, alts in (synonyms or {}).items():
+            names = {term.lower(), *(a.lower() for a in alts)}
+            if ent.canonical.lower() in names or ent.text.lower() in names:
+                ent.aliases = sorted(names - {ent.canonical.lower()})
+        for v in compound_variants(ent.text):
+            if v not in ent.aliases:
+                ent.aliases.append(v)
     intent, matched = classify_intent(query, intent_cues)
     version = None
     m = _VERSION.search(query)

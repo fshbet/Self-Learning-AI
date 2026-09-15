@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import threading
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session, selectinload
@@ -107,6 +107,8 @@ class SearchResult:
     vec_rank: int | None
     lex_rank: int | None
     similarity: float | None
+    signals: dict[str, float] = field(default_factory=dict)  # ranking contributions (pipeline retrieval)
+    explanation: list[str] = field(default_factory=list)  # why it ranked where it did
 
 
 def hybrid_search(

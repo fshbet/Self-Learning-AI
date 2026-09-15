@@ -50,6 +50,7 @@ class RankedItem:
     statement: str
     concepts_present: list[str]
     authoritative: bool
+    signals: dict[str, float] = field(default_factory=dict)
 
 
 @dataclass
@@ -119,6 +120,7 @@ def _ranked(results: list[SearchResult], q: EvalQuestion, sources: dict[Any, int
                 statement=it.statement[:160],
                 concepts_present=_concepts_in(it, q.required_concepts),
                 authoritative=_authoritative(it, q.authoritative_sources),
+                signals=dict(getattr(r, "signals", {}) or {}),
             )
         )
     return out
@@ -141,11 +143,15 @@ def evaluate_question(
         rows = session.execute(select(Source).where(Source.domain_id == plugin.id)).scalars()
         sources = {src.id: src.authority for src in rows}
     started = time.perf_counter()
+    # the top-K exactly as a caller asking for K would get it (diversity/expansion act on K), plus a deep pool
+    top_results = search(
+        session, domain_id=plugin.id, query=q.question, limit=k, text_search_config=plugin.text_search_config()
+    )
+    latency = int((time.perf_counter() - started) * 1000)
     deep = search(
         session, domain_id=plugin.id, query=q.question, limit=pool, text_search_config=plugin.text_search_config()
     )
-    latency = int((time.perf_counter() - started) * 1000)
-    top = _ranked(deep[:k], q, sources)
+    top = _ranked(top_results[:k], q, sources)
     ranked_pool = _ranked(deep, q, sources)
     concepts = q.required_concepts
     first_rank = {c: next((r.rank for r in ranked_pool if c in r.concepts_present), None) for c in concepts}
@@ -213,12 +219,19 @@ def _mean(values: list[float | None]) -> float | None:
 
 
 def evaluate_retrieval(
-    session: Session, plugin: DomainPlugin, *, k: int = 8, pool: int = 50, search=hybrid_search
+    session: Session,
+    plugin: DomainPlugin,
+    *,
+    k: int = 8,
+    pool: int = 50,
+    search=hybrid_search,
+    retrieval: str = "raw",
 ) -> dict[str, Any]:
     questions = [q for q in plugin.evaluation_set() if not q.expect_abstain]
     results = [evaluate_question(session, plugin, q, k=k, pool=pool, search=search) for q in questions]
     return {
         "version": RETRIEVAL_EVAL_VERSION,
+        "retrieval": retrieval,
         "domain": plugin.id,
         "dataset_version": plugin.evaluation_version(),
         "k": k,

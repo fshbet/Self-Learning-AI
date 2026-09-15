@@ -19,6 +19,13 @@ knowledge_types:
   - {name: limitation, role: dependent, polarity: negative, label: Limitations, prefix: Limitation}
   - {name: warning, role: dependent, polarity: negative, label: Warnings, prefix: Warning}
   - {name: anti_pattern, role: dependent, polarity: negative, label: Anti-patterns, prefix: Anti-pattern}
+retrieval:
+  # lexical variants the corpus uses (abbreviations); core retrieval declares nothing domain-specific itself
+  synonyms:
+    row-level security: [RLS]
+    object-level security: [OLS]
+    semantic model: [dataset]
+    on-premises data gateway: [gateway]
 sample_questions:
   - What does CALCULATE do?
   - When should I use DIVIDE instead of the / operator?

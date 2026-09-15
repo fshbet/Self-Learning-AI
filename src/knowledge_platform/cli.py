@@ -263,15 +263,23 @@ def eval_retrieval(
     k: int = typer.Option(8, help="top-K handed to the answer model"),
     pool: int = typer.Option(50, help="deeper candidate pool used to locate expected evidence"),
     out: Path | None = typer.Option(None, help="write the full per-question report as JSON"),
+    retrieval: str = typer.Option("raw", help="raw (two-channel RRF, P2) | rrf | rank | diverse | full"),
 ) -> None:
     """Offline retrieval evaluation on the golden set (no model call): concept recall@K, precision@K, MRR,
     authoritative-source hit rate and, per question, where the expected evidence ranks."""
+    from functools import partial
+
     from .core.evaluation.retrieval_eval import evaluate_retrieval
     from .core.plugins.registry import get_registry
+    from .core.retrieval.retrieve import pipeline_search
+    from .core.retrieval.search import hybrid_search
     from .db import session_scope
 
+    search = hybrid_search if retrieval == "raw" else partial(pipeline_search, stage=retrieval)
     with session_scope() as session:
-        report = evaluate_retrieval(session, get_registry().get(domain), k=k, pool=pool)
+        report = evaluate_retrieval(
+            session, get_registry().get(domain), k=k, pool=pool, search=search, retrieval=retrieval
+        )
     m = report["metrics"]
     table = Table(
         "question", "concept recall", "precision", "MRR", "auth hit", "first rank", "why", title=f"retrieval@{k}"

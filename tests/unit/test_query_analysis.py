@@ -49,7 +49,8 @@ def test_intents_are_deterministic_and_extensible():
     assert classify_intent("What are the risks of bidirectional cross-filtering?")[0] == "limitation"
     assert classify_intent("Show me an example of DIVIDE")[0] == "example"
     assert classify_intent("DIVIDE vs the / operator")[0] == "comparison"
-    assert classify_intent("Which functions are only available in visual calculations?")[0] == "version"
+    assert classify_intent("Which functions are only available in visual calculations?")[0] == "listing"
+    assert classify_intent("Is DIVIDE available in version 2.1?")[0] == "version"
     assert classify_intent("How does row-level security restrict data?")[0] == "conceptual"
     assert classify_intent("Random words without a cue")[0] is None  # unknown → no preference
     # a plugin adds its own cues without touching core vocabulary
@@ -63,5 +64,5 @@ def test_entity_weight_prefers_specific_identifiers_over_common_words():
     domain = Entity(text="Power BI", canonical="Power BI", kind="subject", items=76)
     word = Entity(text="number", canonical="number", kind="subject", items=3)
     rare = Entity(text="row-level security", canonical="Row-level security", kind="subject", items=1)
-    assert rare.weight == 1.0 and calc.weight > domain.weight > word.weight
-    assert word.weight < 0.4
+    assert rare.weight == 1.0 and calc.weight >= 0.8 and calc.weight > word.weight > domain.weight
+    assert domain.common and not calc.common

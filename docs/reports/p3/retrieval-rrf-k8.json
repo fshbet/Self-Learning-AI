@@ -1,0 +1,2153 @@
+{
+  "version": "retrieval-eval@1.0",
+  "retrieval": "rrf",
+  "domain": "powerbi",
+  "dataset_version": "0.3.0",
+  "k": 8,
+  "pool": 50,
+  "questions": 11,
+  "metrics": {
+    "concept_recall_at_k": 0.7424,
+    "precision_at_k": 0.8523,
+    "mrr": 0.4751,
+    "authoritative_hit_rate": 0.0,
+    "expected_concept_hit_rate": 0.6842,
+    "questions_fully_covered": 6,
+    "mean_latency_ms": 510.4545
+  },
+  "results": [
+    {
+      "id": "dax-calculate-01",
+      "query": "What does the CALCULATE function do in DAX?",
+      "topic": "DAX/Filter context",
+      "required_concepts": [
+        "filter context",
+        "context transition"
+      ],
+      "authoritative_sources": [
+        "https://learn.microsoft.com/en-us/dax/calculate-function-dax"
+      ],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "ca87b337-4984-4744-b417-5b1a74f0e1e8",
+          "score": 0.04178,
+          "vec_rank": 2,
+          "lex_rank": 1,
+          "subject": "CALCULATE function",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The CALCULATE function is one of the most powerful functions in DAX.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.041782
+          }
+        },
+        {
+          "rank": 2,
+          "id": "262849f3-2589-485f-a698-c2f6287cb858",
+          "score": 0.03441,
+          "vec_rank": 1,
+          "lex_rank": 32,
+          "subject": "CALCULATE function",
+          "knowledge_type": "definition",
+          "topic": "DAX",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The CALCULATE function is a function that evaluates an expression in a modified filter context.",
+          "concepts_present": [
+            "filter context"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.034406
+          }
+        },
+        {
+          "rank": 3,
+          "id": "db05698d-da4c-45b5-affe-de897297046f",
+          "score": 0.03178,
+          "vec_rank": null,
+          "lex_rank": 5,
+          "subject": "Visual calculations functions",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.766,
+          "verification_level": 2,
+          "max_authority": 85,
+          "statement": "Visual calculations functions can only be used in Power BI visual calculations and cannot be used in regular measures, calculated columns, nor calculated tables",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.031778
+          }
+        },
+        {
+          "rank": 4,
+          "id": "b306b559-b6be-462d-9be5-b2e4cf790540",
+          "score": 0.02942,
+          "vec_rank": 7,
+          "lex_rank": 9,
+          "subject": "DAX user-defined function",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.774,
+          "verification_level": 2,
+          "max_authority": 85,
+          "statement": "A DAX user-defined function is a function that returns a scalar or a table, but can also return CALCULATE modifiers when called as a filter argument of CALCULAT",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.029418
+          }
+        },
+        {
+          "rank": 5,
+          "id": "e9f45b28-dfae-4fbe-afb4-9e609e10bfc6",
+          "score": 0.02934,
+          "vec_rank": 9,
+          "lex_rank": 92,
+          "subject": "calculated table",
+          "knowledge_type": "example",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A calculated table can be defined by a DAX expression that returns a table.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.029336
+          }
+        },
+        {
+          "rank": 6,
+          "id": "c248afd2-4f10-4076-81ea-67b3d7fb6bba",
+          "score": 0.02769,
+          "vec_rank": 17,
+          "lex_rank": 8,
+          "subject": "INFO.VIEW DAX functions",
+          "knowledge_type": "fact",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "INFO.VIEW DAX functions can be run in calculated tables, columns, measures, and DAX queries",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.027693
+          }
+        },
+        {
+          "rank": 7,
+          "id": "0e98a73c-bb01-42c8-bb2f-4ba316b1be46",
+          "score": 0.02698,
+          "vec_rank": 3,
+          "lex_rank": 30,
+          "subject": "DAX function",
+          "knowledge_type": "definition",
+          "topic": "DAX",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A DAX function is a pre-written formula that makes it easier to do complex calculations.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.026984
+          }
+        },
+        {
+          "rank": 8,
+          "id": "604fb5d8-7f43-4e6c-b7ee-3f3dcf0a417f",
+          "score": 0.02617,
+          "vec_rank": 19,
+          "lex_rank": 14,
+          "subject": "DAX function reference",
+          "knowledge_type": "fact",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The DAX function reference covers statistical functions.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.026172
+          }
+        }
+      ],
+      "concept_recall": 0.5,
+      "precision": 1.0,
+      "mrr": 0.5,
+      "authoritative_hit": false,
+      "first_expected_rank": 2,
+      "concept_first_rank": {
+        "filter context": 2,
+        "context transition": null
+      },
+      "concept_in_corpus": {
+        "filter context": 39,
+        "context transition": 2
+      },
+      "failure_reason": "'context transition' in corpus (2) but not in pool-50; authoritative source not in pool (not crawled or not retrievable)",
+      "latency_ms": 732
+    },
+    {
+      "id": "dax-divide-01",
+      "query": "Why should DIVIDE be used instead of the / operator?",
+      "topic": "DAX/Functions",
+      "required_concepts": [
+        "division by zero",
+        "alternate result"
+      ],
+      "authoritative_sources": [],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "a7661b26-0963-4f46-8436-80baacb2c798",
+          "score": 0.04513,
+          "vec_rank": 1,
+          "lex_rank": 21,
+          "subject": "DIVIDE function",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.861,
+          "verification_level": 4,
+          "max_authority": 95,
+          "statement": "The DIVIDE function has syntax DIVIDE(<numerator>, <denominator> [,<alternateresult>]).",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.045133
+          }
+        },
+        {
+          "rank": 2,
+          "id": "ecbe04f8-3c0e-4ecf-a0ea-e03d26689c4b",
+          "score": 0.04126,
+          "vec_rank": 2,
+          "lex_rank": 48,
+          "subject": "DIVIDE function",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.885,
+          "verification_level": 4,
+          "max_authority": 95,
+          "statement": "The DIVIDE function is a function that performs division and returns alternate result or BLANK() on division by 0.",
+          "concepts_present": [
+            "division by zero",
+            "alternate result"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.041261
+          }
+        },
+        {
+          "rank": 3,
+          "id": "59c876ba-782d-4a0c-9d6d-216dc42e89e0",
+          "score": 0.04061,
+          "vec_rank": 5,
+          "lex_rank": 50,
+          "subject": "DIVIDE",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.796,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "DIVIDE performs division and returns alternate result or BLANK() on division by 0.",
+          "concepts_present": [
+            "alternate result"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.040605
+          }
+        },
+        {
+          "rank": 4,
+          "id": "6936d914-6fbb-454a-b606-aaad5e7c5d38",
+          "score": 0.03126,
+          "vec_rank": 3,
+          "lex_rank": null,
+          "subject": "numerator",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The numerator is defined as The dividend or number to divide.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.031258
+          }
+        },
+        {
+          "rank": 5,
+          "id": "b5bd5c88-4fc2-432e-8f78-87460d891842",
+          "score": 0.03125,
+          "vec_rank": 4,
+          "lex_rank": null,
+          "subject": "denominator",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The denominator is defined as The divisor or number to divide by.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.03125
+          }
+        },
+        {
+          "rank": 6,
+          "id": "217780ff-82da-4509-aa5c-e9199a60ad1b",
+          "score": 0.02963,
+          "vec_rank": 7,
+          "lex_rank": null,
+          "subject": "Year level",
+          "knowledge_type": "fact",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.758,
+          "verification_level": 2,
+          "max_authority": 85,
+          "statement": "The Year level uses the DIVIDE function to calculate the share of the grand total.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.029631
+          }
+        },
+        {
+          "rank": 7,
+          "id": "2183d88b-c717-4cf3-adf1-743b1f54749e",
+          "score": 0.0292,
+          "vec_rank": 8,
+          "lex_rank": 9,
+          "subject": "Concatenation operator (&)",
+          "knowledge_type": "definition",
+          "topic": "",
+          "status": "VERIFIED",
+          "confidence": 0.756,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The Concatenation operator (&) is a text operator that combines two values.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.029199
+          }
+        },
+        {
+          "rank": 8,
+          "id": "c3167c97-5385-4bb8-b1ce-37055978586b",
+          "score": 0.02804,
+          "vec_rank": 19,
+          "lex_rank": 5,
+          "subject": "Plus operator (+)",
+          "knowledge_type": "definition",
+          "topic": "",
+          "status": "VERIFIED",
+          "confidence": 0.756,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The Plus operator (+) is a number operator that performs summation.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.028043
+          }
+        }
+      ],
+      "concept_recall": 1.0,
+      "precision": 0.75,
+      "mrr": 0.5,
+      "authoritative_hit": null,
+      "first_expected_rank": 2,
+      "concept_first_rank": {
+        "division by zero": 2,
+        "alternate result": 2
+      },
+      "concept_in_corpus": {
+        "division by zero": 2,
+        "alternate result": 2
+      },
+      "failure_reason": "ok",
+      "latency_ms": 446
+    },
+    {
+      "id": "model-star-01",
+      "query": "Why is a star schema recommended for Power BI models?",
+      "topic": "Data Modeling/Star schema",
+      "required_concepts": [
+        "fact table",
+        "dimension table"
+      ],
+      "authoritative_sources": [],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "235c5e60-d34b-4433-8801-038561e8acbf",
+          "score": 0.04516,
+          "vec_rank": 2,
+          "lex_rank": 16,
+          "subject": "Star schema design",
+          "knowledge_type": "fact",
+          "topic": "Data Modeling/Star schema",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "There are many concepts related to star schema design that can be applied to a Power BI semantic model.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.04516
+          }
+        },
+        {
+          "rank": 2,
+          "id": "253318a1-2822-4c73-943c-b524ab6ca2ba",
+          "score": 0.04256,
+          "vec_rank": 1,
+          "lex_rank": 29,
+          "subject": "Star schema design",
+          "knowledge_type": "fact",
+          "topic": "Data Modeling/Star schema",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Star schema design and many related concepts introduced in this article are highly relevant to developing Power BI models that are optimized for performance and",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.042555
+          }
+        },
+        {
+          "rank": 3,
+          "id": "476b982c-6226-425c-846c-a0dcb104b09a",
+          "score": 0.03021,
+          "vec_rank": 11,
+          "lex_rank": null,
+          "subject": "Traditional star schema",
+          "knowledge_type": "definition",
+          "topic": "Data Modeling/Star schema",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A traditional star schema is a model design with a fact table and dimension tables.",
+          "concepts_present": [
+            "fact table",
+            "dimension table"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.030214
+          }
+        },
+        {
+          "rank": 4,
+          "id": "b57186eb-46dc-4907-973e-4dc286db90b5",
+          "score": 0.02896,
+          "vec_rank": 15,
+          "lex_rank": null,
+          "subject": "Star schema design",
+          "knowledge_type": "example",
+          "topic": "Data Modeling/Star schema",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A star schema design involves hiding all ID columns.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.028958
+          }
+        },
+        {
+          "rank": 5,
+          "id": "195bc1b5-d61a-49a9-806c-5aa2059e3949",
+          "score": 0.02869,
+          "vec_rank": 3,
+          "lex_rank": 18,
+          "subject": "Power BI semantic model",
+          "knowledge_type": "fact",
+          "topic": "Data Modeling/Star schema",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A Power BI semantic model can't produce the result of a Type 2 SCD.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.028694
+          }
+        },
+        {
+          "rank": 6,
+          "id": "823bea1c-0b41-452a-bd21-63f2bb9f503e",
+          "score": 0.02821,
+          "vec_rank": 18,
+          "lex_rank": null,
+          "subject": "Non-star schema",
+          "knowledge_type": "definition",
+          "topic": "Data Modeling/Star schema",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A non-star schema is a model design with multiple fact tables and a single dimension table.",
+          "concepts_present": [
+            "fact table",
+            "dimension table"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.028205
+          }
+        },
+        {
+          "rank": 7,
+          "id": "016f36cf-1438-4e19-b8d9-2612a3d68035",
+          "score": 0.02816,
+          "vec_rank": 25,
+          "lex_rank": null,
+          "subject": "Star schema design",
+          "knowledge_type": "best_practice",
+          "topic": "Data Modeling/Star schema",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Implementing a star schema design is recommended for many-to-many relationships.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.028158
+          }
+        },
+        {
+          "rank": 8,
+          "id": "f3eb4a5b-88e1-4361-9829-bb593e61cafc",
+          "score": 0.0275,
+          "vec_rank": 21,
+          "lex_rank": null,
+          "subject": "Star schema design",
+          "knowledge_type": "fact",
+          "topic": "Data Modeling/Star schema",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A star schema design provides flexible reporting options.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.027497
+          }
+        }
+      ],
+      "concept_recall": 1.0,
+      "precision": 1.0,
+      "mrr": 0.3333333333333333,
+      "authoritative_hit": null,
+      "first_expected_rank": 3,
+      "concept_first_rank": {
+        "fact table": 3,
+        "dimension table": 3
+      },
+      "concept_in_corpus": {
+        "fact table": 50,
+        "dimension table": 62
+      },
+      "failure_reason": "ok",
+      "latency_ms": 541
+    },
+    {
+      "id": "model-bidi-01",
+      "query": "What are the risks of bidirectional cross-filtering?",
+      "topic": "Data Modeling/Bidirectional filtering",
+      "required_concepts": [
+        "ambiguity",
+        "performance"
+      ],
+      "authoritative_sources": [],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "ccbe08a9-c0f6-4072-a6d0-987f9ef70d6c",
+          "score": 0.04236,
+          "vec_rank": 12,
+          "lex_rank": 21,
+          "subject": "CROSSFILTER function",
+          "knowledge_type": "example",
+          "topic": "DAX/Filter context",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The CROSSFILTER function can enable bi-directional filtering in a measure.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.042364
+          }
+        },
+        {
+          "rank": 2,
+          "id": "58683bf0-c4c9-4175-9c4e-e344eba69750",
+          "score": 0.04047,
+          "vec_rank": 19,
+          "lex_rank": 19,
+          "subject": "ALLCROSSFILTERED",
+          "knowledge_type": "definition",
+          "topic": "DAX/Filter context",
+          "status": "VERIFIED",
+          "confidence": 0.774,
+          "verification_level": 2,
+          "max_authority": 85,
+          "statement": "ALLCROSSFILTERED removes all the filters on an expanded table (like ALL) and on columns and tables that are cross-filtering the table argument because of limite",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.040468
+          }
+        },
+        {
+          "rank": 3,
+          "id": "85603940-6a44-4ab4-ae60-d152fb736ae4",
+          "score": 0.03859,
+          "vec_rank": 22,
+          "lex_rank": 40,
+          "subject": "CROSSFILTER function",
+          "knowledge_type": "example",
+          "topic": "DAX/Filter context",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The CROSSFILTER function can modify filter directions during the evaluation of an expression.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.038589
+          }
+        },
+        {
+          "rank": 4,
+          "id": "6969e419-129b-4b3f-8892-94066a2c8370",
+          "score": 0.03202,
+          "vec_rank": 4,
+          "lex_rank": 1,
+          "subject": "Bi-directional cross-filtering with row-level security",
+          "knowledge_type": "procedure",
+          "topic": "Security/Row-level security",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Bi-directional cross-filtering with row-level security can be manually enabled by selecting the relationship and checking the Apply security filter in both dire",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.032018
+          }
+        },
+        {
+          "rank": 5,
+          "id": "0291edec-16ed-4155-bac0-01bce8af9d66",
+          "score": 0.032,
+          "vec_rank": 3,
+          "lex_rank": 2,
+          "subject": "Bi-directional cross-filtering with row-level security",
+          "knowledge_type": "fact",
+          "topic": "Security/Row-level security",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Bi-directional cross-filtering with row-level security can only be selected for one relationship if a table takes part in multiple bi-directional relationships.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.032002
+          }
+        },
+        {
+          "rank": 6,
+          "id": "629e4096-d119-488b-950c-d73e5d4b918a",
+          "score": 0.03178,
+          "vec_rank": 1,
+          "lex_rank": 5,
+          "subject": "Bi-directional cross-filtering with row-level security",
+          "knowledge_type": "best_practice",
+          "topic": "Security/Row-level security",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Bi-directional cross-filtering with row-level security should be tested thoroughly before deploying to production.",
+          "concepts_present": [
+            "performance"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.031778
+          }
+        },
+        {
+          "rank": 7,
+          "id": "54d42b66-cc08-4501-b6f7-8788f9cbeab8",
+          "score": 0.03128,
+          "vec_rank": 2,
+          "lex_rank": 6,
+          "subject": "Bi-directional cross-filtering with row-level security",
+          "knowledge_type": "limitation",
+          "topic": "Security/Row-level security",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Bi-directional cross-filtering with row-level security can negatively impact query performance, especially in models with many relationships or large datasets.",
+          "concepts_present": [
+            "performance"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.031281
+          }
+        },
+        {
+          "rank": 8,
+          "id": "926703c2-f5fc-4fc8-9a4a-5d707454ccbe",
+          "score": 0.03058,
+          "vec_rank": 8,
+          "lex_rank": 3,
+          "subject": "cross filter direction",
+          "knowledge_type": "definition",
+          "topic": "Data Modeling/Relationships",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The cross filter direction is a setting that determines how filters propagate between tables.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.030579
+          }
+        }
+      ],
+      "concept_recall": 0.5,
+      "precision": 0.125,
+      "mrr": 0.16666666666666666,
+      "authoritative_hit": null,
+      "first_expected_rank": 6,
+      "concept_first_rank": {
+        "ambiguity": 21,
+        "performance": 6
+      },
+      "concept_in_corpus": {
+        "ambiguity": 2,
+        "performance": 140
+      },
+      "failure_reason": "'ambiguity' at rank 21 (> K=8)",
+      "latency_ms": 424
+    },
+    {
+      "id": "refresh-incremental-01",
+      "query": "What are the RangeStart and RangeEnd parameters used for?",
+      "topic": "Gateways and Refresh/Incremental refresh",
+      "required_concepts": [
+        "RangeStart",
+        "RangeEnd",
+        "query folding"
+      ],
+      "authoritative_sources": [],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "66d866c0-b224-4495-8666-fceae360eb51",
+          "score": 0.04794,
+          "vec_rank": 6,
+          "lex_rank": 1,
+          "subject": "RangeStart and RangeEnd parameters",
+          "knowledge_type": "fact",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The RangeStart and RangeEnd parameters, which must be the date/time data type, filter table data based on the date column.",
+          "concepts_present": [
+            "RangeStart",
+            "RangeEnd"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.047938
+          }
+        },
+        {
+          "rank": 2,
+          "id": "7ba30c00-1b3e-460f-ac56-ee6bb22cd9d6",
+          "score": 0.04694,
+          "vec_rank": 1,
+          "lex_rank": 7,
+          "subject": "RangeEnd",
+          "knowledge_type": "definition",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "`RangeEnd` represents the newest, or latest date/time.",
+          "concepts_present": [
+            "RangeEnd"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.046944
+          }
+        },
+        {
+          "rank": 3,
+          "id": "befd423c-3a75-425a-83c5-5504752ffb33",
+          "score": 0.04643,
+          "vec_rank": 2,
+          "lex_rank": 6,
+          "subject": "RangeStart",
+          "knowledge_type": "definition",
+          "topic": "Power Query / M",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "RangeStart is a reserved, case-sensitive parameter used to filter data in Power Query for incremental refresh.",
+          "concepts_present": [
+            "RangeStart"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.046432
+          }
+        },
+        {
+          "rank": 4,
+          "id": "d6f1259c-1c75-4636-8cc3-6c2b687b2308",
+          "score": 0.04558,
+          "vec_rank": 11,
+          "lex_rank": 4,
+          "subject": "RangeStart and RangeEnd",
+          "knowledge_type": "fact",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "After the model is published to the service, `RangeStart` and `RangeEnd` are overridden automatically by the service to query data defined by the refresh period",
+          "concepts_present": [
+            "RangeStart",
+            "RangeEnd"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.045583
+          }
+        },
+        {
+          "rank": 5,
+          "id": "afba1d02-0fa0-4db4-9595-a47617423c56",
+          "score": 0.04552,
+          "vec_rank": 14,
+          "lex_rank": 3,
+          "subject": "RangeStart and RangeEnd",
+          "knowledge_type": "example",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "To limit the number of rows initially loaded into the model in Power BI Desktop, specify a two-day period between `RangeStart` and `RangeEnd`.",
+          "concepts_present": [
+            "RangeStart",
+            "RangeEnd"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.045516
+          }
+        },
+        {
+          "rank": 6,
+          "id": "38b14a17-21f3-43e7-b2f5-72df0c8c37b1",
+          "score": 0.0448,
+          "vec_rank": 9,
+          "lex_rank": 5,
+          "subject": "RangeEnd",
+          "knowledge_type": "definition",
+          "topic": "Power Query / M",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "RangeEnd is a reserved, case-sensitive parameter used to filter data in Power Query for incremental refresh.",
+          "concepts_present": [
+            "RangeEnd"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.044803
+          }
+        },
+        {
+          "rank": 7,
+          "id": "85360e3b-0889-4b6d-92d2-c3edcf8dc1ee",
+          "score": 0.04371,
+          "vec_rank": 22,
+          "lex_rank": 2,
+          "subject": "RangeStart and RangeEnd",
+          "knowledge_type": "fact",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "These parameters, defined in the **Manage Parameters** dialog in Power Query Editor, are initially used to filter the data loaded into the Power BI Desktop mode",
+          "concepts_present": [
+            "RangeStart",
+            "RangeEnd"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.043709
+          }
+        },
+        {
+          "rank": 8,
+          "id": "d1358a55-a851-443e-8fa4-2c71a84d924c",
+          "score": 0.04357,
+          "vec_rank": 3,
+          "lex_rank": 17,
+          "subject": "Tabular Editor",
+          "knowledge_type": "procedure",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Tabular Editor can be used to manage `RangeStart` and `RangeEnd` parameter expressions.",
+          "concepts_present": [
+            "RangeStart",
+            "RangeEnd"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.043566
+          }
+        }
+      ],
+      "concept_recall": 0.6666666666666666,
+      "precision": 0.75,
+      "mrr": 1.0,
+      "authoritative_hit": null,
+      "first_expected_rank": 1,
+      "concept_first_rank": {
+        "RangeStart": 1,
+        "RangeEnd": 1,
+        "query folding": 20
+      },
+      "concept_in_corpus": {
+        "RangeStart": 19,
+        "RangeEnd": 20,
+        "query folding": 16
+      },
+      "failure_reason": "'query folding' at rank 20 (> K=8)",
+      "latency_ms": 460
+    },
+    {
+      "id": "security-rls-01",
+      "query": "How does row-level security restrict data in Power BI?",
+      "topic": "Security/Row-level security",
+      "required_concepts": [
+        "roles",
+        "DAX filter"
+      ],
+      "authoritative_sources": [],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "6b1d2df1-38ba-407c-9439-af5ff89d4e7a",
+          "score": 0.04918,
+          "vec_rank": 1,
+          "lex_rank": 1,
+          "subject": "Row-level security (RLS)",
+          "knowledge_type": "definition",
+          "topic": "Security",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Row-level security (RLS) is a feature that restricts data access for specific users of a Power BI semantic model.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.04918
+          }
+        },
+        {
+          "rank": 2,
+          "id": "ab5c215d-0752-4f53-a949-7b093f28b258",
+          "score": 0.04712,
+          "vec_rank": 4,
+          "lex_rank": 4,
+          "subject": "Row-level security (RLS)",
+          "knowledge_type": "fact",
+          "topic": "Security/Row-level security",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Row-level security (RLS) can be defined within Power BI Desktop.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.047123
+          }
+        },
+        {
+          "rank": 3,
+          "id": "efd9701c-e1bf-494d-82d5-0aeace95f16a",
+          "score": 0.04671,
+          "vec_rank": 3,
+          "lex_rank": 2,
+          "subject": "Row-Level Security (RLS)",
+          "knowledge_type": "definition",
+          "topic": "Security",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Row-Level Security (RLS) is a security method in Power BI Embedded that enables control over access to rows in a database table through group memberships.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.046708
+          }
+        },
+        {
+          "rank": 4,
+          "id": "e1d573b3-70cb-44cc-a68d-6fe45f73cccf",
+          "score": 0.04629,
+          "vec_rank": 2,
+          "lex_rank": 3,
+          "subject": "Row-level security (RLS)",
+          "knowledge_type": "fact",
+          "topic": "Security/Row-level security",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Row-level security (RLS) can be configured for Analysis Services data sources if the data is imported into Power BI Desktop.",
+          "concepts_present": [
+            "roles"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.046288
+          }
+        },
+        {
+          "rank": 5,
+          "id": "27c5f81b-c824-4d1d-ae1e-23728fa3c49c",
+          "score": 0.04352,
+          "vec_rank": 10,
+          "lex_rank": 11,
+          "subject": "Row-level security (RLS)",
+          "knowledge_type": "limitation",
+          "topic": "Security/Row-level security",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Row-level security (RLS) cannot be used to limit the columns or measures accessible by users.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.043522
+          }
+        },
+        {
+          "rank": 6,
+          "id": "d5f13ac3-df2d-4e33-bb89-894353421cf3",
+          "score": 0.04341,
+          "vec_rank": 6,
+          "lex_rank": 7,
+          "subject": "Row-level security (RLS)",
+          "knowledge_type": "fact",
+          "topic": "Security/Row-level security",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Row-level security (RLS) uses the security roles defined in the data source when using DirectQuery.",
+          "concepts_present": [
+            "roles"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.04341
+          }
+        },
+        {
+          "rank": 7,
+          "id": "df78ab2a-d3cb-4f4e-9f29-e6c671f31167",
+          "score": 0.04298,
+          "vec_rank": 15,
+          "lex_rank": 6,
+          "subject": "Row-level security (RLS)",
+          "knowledge_type": "limitation",
+          "topic": "Security/Row-level security",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Row-level security (RLS) cannot be used to hide detailed data while allowing access to summarized data.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.042978
+          }
+        },
+        {
+          "rank": 8,
+          "id": "12903563-c3db-46e4-82f8-f6c739bec296",
+          "score": 0.03985,
+          "vec_rank": 14,
+          "lex_rank": 38,
+          "subject": "RLS",
+          "knowledge_type": "definition",
+          "topic": "Security",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "RLS restricts data access at the row level.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.039847
+          }
+        }
+      ],
+      "concept_recall": 0.5,
+      "precision": 1.0,
+      "mrr": 0.25,
+      "authoritative_hit": null,
+      "first_expected_rank": 4,
+      "concept_first_rank": {
+        "roles": 4,
+        "DAX filter": 50
+      },
+      "concept_in_corpus": {
+        "roles": 58,
+        "DAX filter": 7
+      },
+      "failure_reason": "'DAX filter' at rank 50 (> K=8)",
+      "latency_ms": 616
+    },
+    {
+      "id": "m-folding-01",
+      "query": "What is query folding in Power Query?",
+      "topic": "Power Query / M/Query folding",
+      "required_concepts": [
+        "native query"
+      ],
+      "authoritative_sources": [],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "ea06b326-4cbd-4ad9-9dc2-1385d4c7d887",
+          "score": 0.04817,
+          "vec_rank": 1,
+          "lex_rank": 5,
+          "subject": "Query folding",
+          "knowledge_type": "definition",
+          "topic": "Power Query / M/Query folding",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Query folding is provided for when\u2014and how\u2014you can achieve Power Query query folding.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.048172
+          }
+        },
+        {
+          "rank": 2,
+          "id": "179e24c4-9279-4364-b919-3f4d3dcf391d",
+          "score": 0.04716,
+          "vec_rank": 5,
+          "lex_rank": 1,
+          "subject": "Power Query query",
+          "knowledge_type": "best_practice",
+          "topic": "Power Query / M/Query folding",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "When all steps of a Power Query query can't be folded, discover the step that prevents query folding. When possible, move later steps earlier in sequence so the",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.047163
+          }
+        },
+        {
+          "rank": 3,
+          "id": "400423d3-84d0-4824-ad26-4fbd9d7b7161",
+          "score": 0.04539,
+          "vec_rank": 4,
+          "lex_rank": 3,
+          "subject": "Power Query query",
+          "knowledge_type": "fact",
+          "topic": "Power Query / M/Query folding",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "For a DirectQuery or Dual storage mode table, the Power Query query must achieve query folding.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.045387
+          }
+        },
+        {
+          "rank": 4,
+          "id": "d49cf30c-03d7-4f3c-ba7d-e998a1c8d26b",
+          "score": 0.04384,
+          "vec_rank": 3,
+          "lex_rank": 21,
+          "subject": "Query folding",
+          "knowledge_type": "best_practice",
+          "topic": "Power Query / M/Query folding",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Query folding targets data modelers developing models in Power BI Desktop.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.043844
+          }
+        },
+        {
+          "rank": 5,
+          "id": "6110e20a-7d50-4bbe-b60e-785877a45f3d",
+          "score": 0.04382,
+          "vec_rank": 6,
+          "lex_rank": 6,
+          "subject": "Power Query query",
+          "knowledge_type": "best_practice",
+          "topic": "Power Query / M/Query folding",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "When you identify that certain Power Query query steps can't be folded, it may be possible to apply the transformations in the data source.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.043817
+          }
+        },
+        {
+          "rank": 6,
+          "id": "4eaaf553-ed97-458c-a9c0-5cc3d8a7e61b",
+          "score": 0.0435,
+          "vec_rank": 7,
+          "lex_rank": 10,
+          "subject": "Power Query query",
+          "knowledge_type": "fact",
+          "topic": "Power Query / M/Query folding",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "For an Import table, it may be possible to achieve query folding.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.043497
+          }
+        },
+        {
+          "rank": 7,
+          "id": "4f189ddb-8727-4b03-a00f-9424e543f844",
+          "score": 0.04223,
+          "vec_rank": 8,
+          "lex_rank": 8,
+          "subject": "Power Query",
+          "knowledge_type": "fact",
+          "topic": "Power Query / M/Data sources",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Power Query advises to confirm query folding by selecting View Native Query.",
+          "concepts_present": [
+            "native query"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.042232
+          }
+        },
+        {
+          "rank": 8,
+          "id": "cd9f8ea3-945d-46f9-924f-10a2ad6aa84d",
+          "score": 0.04113,
+          "vec_rank": 12,
+          "lex_rank": 28,
+          "subject": "Query folding",
+          "knowledge_type": "fact",
+          "topic": "Power Query / M/Query folding",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Query folding differs based on the model mode.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.041126
+          }
+        }
+      ],
+      "concept_recall": 1.0,
+      "precision": 1.0,
+      "mrr": 0.14285714285714285,
+      "authoritative_hit": null,
+      "first_expected_rank": 7,
+      "concept_first_rank": {
+        "native query": 7
+      },
+      "concept_in_corpus": {
+        "native query": 4
+      },
+      "failure_reason": "ok",
+      "latency_ms": 455
+    },
+    {
+      "id": "gateway-01",
+      "query": "When is an on-premises data gateway required?",
+      "topic": "Gateways and Refresh/On-premises data gateway",
+      "required_concepts": [
+        "on-premises"
+      ],
+      "authoritative_sources": [],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "cec996e1-1d9f-4aac-ac45-3a795a8bd25a",
+          "score": 0.03175,
+          "vec_rank": 2,
+          "lex_rank": 4,
+          "subject": "Standard on-premises data gateway",
+          "knowledge_type": "best_practice",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The standard on-premises data gateway is recommended for scenarios requiring DirectQuery, live connection, composite models, or virtual network gateway scenario",
+          "concepts_present": [
+            "on-premises"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.031754
+          }
+        },
+        {
+          "rank": 2,
+          "id": "36e6b24e-0226-46f3-b00e-7247c6b561e2",
+          "score": 0.02988,
+          "vec_rank": 5,
+          "lex_rank": 9,
+          "subject": "Standard on-premises data gateway",
+          "knowledge_type": "best_practice",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The standard on-premises data gateway is recommended for scenarios requiring centralized auditing and governance.",
+          "concepts_present": [
+            "on-premises"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.029877
+          }
+        },
+        {
+          "rank": 3,
+          "id": "7e6b951c-365e-48e2-8112-08ac0d6de231",
+          "score": 0.02986,
+          "vec_rank": 8,
+          "lex_rank": 6,
+          "subject": "On-premises data gateway",
+          "knowledge_type": "definition",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The On-premises data gateway is a bridge between your on-premises data sources and Fabric.",
+          "concepts_present": [
+            "on-premises"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.029857
+          }
+        },
+        {
+          "rank": 4,
+          "id": "5f7e7c8d-e903-4a4a-ba57-023319106df3",
+          "score": 0.02929,
+          "vec_rank": 16,
+          "lex_rank": 2,
+          "subject": "On-premises data gateway",
+          "knowledge_type": "fact",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "If you're using the on-premises data gateway to refresh data, you don't need to supply credentials, as they're defined for the data source by the gateway admini",
+          "concepts_present": [
+            "on-premises"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.029287
+          }
+        },
+        {
+          "rank": 5,
+          "id": "58b94175-b88b-4003-946b-ed7b18dbee92",
+          "score": 0.02869,
+          "vec_rank": 3,
+          "lex_rank": 18,
+          "subject": "On-premises Data Gateway",
+          "knowledge_type": "best_practice",
+          "topic": "Gateways and Refresh/On-premises data gateway",
+          "status": "VERIFIED",
+          "confidence": 0.796,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The On-premises Data Gateway should be version 3000.77.3 or higher.",
+          "concepts_present": [
+            "on-premises"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.028694
+          }
+        },
+        {
+          "rank": 6,
+          "id": "d22cf8cc-0ec8-4f18-ad67-7fd9e3e52b24",
+          "score": 0.02869,
+          "vec_rank": 18,
+          "lex_rank": 3,
+          "subject": "On-premises data gateway (personal mode)",
+          "knowledge_type": "limitation",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "On-premises data gateway (personal mode) does not support virtual network data gateway.",
+          "concepts_present": [
+            "on-premises"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.028694
+          }
+        },
+        {
+          "rank": 7,
+          "id": "f2f4421a-fa1b-4e22-9159-9a80cc1e79c9",
+          "score": 0.02866,
+          "vec_rank": 6,
+          "lex_rank": 14,
+          "subject": "Standard on-premises data gateway",
+          "knowledge_type": "best_practice",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The standard on-premises data gateway is recommended for scenarios requiring high availability, clustering, or load balancing.",
+          "concepts_present": [
+            "on-premises"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.028665
+          }
+        },
+        {
+          "rank": 8,
+          "id": "b3c7c542-d751-47c6-8487-e5349980ae2d",
+          "score": 0.02862,
+          "vec_rank": 7,
+          "lex_rank": 13,
+          "subject": "Standard on-premises data gateway",
+          "knowledge_type": "best_practice",
+          "topic": "Gateways and Refresh",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The standard on-premises data gateway is recommended for multiple authors or admins managing data sources and credentials.",
+          "concepts_present": [
+            "on-premises"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.028624
+          }
+        }
+      ],
+      "concept_recall": 1.0,
+      "precision": 1.0,
+      "mrr": 1.0,
+      "authoritative_hit": null,
+      "first_expected_rank": 1,
+      "concept_first_rank": {
+        "on-premises": 1
+      },
+      "concept_in_corpus": {
+        "on-premises": 87
+      },
+      "failure_reason": "ok",
+      "latency_ms": 427
+    },
+    {
+      "id": "negative-divide-01",
+      "query": "What happens when DIVIDE's denominator is zero?",
+      "topic": "DAX/Functions",
+      "required_concepts": [
+        "BLANK"
+      ],
+      "authoritative_sources": [],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "b5bd5c88-4fc2-432e-8f78-87460d891842",
+          "score": 0.04918,
+          "vec_rank": 1,
+          "lex_rank": 1,
+          "subject": "denominator",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The denominator is defined as The divisor or number to divide by.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.04918
+          }
+        },
+        {
+          "rank": 2,
+          "id": "a7661b26-0963-4f46-8436-80baacb2c798",
+          "score": 0.04584,
+          "vec_rank": 4,
+          "lex_rank": 2,
+          "subject": "DIVIDE function",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.861,
+          "verification_level": 4,
+          "max_authority": 95,
+          "statement": "The DIVIDE function has syntax DIVIDE(<numerator>, <denominator> [,<alternateresult>]).",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.045839
+          }
+        },
+        {
+          "rank": 3,
+          "id": "ecbe04f8-3c0e-4ecf-a0ea-e03d26689c4b",
+          "score": 0.032,
+          "vec_rank": 2,
+          "lex_rank": 3,
+          "subject": "DIVIDE function",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.885,
+          "verification_level": 4,
+          "max_authority": 95,
+          "statement": "The DIVIDE function is a function that performs division and returns alternate result or BLANK() on division by 0.",
+          "concepts_present": [
+            "BLANK"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.032002
+          }
+        },
+        {
+          "rank": 4,
+          "id": "59c876ba-782d-4a0c-9d6d-216dc42e89e0",
+          "score": 0.0315,
+          "vec_rank": 3,
+          "lex_rank": 4,
+          "subject": "DIVIDE",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.796,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "DIVIDE performs division and returns alternate result or BLANK() on division by 0.",
+          "concepts_present": [
+            "BLANK"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.031498
+          }
+        },
+        {
+          "rank": 5,
+          "id": "6936d914-6fbb-454a-b606-aaad5e7c5d38",
+          "score": 0.03054,
+          "vec_rank": 5,
+          "lex_rank": 6,
+          "subject": "numerator",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The numerator is defined as The dividend or number to divide.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.030536
+          }
+        },
+        {
+          "rank": 6,
+          "id": "c4ba6b76-abf2-4a30-a9a9-fe5f818c9c6b",
+          "score": 0.03008,
+          "vec_rank": 6,
+          "lex_rank": 7,
+          "subject": "alternateresult",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The alternateresult is defined as The value returned when division by zero results in an error. When not provided, the default value is BLANK().",
+          "concepts_present": [
+            "BLANK"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.030077
+          }
+        },
+        {
+          "rank": 7,
+          "id": "16439284-5d8a-4477-ba34-618b38fa0007",
+          "score": 0.02881,
+          "vec_rank": 7,
+          "lex_rank": 12,
+          "subject": "0",
+          "knowledge_type": "definition",
+          "topic": "DAX",
+          "status": "VERIFIED",
+          "confidence": 0.796,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "0 is a digit placeholder that displays a digit or a zero.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.028814
+          }
+        },
+        {
+          "rank": 8,
+          "id": "5b9182df-9019-43e5-934f-c1464c6e5c44",
+          "score": 0.02789,
+          "vec_rank": null,
+          "lex_rank": 25,
+          "subject": "Context clearing",
+          "knowledge_type": "fact",
+          "topic": "DAX/Time intelligence",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Context clearing happens on columns tagged in a calendar or associated sort-by columns.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.027894
+          }
+        }
+      ],
+      "concept_recall": 1.0,
+      "precision": 1.0,
+      "mrr": 0.3333333333333333,
+      "authoritative_hit": null,
+      "first_expected_rank": 3,
+      "concept_first_rank": {
+        "BLANK": 3
+      },
+      "concept_in_corpus": {
+        "BLANK": 71
+      },
+      "failure_reason": "ok",
+      "latency_ms": 376
+    },
+    {
+      "id": "negative-versions-01",
+      "query": "Are all DAX functions available in every version of Power BI Desktop, Analysis Services and Power Pivot in Excel?",
+      "topic": "DAX",
+      "required_concepts": [
+        "not all"
+      ],
+      "authoritative_sources": [],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "c6430ddf-7423-4ff7-8c59-232351462c2d",
+          "score": 0.04788,
+          "vec_rank": 2,
+          "lex_rank": 4,
+          "subject": "Not all functions",
+          "knowledge_type": "warning",
+          "topic": "DAX",
+          "status": "VERIFIED",
+          "confidence": 0.796,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Not all functions are supported in all versions of Power BI Desktop, Analysis Services, and Power Pivot in Excel.",
+          "concepts_present": [
+            "not all"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.047883
+          }
+        },
+        {
+          "rank": 2,
+          "id": "4cca289a-172b-4c5f-95a7-3b29d347b828",
+          "score": 0.04635,
+          "vec_rank": 1,
+          "lex_rank": 3,
+          "subject": "DAX functions",
+          "knowledge_type": "limitation",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "Not all DAX functions are supported or included in earlier versions of Power BI Desktop, Analysis Services, and Power Pivot in Excel.",
+          "concepts_present": [
+            "not all"
+          ],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.046351
+          }
+        },
+        {
+          "rank": 3,
+          "id": "44c26429-7447-485b-abef-692d3a7f39ef",
+          "score": 0.03078,
+          "vec_rank": 4,
+          "lex_rank": 6,
+          "subject": "Power BI Desktop",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.766,
+          "verification_level": 2,
+          "max_authority": 85,
+          "statement": "Power BI Desktop is a platform where DAX user-defined functions are available.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.030777
+          }
+        },
+        {
+          "rank": 4,
+          "id": "c6f8cc09-ae39-4c3f-8856-34e2f1a2c6ce",
+          "score": 0.02985,
+          "vec_rank": 7,
+          "lex_rank": 7,
+          "subject": "Power BI service",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.766,
+          "verification_level": 2,
+          "max_authority": 85,
+          "statement": "Power BI service is a platform where DAX user-defined functions are available.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.029851
+          }
+        },
+        {
+          "rank": 5,
+          "id": "e3084332-247a-438a-92d5-19cc76e3069d",
+          "score": 0.02886,
+          "vec_rank": 3,
+          "lex_rank": 17,
+          "subject": "DAX functions",
+          "knowledge_type": "example",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "DAX functions are covered in DAX Basics in Power BI Desktop.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.02886
+          }
+        },
+        {
+          "rank": 6,
+          "id": "a09c8f55-ed4a-4ffb-b0fc-2b67a5139fee",
+          "score": 0.02703,
+          "vec_rank": 15,
+          "lex_rank": 13,
+          "subject": "Tutorial: Create calculated columns in Power BI Desktop",
+          "knowledge_type": "fact",
+          "topic": "DAX/Variables",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The Tutorial: Create calculated columns in Power BI Desktop is intended for Power BI users already familiar with using Power BI Desktop to create more advanced ",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.027032
+          }
+        },
+        {
+          "rank": 7,
+          "id": "dfe5ff84-d3e9-4189-b375-3f4c1583e97e",
+          "score": 0.02599,
+          "vec_rank": 19,
+          "lex_rank": 15,
+          "subject": "Tutorial: Create calculated columns in Power BI Desktop",
+          "knowledge_type": "fact",
+          "topic": "DAX/Variables",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The Tutorial: Create calculated columns in Power BI Desktop uses the Contoso Sales Sample for Power BI Desktop, the same sample used for the Create your own mea",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.025992
+          }
+        },
+        {
+          "rank": 8,
+          "id": "8f276a19-5950-4fc5-a06a-0c8569114f7e",
+          "score": 0.02281,
+          "vec_rank": null,
+          "lex_rank": 20,
+          "subject": "DAX and Analysis Services engine",
+          "knowledge_type": "fact",
+          "topic": "DAX",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "DAX and the Analysis Services engine that powers Power BI are case insensitive once data is loaded into the front end.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.022809
+          }
+        }
+      ],
+      "concept_recall": 1.0,
+      "precision": 1.0,
+      "mrr": 1.0,
+      "authoritative_hit": null,
+      "first_expected_rank": 1,
+      "concept_first_rank": {
+        "not all": 1
+      },
+      "concept_in_corpus": {
+        "not all": 16
+      },
+      "failure_reason": "ok",
+      "latency_ms": 663
+    },
+    {
+      "id": "visual-calc-01",
+      "query": "Which DAX functions are only available in visual calculations?",
+      "topic": "DAX/Functions",
+      "required_concepts": [
+        "PREVIOUS",
+        "NEXT"
+      ],
+      "authoritative_sources": [
+        "https://learn.microsoft.com/en-us/dax/new-dax-functions"
+      ],
+      "k": 8,
+      "top": [
+        {
+          "rank": 1,
+          "id": "db05698d-da4c-45b5-affe-de897297046f",
+          "score": 0.04892,
+          "vec_rank": 2,
+          "lex_rank": 1,
+          "subject": "Visual calculations functions",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.766,
+          "verification_level": 2,
+          "max_authority": 85,
+          "statement": "Visual calculations functions can only be used in Power BI visual calculations and cannot be used in regular measures, calculated columns, nor calculated tables",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.048916
+          }
+        },
+        {
+          "rank": 2,
+          "id": "c4c4ea69-1acc-4165-bee4-1a1bd021906a",
+          "score": 0.04599,
+          "vec_rank": 8,
+          "lex_rank": 2,
+          "subject": "Visual calculation",
+          "knowledge_type": "definition",
+          "topic": "DAX",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A visual calculation is a DAX calculation evaluated in the visual context of a visual.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.045986
+          }
+        },
+        {
+          "rank": 3,
+          "id": "f86d25b2-f830-460a-9eb2-23bcb072203c",
+          "score": 0.04356,
+          "vec_rank": 13,
+          "lex_rank": 6,
+          "subject": "Visual calculation",
+          "knowledge_type": "definition",
+          "topic": "DAX",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A visual calculation is a calculation stored on the visual rather than in the model.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.043556
+          }
+        },
+        {
+          "rank": 4,
+          "id": "816b7391-0318-49b5-860d-46a6e6278210",
+          "score": 0.04164,
+          "vec_rank": 25,
+          "lex_rank": 9,
+          "subject": "visual calculation",
+          "knowledge_type": "definition",
+          "topic": "Visualization",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A visual calculation differs from the other calculation options in DAX.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.041642
+          }
+        },
+        {
+          "rank": 5,
+          "id": "d988ec81-2656-4a79-8aa1-7ebbf1363149",
+          "score": 0.04008,
+          "vec_rank": 5,
+          "lex_rank": 15,
+          "subject": "Visual calculation",
+          "knowledge_type": "fact",
+          "topic": "DAX",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A visual calculation involves straightforward DAX.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.040082
+          }
+        },
+        {
+          "rank": 6,
+          "id": "109210fc-5145-457e-a33f-4762f6e2b93d",
+          "score": 0.03993,
+          "vec_rank": 20,
+          "lex_rank": 5,
+          "subject": "Visual calculation",
+          "knowledge_type": "fact",
+          "topic": "DAX",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A visual calculation is stored in visual.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.039933
+          }
+        },
+        {
+          "rank": 7,
+          "id": "3c7a0eed-8867-47a4-a959-91f0c7c664ad",
+          "score": 0.03958,
+          "vec_rank": 28,
+          "lex_rank": 8,
+          "subject": "visual calculation",
+          "knowledge_type": "definition",
+          "topic": "Visualization",
+          "status": "VERIFIED",
+          "confidence": 0.804,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "A visual calculation is a DAX calculation that you define and run directly on a visual, instead of adding it to the semantic model.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.039583
+          }
+        },
+        {
+          "rank": 8,
+          "id": "ca87b337-4984-4744-b417-5b1a74f0e1e8",
+          "score": 0.0368,
+          "vec_rank": 27,
+          "lex_rank": 3,
+          "subject": "CALCULATE function",
+          "knowledge_type": "definition",
+          "topic": "DAX/Functions",
+          "status": "VERIFIED",
+          "confidence": 0.788,
+          "verification_level": 2,
+          "max_authority": 95,
+          "statement": "The CALCULATE function is one of the most powerful functions in DAX.",
+          "concepts_present": [],
+          "authoritative": false,
+          "signals": {
+            "rrf": 0.036801
+          }
+        }
+      ],
+      "concept_recall": 0.0,
+      "precision": 0.75,
+      "mrr": 0.0,
+      "authoritative_hit": false,
+      "first_expected_rank": null,
+      "concept_first_rank": {
+        "PREVIOUS": 29,
+        "NEXT": null
+      },
+      "concept_in_corpus": {
+        "PREVIOUS": 53,
+        "NEXT": 70
+      },
+      "failure_reason": "'PREVIOUS' at rank 29 (> K=8); 'NEXT' in corpus (70) but not in pool-50; authoritative source not in pool (not crawled or not retrievable)",
+      "latency_ms": 475
+    }
+  ]
+}

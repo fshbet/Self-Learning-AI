@@ -143,10 +143,16 @@ class DiscoverySpec(BaseModel):
 
 
 class RetrievalSpec(BaseModel):
-    """How the domain wants to be searched (P2.5). ``text_search_config`` names a PostgreSQL text-search
-    configuration explicitly (e.g. ``german``, ``simple``); when absent it follows the manifest language."""
+    """How the domain wants to be searched (P2.5, ADR 0006). ``text_search_config`` names a PostgreSQL text-search
+    configuration explicitly (e.g. ``german``, ``simple``); when absent it follows the manifest language.
+    ``synonyms`` declares lexical variants the corpus uses for a term (``{"semantic model": ["dataset"]}``),
+    ``intent_cues`` adds regex cues per core intent, ``intent_types`` overrides which knowledge types an intent
+    prefers (default: derived from declared roles / polarity)."""
 
     text_search_config: str | None = None
+    synonyms: dict[str, list[str]] = Field(default_factory=dict)
+    intent_cues: dict[str, list[str]] = Field(default_factory=dict)
+    intent_types: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class Manifest(BaseModel):
