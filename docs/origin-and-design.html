@@ -140,13 +140,24 @@ matter, because the system's own safeguards caught three mistakes in the first i
 meaning of "evidence over confidence".</p>
 
 <h2 id="next">Where it goes next</h2>
-<p>The design document lays out the remaining phases, each an explicit test of the principle:</p>
+<p>Two of the tests the design set itself have since been run:</p>
 <ul>
-  <li><strong>Executable validators</strong> (sandboxed) — test a DAX example against a real model instead of asking a model to judge it.</li>
-  <li><strong>Source reliability history</strong> — authority that is earned over time, not only declared.</li>
-  <li><strong>Golden-set evaluation runner</strong> — every change to prompts, rules or models is measured before it is promoted.</li>
-  <li><strong>A second, then a radically different domain</strong> (Tableau, then robotics or an industrial machine) — the proof that
-  the core is genuinely generic. If a new topic ever needs a change in the core, that is a bug in the architecture, not a feature.</li>
+  <li><strong>Golden-set evaluation runner</strong> &mdash; built. Every change to prompts, rules or models is measured on a fixed
+  question set before it is promoted, and a run that drops against its predecessor is flagged as a regression rather than merged quietly.</li>
+  <li><strong>A second domain</strong> &mdash; built, and deliberately not another BI tool: a synthetic robotics lab whose plugin declares
+  its own knowledge types, polarity, roles and validators. It runs the whole pipeline, and the two changes it forced in the core were both
+  expressed as things a plugin may <em>declare</em>, not as code that knows what robotics is.</li>
+</ul>
+<p>What is still ahead:</p>
+<ul>
+  <li><strong>Executable validators</strong> (sandboxed) &mdash; test a DAX example against a real model instead of asking a model to judge it.</li>
+  <li><strong>Source reliability history</strong> &mdash; authority that is earned over time, not only declared.</li>
+  <li><strong>Knowing what it does not know</strong> &mdash; the current frontier. Retrieval and answering were measured and improved on a fixed
+  corpus until the remaining failures were all the same shape: the knowledge itself was missing, or nothing connected it to the question.
+  The next step is for the platform to detect that from its own graph and evaluation record, and propose the source that would close the gap
+  &mdash; proposing, never crawling on its own.</li>
+  <li><strong>A radically different domain</strong> (an industrial machine, say) &mdash; the standing proof that the core is generic.
+  If a new topic ever needs a change in the core, that is a bug in the architecture, not a feature.</li>
 </ul>
 <p>Power BI is simply the first domain used to prove the platform. The idea is the machinery; the topics are plugins.</p>
 

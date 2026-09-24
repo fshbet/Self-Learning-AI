@@ -51,6 +51,10 @@ cd frontend; npm install; npm run build; cd ..
 uv run kp serve
 ```
 
+After that one-off setup, **`start.bat`** is the everyday path: it starts Docker Desktop and the Postgres container if
+they are down, starts Ollama if it is not answering, applies any pending migrations, opens the browser and runs
+`kp serve` in the foreground (Ctrl+C stops it).
+
 First knowledge: on the dashboard press **Run pipeline** (or `uv run kp run pipeline powerbi --max-pages 10`).
 Extraction is the slow stage — roughly 20–30 s per page section on an RTX 3060 Ti with `qwen3:8b` — so start with a small
 page budget and let the scheduler grow the repository over time.
@@ -372,14 +376,15 @@ optional and only needed for validators and skills (see `domains/powerbi/plugin.
 | `kp run pipeline <domain> [--source key] [--max-pages N]` | crawl + extract (runs the worker inline) |
 | `kp run extract <domain>` | extract documents that were fetched but not extracted |
 | `kp run discover <domain>` | web discovery → candidate sources (needs SearXNG: `docker compose --profile discovery up -d`) |
-| `kp eval run <domain> [--fail-on-regression]` / `kp eval list` | golden-set evaluation, regression detection |
+| `kp eval run <domain> [--mode p2\|p3-retrieval\|p3-plan\|p3] [--fail-on-regression]` / `kp eval list` | golden-set evaluation, regression detection; `--mode` compares answering strategies on the same set |
+| `kp eval retrieval <domain> [--k 8] [--retrieval raw\|rrf\|rank\|diverse\|full] [--out file.json]` | offline retrieval scoring (concept recall@K, precision, MRR, authoritative-source hit) — no model call |
 | `kp export snapshot <domain> [--out file.zip]` / `kp export delta <domain> [--base id]` / `kp export list` / `kp export verify <id>` / `kp export apply <base> <delta> --out DIR` | Canonical Knowledge Snapshots (full and delta) |
 | `kp ops [domain]` | queue health, dead letters, model latency, storage, schedule |
 | `kp falsify <domain> [--limit 5] [--item id]` | active falsification with the open web (needs SearXNG) |
 | `kp autostart install/status/uninstall` | start the platform at logon (Task Scheduler / systemd / launchd) |
 | `kp serve` | API + UI + embedded worker + scheduler |
 | `kp worker` | standalone worker (set `KP_EMBEDDED_WORKER=false` for the API) |
-| `kp search <domain> "query"` / `kp ask <domain> "question"` | retrieval from the terminal |
+| `kp search <domain> "query"` / `kp ask <domain> "question" [--mode …] [--explain]` | retrieval from the terminal; `--explain` prints the answer plan, its completeness, any regeneration, stage timings and the ranking reasons per item |
 
 ## How quality is enforced
 

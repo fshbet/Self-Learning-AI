@@ -52,7 +52,10 @@ optionally some <strong>search keywords</strong>. It then:</p>
 </ul>
 
 <h2 id="start">Start it up</h2>
-<p>Everything runs on your own machine. You need Docker Desktop, Ollama and the project folder. Open a terminal in the project folder:</p>
+<p>Everything runs on your own machine. You need Docker Desktop, Ollama and the project folder.
+Once the one-off setup below is done, <code>start.bat</code> in the project folder does everything in this section:
+it starts Docker Desktop and the database if they are down, starts Ollama if it is not answering, applies any new
+migrations and opens the app. To do it by hand, open a terminal in the project folder:</p>
 <ol class="steps">
   <li><strong>Start the database</strong><pre><code>docker compose up -d postgres</code></pre></li>
   <li><strong>Start the platform</strong> (API, background worker and web app in one process)<pre><code>uv run kp serve</code></pre></li>
@@ -209,6 +212,24 @@ dimmed so you can see what the assistant considered.</p>
 <p>If the answer says the knowledge base does not cover the question, that is the intended behaviour: add a source that does, crawl it,
 and ask again.</p>
 
+<p><strong>How this answer was made.</strong> Under every answer is a line you can expand to see the work behind it:
+how the question was read (what it was <em>about</em>, which entities it named, how many candidates each retrieval
+channel produced), the <em>plan</em> the platform wrote for itself before asking the model — the points the retrieved
+evidence obliges the answer to cover, each marked ✓ or ✗ once the answer came back — whether it asked the model a
+second time to fill a gap it had left, and how long each stage took. The plan is derived from your question and the
+retrieved items only; nothing in it is invented.</p>
+
+<p><strong>Why an item ranked where it did.</strong> Each retrieved card carries short chips giving its reasons —
+"subject is the query entity", "covers 3/4 query terms", "source authority 95", "a domain validator rejected it".
+Hovering a chip shows every scoring contribution and their sum, which is exactly the item's score. The same chips
+appear on Search results.</p>
+
+<p><strong>Answer mode</strong> (top right of the ask box) is for comparing behaviour, not for daily use — leave it on
+<em>planned</em>. <em>Planned, no regeneration</em> skips the second model call; <em>retrieval only</em> uses the new
+retrieval with a plain prompt; <em>baseline</em> is the older, simpler answerer, kept so improvements can be measured
+against it rather than asserted. Search has the same choice between the full retrieval pipeline and the old
+two-channel one.</p>
+
 <h2 id="eval">Self-evaluation</h2>
 <p>The <strong>Evaluation</strong> page runs the domain's golden questions against the current knowledge base. For each question the
 platform retrieves, answers, then applies explainable checks (required concepts present, every citation resolves to an item with
@@ -223,6 +244,11 @@ A question passes only when both agree.</p>
   with a suggested action. The platform never edits knowledge on its own — you act on the findings.</li>
   <li>Runs also start automatically after a pipeline run that produced knowledge, and once a day while the app is running.</li>
 </ul>
+<p>Alongside the pass/fail figure the run records measurements that do not gate it: how much of each expected
+concept the answer covered, where the first relevant item ranked, how often the authoritative source was retrieved,
+how often the platform asked the model a second time, and how long each stage took. These are there to show
+<em>where</em> a score comes from — a question can fail because the knowledge is missing, because retrieval buried it,
+or because the answer left it out, and those need different fixes.</p>
 <div class="note">Low scores early on are normal and honest: most questions abstain until their sources have been crawled. Watch the trend, not the first number.</div>
 
 <h2 id="models">Choosing models (local or API)</h2>
@@ -278,7 +304,12 @@ produces the same hash, so two people exporting the same state get identical fil
   <tr><td><code>kp run extract powerbi</code></td><td>Extract pages that were fetched but not yet read</td></tr>
   <tr><td><code>kp domains list / sync / new / check</code></td><td>Manage topics</td></tr>
   <tr><td><code>kp ask powerbi "What does CALCULATE do?"</code></td><td>Ask from the terminal</td></tr>
+  <tr><td><code>kp ask powerbi "…" --explain</code></td><td>The same answer, followed by the plan, what it covered, and why each item ranked where it did</td></tr>
   <tr><td><code>kp search powerbi "row-level security"</code></td><td>Search from the terminal</td></tr>
+  <tr><td><code>kp eval run powerbi</code></td><td>Run the golden questions (add <code>--mode</code> to compare answering strategies)</td></tr>
+  <tr><td><code>kp eval retrieval powerbi</code></td><td>Score retrieval alone — no model call, so it is fast and repeatable</td></tr>
+  <tr><td><code>kp export snapshot powerbi</code></td><td>Write a Canonical Knowledge Snapshot</td></tr>
+  <tr><td><code>kp ops</code></td><td>Queue health, dead letters, model latency, storage</td></tr>
 </table>
 <p>Prefix commands with <code>uv run</code> when running from the project folder. The API is documented at
 <a href="/api/docs">/api/docs</a> if you want to script against it.</p>
