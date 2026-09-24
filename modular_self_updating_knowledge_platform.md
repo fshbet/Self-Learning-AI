@@ -1,11 +1,16 @@
-# Modular Self-Updating Knowledge Intelligence Platform
+# Self-Learning AI — architecture and design specification
+
+Originally titled *Modular Self-Updating Knowledge Intelligence Platform*; the project is now called
+**Self-Learning AI**, after [Section 33](#33-self-learning). The description it gives of itself is unchanged:
+a modular, domain-independent platform that continuously collects, verifies, versions and serves trustworthy
+knowledge.
 
 | Field | Value |
 |---|---|
 | Document type | Architecture and design specification |
 | Status | Draft |
 | Version | 0.2.0 |
-| Last updated | 2026-09-13 |
+| Last updated | 2026-09-24 (title only; the specification itself is unchanged) |
 | Owner | TBD |
 | Audience | Platform architects, engineers, domain experts, project sponsors |
 
