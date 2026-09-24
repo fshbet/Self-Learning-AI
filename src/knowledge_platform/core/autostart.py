@@ -107,7 +107,7 @@ def _linux_install(name: str) -> str:
         "\n".join(
             [
                 "[Unit]",
-                "Description=Knowledge Platform (API + worker + scheduler)",
+                "Description=Self-Learning AI (API + worker + scheduler)",
                 "After=network-online.target docker.service",
                 "",
                 "[Service]",

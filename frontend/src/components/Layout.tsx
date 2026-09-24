@@ -65,7 +65,7 @@ export default function Layout() {
             <div className="w-4 h-4 rounded-full border-[3px] border-accent-400" />
           </div>
           <div>
-            <div className="font-semibold text-white leading-tight">Knowledge Platform</div>
+            <div className="font-semibold text-white leading-tight">Self-Learning AI</div>
             <div className="text-[11px] text-ink-400">self-updating · evidence-first</div>
           </div>
         </div>

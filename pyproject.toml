@@ -1,7 +1,7 @@
 [project]
 name = "knowledge-platform"
 version = "0.1.0"
-description = "Modular self-updating knowledge intelligence platform (domain-plugin based)"
+description = "Self-Learning AI — a modular, self-updating knowledge intelligence platform (domain-plugin based)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }

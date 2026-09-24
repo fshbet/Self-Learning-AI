@@ -58,7 +58,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Knowledge Platform API",
+    title="Self-Learning AI API",
     version=__version__,
     lifespan=lifespan,
     docs_url="/api/docs",
@@ -222,5 +222,5 @@ else:
     @app.get("/", include_in_schema=False)
     def root() -> dict[str, str]:
         return {
-            "message": "Knowledge Platform API. Build the frontend (cd frontend && npm run build) or open /api/docs."
+            "message": "Self-Learning AI API. Build the frontend (cd frontend && npm run build) or open /api/docs."
         }

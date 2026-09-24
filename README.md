@@ -1,4 +1,4 @@
-# Knowledge Platform
+# Self-Learning AI
 
 A modular, self-updating knowledge intelligence platform. It discovers, collects, extracts, verifies, versions and serves
 evidence-backed knowledge for any technology or subject, one **domain plugin** at a time. Power BI is the first domain.
