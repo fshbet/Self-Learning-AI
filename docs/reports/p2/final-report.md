@@ -90,14 +90,14 @@ changed to accommodate this.
 
 Pipeline defects found and fixed during the run (each with a regression test):
 
-1. `GuardedTransport` died on redirect hops (`RequestNotRead`) — `8e6b754`.
-2. Model timeouts / malformed JSON were recorded as extracted → silent knowledge loss — `f87bbc3` (failed sections
+1. `GuardedTransport` died on redirect hops (`RequestNotRead`) — `64e8ca6`.
+2. Model timeouts / malformed JSON were recorded as extracted → silent knowledge loss — `b6e53ce` (failed sections
    retried with backoff, document stays partial; two already-affected documents were re-extracted).
 3. Subjects used as ILIKE patterns: `%`, `_`, trailing `\` — false same-subject candidates across 28 subjects and a
-   dead-letter crash on the custom-format-strings page — `82fe99b` (job retried successfully: 50 items).
+   dead-letter crash on the custom-format-strings page — `a3139fb` (job retried successfully: 50 items).
 4. Revalidation churn: four dependents of a CONFLICTED item revalidated every scheduler tick (48× each) —
-   `9b1a4e0` (only re-queued when the item or a dependency changed; "Revalidate all" still forces).
-5. Test hygiene: cleanups deleted live-domain job history; test workers drained live jobs — `1ab6dd4`, `3dee2af`.
+   `28e5438` (only re-queued when the item or a dependency changed; "Revalidate all" still forces).
+5. Test hygiene: cleanups deleted live-domain job history; test workers drained live jobs — `2cf45dd`, `b0c4aef`.
 
 ## 5. Long-run stability (70 samples, 11 h wall clock, one reboot)
 

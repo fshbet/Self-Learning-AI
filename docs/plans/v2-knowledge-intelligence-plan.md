@@ -1,6 +1,6 @@
 # V2 plan — Knowledge Intelligence Platform upgrade
 
-Status: **proposal, awaiting approval** · Date: 2026-09-13 · Base commit: `241802f`
+Status: **proposal, awaiting approval** · Date: 2026-09-13 · Base commit: `a0016e2`
 
 This document reconciles the "Update the Modular Self-Updating Knowledge Platform" requirements with the code that exists
 today. Nothing here has been implemented yet. Section numbers in *italics* refer to the requirements prompt; `§n` refers to
@@ -369,12 +369,12 @@ and committed in order:
 | P1 canonical snapshot | earlier | export gate, canonical serialisation, manifest + integrity hash, verify, zip, Snapshots page, `kp export` |
 | P2 origin/provenance | earlier | origin/provenance/polarity/details, source classes, human knowledge entry, score@2.0 |
 | P3 dependency graph | earlier | relations, derived edges, propagation, revalidate job, Review "needs revalidation" |
-| P4 delta snapshots | `6bfffe8` | diff engine over stored files, `changed_fields`, delta files, base selector UI, `kp export delta` |
-| P5 AI knowledge source | `f59600f` | self-contained `text` with numbered sources, `usage` hint, human citations, `ai/index.json`, consumption guide |
-| P6 examples / negative | `af7678d` | `negative_coverage` metric + `limitation_not_surfaced` finding, answer-context labels, `anti_pattern`, entry fields |
-| P7a security & delta | `8fbd091` | SSRF guard (every hop), source independence (mirrors), section-level chunk hashes, Sources editor |
-| P7b ops | `d918b00` | `ops` metrics (queue, dead letters, p95 latency, storage, schedule), snapshot scheduling, `kp ops` |
-| P7c optional | `78d8eeb` | active falsification (flag-only), `kp autostart install` (Task Scheduler / systemd / launchd) |
+| P4 delta snapshots | `0f2babe` | diff engine over stored files, `changed_fields`, delta files, base selector UI, `kp export delta` |
+| P5 AI knowledge source | `f56144d` | self-contained `text` with numbered sources, `usage` hint, human citations, `ai/index.json`, consumption guide |
+| P6 examples / negative | `de57f74` | `negative_coverage` metric + `limitation_not_surfaced` finding, answer-context labels, `anti_pattern`, entry fields |
+| P7a security & delta | `3d03a21` | SSRF guard (every hop), source independence (mirrors), section-level chunk hashes, Sources editor |
+| P7b ops | `bd7eec4` | `ops` metrics (queue, dead letters, p95 latency, storage, schedule), snapshot scheduling, `kp ops` |
+| P7c optional | `b5a1c37` | active falsification (flag-only), `kp autostart install` (Task Scheduler / systemd / launchd) |
 
 Deliberately not built (per decisions D9/D10 and the requirement analysis): media handling (images, video,
 OCR) and PDF export. `sources.reliability_history` remains unused — the per-source reliability signal is the
@@ -387,54 +387,54 @@ the following, each with regression tests (139 tests, 82 % coverage):
 
 | Item | Commit | What changed |
 |---|---|---|
-| P0.1 local API origins | `f582d62` | CORS limited to own origins; Origin guard refuses cross-origin mutations |
-| P0.2 review flags | `3a615ca` | `needs_review` separate from `needs_revalidation`; falsification never auto-cleared; explicit dismiss + review log |
-| P0.3 trust state in exports | `ddcc1c0` | flags + `evidence_status` exported; `usage: caution` and a `Caution:` first line for flagged items |
-| P0.4 delta evidence | `ac63291` | modified records carry `changes[id]` (changed fields, before/after); base + delta reproduces head files |
-| P0.5/0.6 evaluation | `73ed868` | uncited answers judged and classed; coverage signal; primary `failure_class`; coverage / uncited metrics |
-| P1.1/1.2 export schema | `ea10dc0` | JSON Schema + vocabulary shipped in every snapshot, validated at build/verify; `export_schema_version` + changelog |
-| P1.3 derived knowledge | `8a8921f` | DERIVED/SYNTHESIZED entry with premises + rationale; no fabricated quote; premise-bound scoring |
-| P1.4 freshness | `a53b06e` | `last_source_checked_at` / `last_content_changed_at`; unchanged crawls confirm, never re-verify |
-| P1.5 type semantics | `c88ee63` | plugin-declared polarity/role/labels; core vocabulary assumptions removed |
-| P1.6 contradictions | `6b8d247` | polarity-aware pairing; `compatible_under` relations keep qualified verdicts |
-| P1.7 propagation | `a38463a` | transitive, cycle-safe, deterministic; chains settle in dependency order |
-| P1.8 source classes | `0e1580d` | curated `source_class`; authority never implies official; re-derivation on sync |
-| P1.9 independence | `91c3d71` | fingerprint + rel=canonical mirrors, declared `mirror_of`, copied-excerpt rule |
-| P1.10 netguard | `4d100e2` | literal canonicalisation, TTL DNS cache, resolve-once/connect-to-validated-IP transport |
-| P1.11 tests | `7b50779` | queue/worker/scheduler/CLI behaviour tests |
+| P0.1 local API origins | `757365b` | CORS limited to own origins; Origin guard refuses cross-origin mutations |
+| P0.2 review flags | `2f99ef3` | `needs_review` separate from `needs_revalidation`; falsification never auto-cleared; explicit dismiss + review log |
+| P0.3 trust state in exports | `1c5262b` | flags + `evidence_status` exported; `usage: caution` and a `Caution:` first line for flagged items |
+| P0.4 delta evidence | `7b4f472` | modified records carry `changes[id]` (changed fields, before/after); base + delta reproduces head files |
+| P0.5/0.6 evaluation | `fc40239` | uncited answers judged and classed; coverage signal; primary `failure_class`; coverage / uncited metrics |
+| P1.1/1.2 export schema | `187072f` | JSON Schema + vocabulary shipped in every snapshot, validated at build/verify; `export_schema_version` + changelog |
+| P1.3 derived knowledge | `b27345d` | DERIVED/SYNTHESIZED entry with premises + rationale; no fabricated quote; premise-bound scoring |
+| P1.4 freshness | `68b60c4` | `last_source_checked_at` / `last_content_changed_at`; unchanged crawls confirm, never re-verify |
+| P1.5 type semantics | `b67b818` | plugin-declared polarity/role/labels; core vocabulary assumptions removed |
+| P1.6 contradictions | `eec521e` | polarity-aware pairing; `compatible_under` relations keep qualified verdicts |
+| P1.7 propagation | `e38f66c` | transitive, cycle-safe, deterministic; chains settle in dependency order |
+| P1.8 source classes | `ed48b73` | curated `source_class`; authority never implies official; re-derivation on sync |
+| P1.9 independence | `a95648b` | fingerprint + rel=canonical mirrors, declared `mirror_of`, copied-excerpt rule |
+| P1.10 netguard | `acae2ea` | literal canonicalisation, TTL DNS cache, resolve-once/connect-to-validated-IP transport |
+| P1.11 tests | `e44e6ff` | queue/worker/scheduler/CLI behaviour tests |
 
 ### 16.1 P2 — operating at realistic scale (2026-09-14)
 
 | Item | Commit | What |
 |---|---|---|
-| P2.0.1 baseline metrics | `59232c9` | `knowledge_metrics()` in ops, `kp ops --json`; small-KB baseline stored under `docs/reports/p2/` |
-| P2.0 corpus sources | `06740a1` | six more official Microsoft Learn sections (reports/visuals, Service, developer, support, Fabric, enterprise) |
-| P2.0.3 / P2.0.4 | `8e41cf9` | incremental-update + snapshot lifecycle proof through the real pipeline (fixtures) |
-| live crawl defect | `8e6b754` | GuardedTransport died on redirect hops (`RequestNotRead`) — found by the P2.0 crawl |
-| delta exactness | `94ecb92` | delta@1.2 ships every differing record: base + delta reproduces head |
-| P2.1 supersede | `41946c4` | supersede-by-new-version, dependency carry-over, review action, historical export |
-| P2.2 retrieval policy | `76225d2`, `2e7bc60` | CANDIDATE excluded unless asked; STALE/CONFLICTED/flagged labelled; `answer_version` in eval config |
-| P2.3 documents export | `8c82a33` | `documents.jsonl` (schema 1.5): self-contained evidence integrity, gate + delta + apply cover it |
-| P2.4 export apply | `23c13e7` | `kp export apply` rebuilds the head byte for byte and verifies against `head_files` (delta@1.3) |
-| P2.5 language | `ac59b22` | per-domain text-search configuration; no English assumption in core |
-| P2.6 / P2.7 designs | `0065f47` | ADR 0003 validator isolation (tier 0 implemented), ADR 0004 authentication (exposure guard implemented) |
-| P2.8 discovery | `4b016b1` | ADR 0005: scored, filtered candidates; opt-in recurring discovery; never auto-approved |
-| P2.10 second domain | `6c80f49` | synthetic `roboticslab` plugin through the whole pipeline |
-| P2.0 / P2.9 live run | `f87bbc3`, `82fe99b`, `9b1a4e0` | 186-document crawl (6,100 items), machine-restart recovery, defects found live: silent loss of failed sections, ILIKE subjects, revalidation churn |
+| P2.0.1 baseline metrics | `635e751` | `knowledge_metrics()` in ops, `kp ops --json`; small-KB baseline stored under `docs/reports/p2/` |
+| P2.0 corpus sources | `7837138` | six more official Microsoft Learn sections (reports/visuals, Service, developer, support, Fabric, enterprise) |
+| P2.0.3 / P2.0.4 | `c37a67d` | incremental-update + snapshot lifecycle proof through the real pipeline (fixtures) |
+| live crawl defect | `64e8ca6` | GuardedTransport died on redirect hops (`RequestNotRead`) — found by the P2.0 crawl |
+| delta exactness | `dc39b65` | delta@1.2 ships every differing record: base + delta reproduces head |
+| P2.1 supersede | `c1f75cd` | supersede-by-new-version, dependency carry-over, review action, historical export |
+| P2.2 retrieval policy | `51a1ed1`, `aa32887` | CANDIDATE excluded unless asked; STALE/CONFLICTED/flagged labelled; `answer_version` in eval config |
+| P2.3 documents export | `c7baf70` | `documents.jsonl` (schema 1.5): self-contained evidence integrity, gate + delta + apply cover it |
+| P2.4 export apply | `f95c5be` | `kp export apply` rebuilds the head byte for byte and verifies against `head_files` (delta@1.3) |
+| P2.5 language | `abdef19` | per-domain text-search configuration; no English assumption in core |
+| P2.6 / P2.7 designs | `d4d3ab7` | ADR 0003 validator isolation (tier 0 implemented), ADR 0004 authentication (exposure guard implemented) |
+| P2.8 discovery | `70495fc` | ADR 0005: scored, filtered candidates; opt-in recurring discovery; never auto-approved |
+| P2.10 second domain | `8163ff8` | synthetic `roboticslab` plugin through the whole pipeline |
+| P2.0 / P2.9 live run | `b6e53ce`, `a3139fb`, `28e5438` | 186-document crawl (6,100 items), machine-restart recovery, defects found live: silent loss of failed sections, ILIKE subjects, revalidation churn |
 | P2.11 report | `docs/reports/p2/final-report.md` | recovery, growth, evaluation (coverage 0.45→1.0, citation 0.55→1.0, accuracy unchanged), stability, snapshot v18 + delta v20 + apply verified |
 
 ### 16.2 P3 — retrieval and answer intelligence (ADR 0006, 2026-09-15)
 
 | Item | Commit | What |
 |---|---|---|
-| diagnosis + offline harness | `9478f8d` | `docs/reports/p3/diagnosis.md`; `kp eval retrieval` (concept recall@K, precision, MRR, authoritative hit) |
-| stages 1–2 query analysis | `fa79bf9` | normalisation, hyphen/compound variants, plugin synonyms, lexemes, entities, deterministic intent |
-| stages 3–6 retrieval | `f70ea96` | vector + weighted-OR lexical + rare-term + entity channels; explainable ranking; diversity; bounded expansion |
-| stages 7–10 answers | `5409510` | 12-item context with source/authority/excerpt, deterministic plan, lexeme-space completeness, one targeted regeneration |
-| guards | `1344ef6` | no regeneration on abstention / uncited answers; validator-failed label + penalty; single-scan document frequencies; frozen P2 prompt |
-| stage 12 observability | `900e12a` | `/api/search` signals + explanation, `/api/ask` mode/plan/regeneration/timings, Search & Ask page, `kp ask --explain` |
-| phase 8 tests | `5ba350f` | 14 DB-backed regression/adversarial cases; roboticslab retrieval from plugin declarations; `type_match` signal; plugin cues first |
-| stage 11 + report | `fc6407c`, `9a16f27` | runs A/B/C/D (`scripts/p3_compare.py`), failure decomposition, performance, second-domain validation |
+| diagnosis + offline harness | `4bc50f0` | `docs/reports/p3/diagnosis.md`; `kp eval retrieval` (concept recall@K, precision, MRR, authoritative hit) |
+| stages 1–2 query analysis | `24d666d` | normalisation, hyphen/compound variants, plugin synonyms, lexemes, entities, deterministic intent |
+| stages 3–6 retrieval | `bea4905` | vector + weighted-OR lexical + rare-term + entity channels; explainable ranking; diversity; bounded expansion |
+| stages 7–10 answers | `fd4a4aa` | 12-item context with source/authority/excerpt, deterministic plan, lexeme-space completeness, one targeted regeneration |
+| guards | `fdaf7f9` | no regeneration on abstention / uncited answers; validator-failed label + penalty; single-scan document frequencies; frozen P2 prompt |
+| stage 12 observability | `a1c368c` | `/api/search` signals + explanation, `/api/ask` mode/plan/regeneration/timings, Search & Ask page, `kp ask --explain` |
+| phase 8 tests | `85d4ba3` | 14 DB-backed regression/adversarial cases; roboticslab retrieval from plugin declarations; `type_match` signal; plugin cues first |
+| stage 11 + report | `ac8e8e3`, `62539d5` | runs A/B/C/D (`scripts/p3_compare.py`), failure decomposition, performance, second-domain validation |
 
 Awaiting approval (designed, not built): validator runner tiers 1–2 (ADR 0003), proxy/token authentication
 (ADR 0004), discovery auto-approval policy (ADR 0005). Still deferred by decision: media handling, PDF export,
